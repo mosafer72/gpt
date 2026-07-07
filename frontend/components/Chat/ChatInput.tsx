@@ -13,7 +13,7 @@ interface ChatInputProps {
   onImageRemove: () => void;
   imageFile: File | null;
   disabled?: boolean;
-  inputRef?: RefObject<HTMLTextAreaElement>;
+  inputRef?: RefObject<HTMLTextAreaElement  | null>;
 }
 
 export default function ChatInput({
