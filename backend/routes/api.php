@@ -23,6 +23,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/calculate-upgrade', [SubscriptionController::class, 'calculateUpgrade']);
     Route::post('/initiate-payment', [SubscriptionController::class, 'initiatePayment']);
     Route::post('auth/logout', [AuthController::class, 'logout']);
+        Route::get('/user/status', [AuthController::class, 'status']);
+
 });
 
 // Callback درگاه پرداخت (بدون middleware auth)

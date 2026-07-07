@@ -1,0 +1,17 @@
+.container { min-height: 100vh; display: flex; flex-direction: column; background: linear-gradient(145deg, #E8EAFF, #F0F2FF); }
+.header { display: flex; justify-content: space-between; align-items: center; padding: 20px 40px; }
+.logo { font-size: 24px; font-weight: 700; background: linear-gradient(135deg, #6C63FF, #3F3D9E); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.btnOutline { padding: 10px 20px; border: 2px solid #6C63FF; border-radius: 12px; color: #6C63FF; text-decoration: none; margin-right: 12px; font-weight: 500; }
+.btnPrimary { padding: 10px 24px; background: linear-gradient(135deg, #6C63FF, #3F3D9E); border-radius: 12px; color: #fff; text-decoration: none; font-weight: 500; }
+.hero { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+.title { font-size: 56px; font-weight: 700; color: #1A1A2E; margin: 0; }
+.gradient { background: linear-gradient(135deg, #6C63FF, #FF6B6B); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.sub { font-size: 20px; color: #4A4A6A; margin: 12px 0 32px; }
+.cta { padding: 16px 48px; background: linear-gradient(135deg, #6C63FF, #3F3D9E); border-radius: 16px; color: #fff; text-decoration: none; font-weight: 600; font-size: 18px; box-shadow: 0 8px 32px rgba(108,99,255,0.3); transition: all 0.3s; }
+.cta:hover { transform: scale(1.05); box-shadow: 0 12px 40px rgba(108,99,255,0.4); }
+.footer { text-align: center; padding: 20px; color: #8A8AAA; font-size: 14px; }
+@media (max-width: 480px) {
+  .title { font-size: 36px; }
+  .sub { font-size: 16px; }
+  .header { padding: 16px 20px; flex-wrap: wrap; gap: 12px; }
+}

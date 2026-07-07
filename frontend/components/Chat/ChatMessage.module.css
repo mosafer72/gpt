@@ -1,0 +1,45 @@
+.wrapper {
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  align-items: flex-start;
+}
+.user { flex-direction: row-reverse; }
+.avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+.user .avatar { background: linear-gradient(135deg, #6C63FF, #3F3D9E); }
+.assistant .avatar { background: linear-gradient(135deg, #1A1A2E, #2A2A4A); }
+.bubble {
+  max-width: 75%;
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  word-break: break-word;
+}
+.user .bubble {
+  background: linear-gradient(135deg, #6C63FF, #3F3D9E);
+  color: #fff;
+  border-radius: 18px 18px 4px 18px;
+}
+.assistant .bubble {
+  background: #fff;
+  border: 1px solid rgba(108,99,255,0.1);
+  border-radius: 18px 18px 18px 4px;
+}
+.text { margin: 0; line-height: 1.6; font-size: 15px; }
+.image { max-width: 300px; border-radius: 12px; display: block; }
+@media (max-width: 480px) {
+  .bubble { max-width: 85%; padding: 12px 14px; }
+  .image { max-width: 200px; }
+}

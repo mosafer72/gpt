@@ -114,4 +114,22 @@ class AuthController extends Controller
         $request->user()->currentAccessToken()->delete();
         return response()->json(['message' => 'خروج موفقیت‌آمیز بود.']);
     }
+
+
+    public function status(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $hasSubscription = $user->hasActiveSubscription();
+        $dailyLimit = $user->dailyMessageLimit();
+        $todayCount = $user->todayMessagesCount();
+        $remaining = max(0, $dailyLimit - $todayCount);
+
+        return response()->json([
+            'has_subscription' => $hasSubscription,
+            'daily_message_limit' => $dailyLimit,
+            'today_messages_count' => $todayCount,
+            'remaining_messages' => $remaining,
+        ]);
+    }
 }
