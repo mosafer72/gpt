@@ -29,9 +29,7 @@ class AuthController extends Controller
 
         // پیدا کردن یا ایجاد کاربر
         $user = User::firstOrCreate(
-            ['phone' => $phone],
-            ['phone' => $phone]
-        );
+            ['phone' => $phone]        );
 
         // تولید کد ۶ رقمی
         $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
