@@ -172,7 +172,7 @@ class SubscriptionController extends Controller
     }
 
     // 6. بازگشت از درگاه پرداخت (callback)
-    public function paymentCallback(Request $request): JsonResponse
+    public function paymentCallback(Request $request)
     {
         $authority = $request->query('Authority');
         $status = $request->query('Status');
@@ -215,10 +215,11 @@ class SubscriptionController extends Controller
                 'authority' => $authority,
                 'message' => $verifyResult['message'],
             ]);
-            return response()->json([
-                'success' => false,
-                'message' => $verifyResult['message'],
-            ]);
+            // return response()->json([
+            //     'success' => false,
+            //     'message' => $verifyResult['message'],
+            // ]);
+            return redirect()->to('/failedpay?authority=' . $authority);
         }
 
         // پرداخت موفق
@@ -239,11 +240,6 @@ class SubscriptionController extends Controller
             'is_active' => true,
             'transaction_id' => $verifyResult['ref_id'],
         ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'پرداخت با موفقیت انجام شد.',
-            'subscription' => $subscription->load('plan'),
-        ]);
+        return redirect()->to('/successpay/?ref_id=' . $subscription['transaction_id'] . '&authority=' . $transaction->transaction);
     }
 }
