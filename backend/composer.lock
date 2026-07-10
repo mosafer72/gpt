@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "28a95cfa7685839fab87f03173195aa2",
+    "content-hash": "f013ad8fc3b92e939beab342261463df",
     "packages": [
         {
             "name": "brick/math",
@@ -3724,6 +3724,180 @@
             "time": "2026-06-18T03:57:49+00:00"
         },
         {
+            "name": "surrealdb/laravel",
+            "version": "0.0.1-alpha.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/surrealdb/surrealdb.laravel.git",
+                "reference": "756709ad1e9f3341cb02f565f70152e15a536859"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/surrealdb/surrealdb.laravel/zipball/756709ad1e9f3341cb02f565f70152e15a536859",
+                "reference": "756709ad1e9f3341cb02f565f70152e15a536859",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/console": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/support": "^11.0 || ^12.0 || ^13.0",
+                "php": ">=8.4",
+                "surrealdb/surqlize": "0.0.1-alpha.2",
+                "surrealdb/surrealdb.php": "2.0.0-alpha.1"
+            },
+            "require-dev": {
+                "orchestra/testbench": "^10.0 || ^11.0",
+                "phpstan/phpstan": "^2.0",
+                "phpunit/phpunit": "^11.5 || ^12.0 || ^13.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Surreal": "SurrealDB\\Laravel\\Facades\\Surreal",
+                        "Surqlize": "SurrealDB\\Laravel\\Facades\\Surqlize",
+                        "SurrealDB": "SurrealDB\\Laravel\\Facades\\SurrealDB"
+                    },
+                    "providers": [
+                        "SurrealDB\\Laravel\\SurrealDBServiceProvider",
+                        "SurrealDB\\Laravel\\SurqlizeServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "SurrealDB\\Laravel\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "Apache-2.0"
+            ],
+            "description": "Laravel integration for the SurrealDB PHP SDK and Surqlize ORM.",
+            "keywords": [
+                "database",
+                "laravel",
+                "orm",
+                "surqlize",
+                "surrealdb"
+            ],
+            "support": {
+                "issues": "https://github.com/surrealdb/surrealdb.laravel/issues",
+                "source": "https://github.com/surrealdb/surrealdb.laravel/tree/v0.0.1-alpha.1"
+            },
+            "time": "2026-06-26T13:57:01+00:00"
+        },
+        {
+            "name": "surrealdb/surqlize",
+            "version": "0.0.1-alpha.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/surrealdb/surqlize.php.git",
+                "reference": "0a5360b4fa2292e92ae64175286af67906145234"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/surrealdb/surqlize.php/zipball/0a5360b4fa2292e92ae64175286af67906145234",
+                "reference": "0a5360b4fa2292e92ae64175286af67906145234",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.4",
+                "surrealdb/surrealdb.php": "2.0.0-alpha.1@alpha"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^2.0",
+                "phpunit/phpunit": "^11.0"
+            },
+            "bin": [
+                "bin/surqlize"
+            ],
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Surqlize\\": "src/",
+                    "Surqlize\\Examples\\": "examples/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "SurrealDB ORM for PHP — attribute-driven models, edges, and query builder.",
+            "support": {
+                "issues": "https://github.com/surrealdb/surqlize.php/issues",
+                "source": "https://github.com/surrealdb/surqlize.php/tree/v0.0.1-alpha.2"
+            },
+            "time": "2026-06-26T13:21:07+00:00"
+        },
+        {
+            "name": "surrealdb/surrealdb.php",
+            "version": "2.0.0-alpha.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/surrealdb/surrealdb.php.git",
+                "reference": "712c53d13bd95bf91ea4745e79c9e109c201c27e"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/surrealdb/surrealdb.php/zipball/712c53d13bd95bf91ea4745e79c9e109c201c27e",
+                "reference": "712c53d13bd95bf91ea4745e79c9e109c201c27e",
+                "shasum": ""
+            },
+            "require": {
+                "brick/math": "^0.12 || ^0.13 || ^0.14 || ^0.17.2",
+                "php": ">=8.4",
+                "psr/event-dispatcher": "^1.0",
+                "psr/http-client": "^1.0",
+                "psr/http-factory": "^1.0",
+                "psr/http-message": "^1.1 || ^2.0",
+                "psr/log": "^3.0",
+                "symfony/uid": "^7.0 || ^8.1",
+                "welpie21/cbor.php": "^2.1"
+            },
+            "require-dev": {
+                "amphp/http-client": "^5.3",
+                "amphp/websocket-client": "^2.0",
+                "guzzlehttp/guzzle": "^7.11",
+                "openswoole/core": "^26.2",
+                "php-http/discovery": "^1.20",
+                "phpstan/phpstan": "^2.2",
+                "phpstan/phpstan-phpunit": "^2.0",
+                "phpunit/phpunit": "^13.0",
+                "revolt/event-loop": "^1.0"
+            },
+            "suggest": {
+                "amphp/http-client": "Non-blocking HTTP transport for the Amp/Revolt runtime",
+                "amphp/websocket-client": "Async WebSocket transport for the Amp/Revolt runtime",
+                "guzzlehttp/guzzle": "PSR-18 HTTP client and PSR-17 factories used by the default HTTP engine",
+                "openswoole/core": "Run the SDK on OpenSwoole coroutines (native async WebSocket client and non-blocking HTTP via runtime hooks)",
+                "php-http/discovery": "Automatic discovery of the installed PSR-18 client and PSR-17 factories",
+                "revolt/event-loop": "Fiber-based event loop powering the Amp runtime (e.g. FrankenPHP worker mode)"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "SurrealDB\\SDK\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "Apache-2.0"
+            ],
+            "description": "The official SurrealDB SDK for PHP.",
+            "keywords": [
+                "client",
+                "database",
+                "sdk",
+                "surrealdb",
+                "websocket"
+            ],
+            "support": {
+                "issues": "https://github.com/surrealdb/surrealdb.php/issues",
+                "source": "https://github.com/surrealdb/surrealdb.php/tree/v2.0.0-alpha.1"
+            },
+            "time": "2026-06-26T11:00:02+00:00"
+        },
+        {
             "name": "symfony/clock",
             "version": "v8.1.0",
             "source": {
@@ -6436,6 +6610,60 @@
                 }
             ],
             "time": "2026-04-26T05:33:54+00:00"
+        },
+        {
+            "name": "welpie21/cbor.php",
+            "version": "2.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/welpie21/cbor.php.git",
+                "reference": "fd3afd848ce722761499388696db0b271502e570"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/welpie21/cbor.php/zipball/fd3afd848ce722761499388696db0b271502e570",
+                "reference": "fd3afd848ce722761499388696db0b271502e570",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.1"
+            },
+            "require-dev": {
+                "nikic/php-parser": "^v4.16.0",
+                "phpbench/phpbench": "^1.2",
+                "phpstan/phpstan-beberlei-assert": "^1.1.2",
+                "phpunit/php-code-coverage": "^10.1",
+                "phpunit/phpunit": "^10.5.63"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Beau\\CborPHP\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "beau",
+                    "email": "beaudenheijer@gmail.com"
+                }
+            ],
+            "description": "A CBOR encoder/decoder for PHP",
+            "homepage": "https://github.com/welpie21/cbor.php",
+            "keywords": [
+                "cbor",
+                "cbor-decoder",
+                "cbor-encoder",
+                "cbor-php"
+            ],
+            "support": {
+                "issues": "https://github.com/welpie21/cbor.php/issues",
+                "source": "https://github.com/welpie21/cbor.php/tree/v2.1.0"
+            },
+            "time": "2026-02-24T21:50:46+00:00"
         }
     ],
     "packages-dev": [

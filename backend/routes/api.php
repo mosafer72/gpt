@@ -10,6 +10,7 @@ Route::post('auth/send-code', [AuthController::class, 'sendVerificationCode']); 
 Route::post('auth/verify-code', [AuthController::class, 'verifyCode']);
 Route::post('auth/resend-code', [AuthController::class, 'resendCode']);
 
+// Route::apiResource('/chats', ChatController::class);
 // روت‌های محافظت‌شده
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {

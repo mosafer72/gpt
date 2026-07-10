@@ -43,5 +43,21 @@ return [
         'api_key' => env('SMSIR_API_KEY'),
         'template_id' => env('SMSIR_TEMPLATE_ID'),
     ],
+    'openai' => [
 
+        'key' => env('OPENAI_API_KEY'),
+    ],
+    'gapgpt' => [
+
+        'key' => env(
+            'GAPGPT_API_KEY'
+        ),
+
+
+        'base_url' => env(
+            'GAPGPT_BASE_URL',
+            'https://api.gapgpt.app/v1'
+        ),
+
+    ],
 ];
