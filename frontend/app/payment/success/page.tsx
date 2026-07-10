@@ -1,9 +1,9 @@
-// pages/payment/success.tsx
-import { GetServerSideProps } from "next";
+// app/payment/success/page.tsx
 import Link from "next/link";
 import { CheckCircle, Calendar, Clock, Zap, ArrowLeft, Hash } from "lucide-react";
 import styles from "./PaymentSuccess.module.css";
 
+// تعریف تایپ‌ها (همون قبلی)
 interface Plan {
   id: number;
   name: string;
@@ -26,13 +26,53 @@ interface Subscription {
   plan: Plan;
 }
 
-interface SuccessPageProps {
-  subscription: Subscription | null;
-  refId: string | null;
-  error: string | null;
-}
+// کامپوننت اصلی - توجه به searchParams
+export default async function PaymentSuccessPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
+  // منتظر می‌مونیم تا پارامترها بیایند
+  const params = await searchParams;
+  const refId = params.ref_id as string;
+  const authority = params.authority as string;
 
-export default function PaymentSuccess({ subscription, refId, error }: SuccessPageProps) {
+  // اگر کد پیگیری وجود نداشت
+  if (!refId && !authority) {
+    return (
+      <div className={styles.container}>
+        <div className={styles.card}>
+          <div className={styles.errorIcon}>⚠️</div>
+          <h1 className={styles.errorTitle}>خطا</h1>
+          <p className={styles.errorMessage}>کد پیگیری یافت نشد</p>
+          <Link href="/" className={styles.secondaryButton}>بازگشت به سایت</Link>
+        </div>
+      </div>
+    );
+  }
+
+  // دریافت اطلاعات از API
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://accountsara.ir";
+  let subscription = null;
+  let error = null;
+
+  try {
+    const res = await fetch(
+      `${apiUrl}/api/payment/status?ref_id=${refId || ''}&authority=${authority || ''}`,
+      { cache: 'no-store' } // این باعث می‌شه همیشه اطلاعات جدید گرفته بشه
+    );
+    const data = await res.json();
+
+    if (!data.success) {
+      error = data.message || "اطلاعات پرداخت یافت نشد";
+    } else {
+      subscription = data.subscription;
+    }
+  } catch (err) {
+    error = "مشکلی در ارتباط با سرور پیش آمد.";
+  }
+
+  // اگر خطا داشتیم
   if (error) {
     return (
       <div className={styles.container}>
@@ -40,14 +80,13 @@ export default function PaymentSuccess({ subscription, refId, error }: SuccessPa
           <div className={styles.errorIcon}>⚠️</div>
           <h1 className={styles.errorTitle}>خطا</h1>
           <p className={styles.errorMessage}>{error}</p>
-          <Link href="/" className={styles.secondaryButton}>
-            بازگشت به سایت
-          </Link>
+          <Link href="/" className={styles.secondaryButton}>بازگشت به سایت</Link>
         </div>
       </div>
     );
   }
 
+  // اگر اطلاعات نیامد
   if (!subscription) {
     return (
       <div className={styles.container}>
@@ -59,6 +98,7 @@ export default function PaymentSuccess({ subscription, refId, error }: SuccessPa
     );
   }
 
+  // ---------- نمایش اطلاعات موفقیت (همون کد قبلی) ----------
   const { plan } = subscription;
   const daysRemaining = Math.ceil(
     (new Date(subscription.expires_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
@@ -77,7 +117,7 @@ export default function PaymentSuccess({ subscription, refId, error }: SuccessPa
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        {/* Header */}
+        {/* هدر */}
         <div className={styles.header}>
           <div className={styles.iconWrapper}>
             <CheckCircle size={72} className={styles.successIcon} />
@@ -86,14 +126,14 @@ export default function PaymentSuccess({ subscription, refId, error }: SuccessPa
           <p className={styles.subtitle}>اشتراک شما با موفقیت فعال شد</p>
         </div>
 
-        {/* Tracking Code */}
+        {/* کد پیگیری */}
         <div className={styles.trackingBox}>
           <Hash size={18} className={styles.trackingIcon} />
           <span className={styles.trackingLabel}>کد پیگیری:</span>
           <span className={styles.trackingCode}>{refId || subscription.transaction_id}</span>
         </div>
 
-        {/* Subscription Info */}
+        {/* اطلاعات اشتراک */}
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <Zap size={20} className={styles.sectionIcon} />
@@ -119,7 +159,7 @@ export default function PaymentSuccess({ subscription, refId, error }: SuccessPa
           </div>
         </div>
 
-        {/* Dates */}
+        {/* تاریخ‌ها */}
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <Calendar size={20} className={styles.sectionIcon} />
@@ -145,7 +185,7 @@ export default function PaymentSuccess({ subscription, refId, error }: SuccessPa
           </div>
         </div>
 
-        {/* Features */}
+        {/* ویژگی‌ها */}
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <Zap size={20} className={styles.sectionIcon} />
@@ -161,7 +201,7 @@ export default function PaymentSuccess({ subscription, refId, error }: SuccessPa
           </div>
         </div>
 
-        {/* Actions */}
+        {/* دکمه‌ها */}
         <div className={styles.actions}>
           <Link href="/dashboard" className={styles.primaryButton}>
             رفتن به داشبورد
@@ -175,51 +215,3 @@ export default function PaymentSuccess({ subscription, refId, error }: SuccessPa
     </div>
   );
 }
-
-export const getServerSideProps: GetServerSideProps = async (context) => {
-  const { ref_id, authority } = context.query;
-
-  if (!ref_id && !authority) {
-    return {
-      props: {
-        subscription: null,
-        refId: null,
-        error: "کد پیگیری یافت نشد",
-      },
-    };
-  }
-
-  try {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://accountsara.ir";
-    const res = await fetch(
-      `${apiUrl}/api/payment/status?ref_id=${ref_id || ""}&authority=${authority || ""}`
-    );
-    const data = await res.json();
-
-    if (!data.success) {
-      return {
-        props: {
-          subscription: null,
-          refId: ref_id || authority || null,
-          error: data.message || "اطلاعات پرداخت یافت نشد",
-        },
-      };
-    }
-
-    return {
-      props: {
-        subscription: data.subscription,
-        refId: ref_id || authority || data.subscription.transaction_id,
-        error: null,
-      },
-    };
-  } catch (err) {
-    return {
-      props: {
-        subscription: null,
-        refId: ref_id || authority || null,
-        error: "مشکل در ارتباط با سرور",
-      },
-    };
-  }
-};
