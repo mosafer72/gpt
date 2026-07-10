@@ -1,0 +1,334 @@
+/* pages/PaymentSuccess.module.css */
+.container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
+  direction: rtl;
+}
+
+.card {
+  max-width: 720px;
+  width: 100%;
+  background: #ffffff;
+  border-radius: 32px;
+  padding: 40px 48px;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.35);
+  animation: fadeSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeSlideUp {
+  0% { opacity: 0; transform: translateY(40px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Header */
+.header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.iconWrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.successIcon {
+  color: #22c55e;
+  background: #dcfce7;
+  border-radius: 50%;
+  padding: 8px;
+}
+
+.title {
+  font-size: 30px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 6px;
+}
+
+.subtitle {
+  font-size: 16px;
+  color: #64748b;
+  margin: 0;
+}
+
+/* Tracking Box */
+.trackingBox {
+  background: #f1f5f9;
+  border-radius: 16px;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 28px;
+  border: 1px solid #e2e8f0;
+}
+
+.trackingIcon {
+  color: #3b82f6;
+}
+
+.trackingLabel {
+  font-weight: 500;
+  color: #334155;
+  font-size: 14px;
+}
+
+.trackingCode {
+  font-weight: 700;
+  color: #0f172a;
+  font-family: monospace;
+  font-size: 18px;
+  letter-spacing: 0.5px;
+  background: white;
+  padding: 2px 14px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Sections */
+.section {
+  background: #f8fafc;
+  border-radius: 20px;
+  padding: 20px 24px;
+  margin-bottom: 18px;
+  border: 1px solid #eef2f6;
+  transition: border-color 0.2s;
+}
+
+.section:hover {
+  border-color: #cbd5e1;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.sectionHeader h2 {
+  font-size: 17px;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0;
+}
+
+.sectionIcon {
+  color: #3b82f6;
+}
+
+/* Info Grid */
+.infoGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.infoItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.infoLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.infoValue {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* Dates */
+.dateGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.dateItem {
+  background: white;
+  border-radius: 14px;
+  padding: 12px 16px;
+  border: 1px solid #e2e8f0;
+}
+
+.dateLabel {
+  font-size: 11px;
+  font-weight: 500;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.dateValue {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+  direction: ltr;
+  text-align: right;
+}
+
+.daysRemaining {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #dbeafe;
+  color: #1e40af;
+  padding: 8px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Features */
+.featureList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.featureItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  padding: 6px 16px;
+  border-radius: 30px;
+  border: 1px solid #e2e8f0;
+  font-size: 14px;
+  color: #1e293b;
+}
+
+.featureBullet {
+  color: #22c55e;
+  font-weight: 700;
+}
+
+/* Actions */
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.primaryButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #0f172a;
+  color: white;
+  padding: 14px 24px;
+  border-radius: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s;
+  border: none;
+  cursor: pointer;
+}
+
+.primaryButton:hover {
+  background: #1e293b;
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.25);
+}
+
+.secondaryButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: transparent;
+  color: #475569;
+  padding: 12px 24px;
+  border-radius: 16px;
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+}
+
+.secondaryButton:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+/* Loading & Error */
+.loadingSpinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e2e8f0;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 20px auto;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loadingText {
+  text-align: center;
+  color: #64748b;
+  font-size: 15px;
+}
+
+.errorIcon {
+  font-size: 56px;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.errorTitle {
+  font-size: 26px;
+  font-weight: 700;
+  color: #dc2626;
+  text-align: center;
+  margin: 0 0 8px;
+}
+
+.errorMessage {
+  color: #475569;
+  text-align: center;
+  margin-bottom: 24px;
+  font-size: 15px;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .card {
+    padding: 24px 20px;
+  }
+  .infoGrid, .dateGrid {
+    grid-template-columns: 1fr;
+  }
+  .title {
+    font-size: 24px;
+  }
+  .trackingCode {
+    font-size: 14px;
+    padding: 2px 10px;
+  }
+  .section {
+    padding: 16px;
+  }
+}
