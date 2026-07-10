@@ -3,7 +3,7 @@ import Link from "next/link";
 import { CheckCircle, Calendar, Clock, Zap, ArrowLeft, Hash } from "lucide-react";
 import styles from "./PaymentSuccess.module.css";
 
-// تعریف تایپ‌ها (همون قبلی)
+// تعریف تایپ‌ها با دقت بیشتر
 interface Plan {
   id: number;
   name: string;
@@ -12,7 +12,10 @@ interface Plan {
   price: number;
   duration_days: number;
   daily_message_limit: number;
-  features: string[];
+  features: string[]; // اینجا features رو به‌عنوان آرایه‌ای از رشته‌ها تعریف کردیم
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 interface Subscription {
@@ -24,20 +27,19 @@ interface Subscription {
   is_active: boolean;
   transaction_id: number;
   plan: Plan;
+  created_at: string;
+  updated_at: string;
 }
 
-// کامپوننت اصلی - توجه به searchParams
 export default async function PaymentSuccessPage({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
-  // منتظر می‌مونیم تا پارامترها بیایند
   const params = await searchParams;
   const refId = params.ref_id as string;
   const authority = params.authority as string;
 
-  // اگر کد پیگیری وجود نداشت
   if (!refId && !authority) {
     return (
       <div className={styles.container}>
@@ -51,15 +53,14 @@ export default async function PaymentSuccessPage({
     );
   }
 
-  // دریافت اطلاعات از API
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://accountsara.ir";
-  let subscription = null;
-  let error = null;
+  let subscription: Subscription | null = null;
+  let error: string | null = null;
 
   try {
     const res = await fetch(
       `${apiUrl}/api/payment/status?ref_id=${refId || ''}&authority=${authority || ''}`,
-      { cache: 'no-store' } // این باعث می‌شه همیشه اطلاعات جدید گرفته بشه
+      { cache: 'no-store' }
     );
     const data = await res.json();
 
@@ -72,7 +73,6 @@ export default async function PaymentSuccessPage({
     error = "مشکلی در ارتباط با سرور پیش آمد.";
   }
 
-  // اگر خطا داشتیم
   if (error) {
     return (
       <div className={styles.container}>
@@ -86,7 +86,6 @@ export default async function PaymentSuccessPage({
     );
   }
 
-  // اگر اطلاعات نیامد
   if (!subscription) {
     return (
       <div className={styles.container}>
@@ -98,7 +97,6 @@ export default async function PaymentSuccessPage({
     );
   }
 
-  // ---------- نمایش اطلاعات موفقیت (همون کد قبلی) ----------
   const { plan } = subscription;
   const daysRemaining = Math.ceil(
     (new Date(subscription.expires_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
@@ -117,7 +115,6 @@ export default async function PaymentSuccessPage({
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        {/* هدر */}
         <div className={styles.header}>
           <div className={styles.iconWrapper}>
             <CheckCircle size={72} className={styles.successIcon} />
@@ -126,14 +123,12 @@ export default async function PaymentSuccessPage({
           <p className={styles.subtitle}>اشتراک شما با موفقیت فعال شد</p>
         </div>
 
-        {/* کد پیگیری */}
         <div className={styles.trackingBox}>
           <Hash size={18} className={styles.trackingIcon} />
           <span className={styles.trackingLabel}>کد پیگیری:</span>
           <span className={styles.trackingCode}>{refId || subscription.transaction_id}</span>
         </div>
 
-        {/* اطلاعات اشتراک */}
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <Zap size={20} className={styles.sectionIcon} />
@@ -159,7 +154,6 @@ export default async function PaymentSuccessPage({
           </div>
         </div>
 
-        {/* تاریخ‌ها */}
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <Calendar size={20} className={styles.sectionIcon} />
@@ -185,14 +179,14 @@ export default async function PaymentSuccessPage({
           </div>
         </div>
 
-        {/* ویژگی‌ها */}
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <Zap size={20} className={styles.sectionIcon} />
             <h2>ویژگی‌های طرح</h2>
           </div>
           <div className={styles.featureList}>
-            {plan.features.map((feature, idx) => (
+            {/* ✅ اصلاح اینجا: اضافه کردن تایپ برای feature */}
+            {plan.features.map((feature: string, idx: number) => (
               <div key={idx} className={styles.featureItem}>
                 <span className={styles.featureBullet}>✓</span>
                 {feature}
@@ -201,7 +195,6 @@ export default async function PaymentSuccessPage({
           </div>
         </div>
 
-        {/* دکمه‌ها */}
         <div className={styles.actions}>
           <Link href="/dashboard" className={styles.primaryButton}>
             رفتن به داشبورد

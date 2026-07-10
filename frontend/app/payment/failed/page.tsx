@@ -3,23 +3,14 @@ import Link from "next/link";
 import { XCircle, AlertTriangle, ArrowLeft, Hash, RefreshCw } from "lucide-react";
 import styles from "./PaymentFailed.module.css";
 
-// تعریف تایپ‌ها
-interface FailedPageProps {
-  refId: string | null;
-  errorMessage: string | null;
-  statusCode?: string;
-}
-
 export default async function PaymentFailedPage({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
-  // منتظر می‌مونیم تا پارامترها بیان
   const params = await searchParams;
   const refId = (params.ref_id as string) || (params.authority as string) || null;
   
-  // پیام خطا رو از کوئری می‌گیریم، یا از پیش‌فرض استفاده می‌کنیم
   let errorMessage: string;
   if (typeof params.message === "string") {
     errorMessage = params.message;
@@ -31,11 +22,9 @@ export default async function PaymentFailedPage({
 
   const statusCode = typeof params.status === "string" ? params.status : null;
 
-  // ---------- نمایش صفحه ----------
   return (
     <div className={styles.container}>
       <div className={styles.card}>
-        {/* هدر */}
         <div className={styles.header}>
           <div className={styles.iconWrapper}>
             <XCircle size={72} className={styles.failedIcon} />
@@ -46,7 +35,6 @@ export default async function PaymentFailedPage({
           </p>
         </div>
 
-        {/* باکس خطا */}
         <div className={styles.errorBox}>
           <AlertTriangle size={20} className={styles.errorBoxIcon} />
           <div>
@@ -55,7 +43,6 @@ export default async function PaymentFailedPage({
           </div>
         </div>
 
-        {/* کد پیگیری (اگر وجود داشته باشد) */}
         {refId && (
           <div className={styles.trackingBox}>
             <Hash size={18} className={styles.trackingIcon} />
@@ -67,7 +54,6 @@ export default async function PaymentFailedPage({
           </div>
         )}
 
-        {/* باکس راهنما */}
         <div className={styles.helpBox}>
           <h3>❓ چه کاری می‌توانم انجام دهم؟</h3>
           <ul>
@@ -78,7 +64,6 @@ export default async function PaymentFailedPage({
           </ul>
         </div>
 
-        {/* دکمه‌ها */}
         <div className={styles.actions}>
           <Link href="/payment" className={styles.primaryButton}>
             <RefreshCw size={18} />
