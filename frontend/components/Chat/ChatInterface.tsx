@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, FormEvent } from "react";
 import { sendMessageStream } from "@/lib/api";
 import { useRouter } from "next/navigation";
-import { Chat } from "@/types";
+import { Chat, Message } from "@/types";
 import {
   getChats,
   sendMessage,
@@ -169,10 +169,11 @@ export default function ChatInterface() {
         setCurrentChat((prev) => {
           if (!prev) return result.chat;
           const realUserMessage = result.chat.messages.find(
-            (m) => m.role === "user",
+            (m: Message) => m.role === "user",
           );
+
           const realAssistantMessage = result.chat.messages.find(
-            (m) => m.role === "assistant",
+            (m: Message) => m.role === "assistant",
           );
           return {
             ...prev,
@@ -192,7 +193,6 @@ export default function ChatInterface() {
             }),
           };
         });
-
       } finally {
         // صبر کن تا همه حروف نمایش داده شوند
 
@@ -204,28 +204,6 @@ export default function ChatInterface() {
           }
         }, 20);
       }
-
-      setChats((prev) => {
-        const chatId = currentChat?.id || 0;
-
-        const exists = prev.some((c) => c.id === chatId);
-
-        if (exists) return prev;
-
-        return [
-          {
-            id: chatId,
-
-            title: messageText.slice(0, 50),
-
-            created_at: new Date().toISOString(),
-
-            messages: [],
-          },
-
-          ...prev,
-        ];
-      });
 
       setImageFile(null);
     } catch (error: any) {
