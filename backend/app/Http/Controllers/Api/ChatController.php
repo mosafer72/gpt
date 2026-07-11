@@ -109,7 +109,10 @@ class ChatController extends Controller
 
 
 
-
+        $imageUrl = $imagePath
+            ? 'https://accountsara.ir/images/'
+            . basename($imagePath)
+            : null;
 
 
 
@@ -183,9 +186,7 @@ class ChatController extends Controller
                         [
                             [
                                 'type' => 'image',
-                                'url' => asset(
-                                    'storage/' . $imagePath
-                                )
+                                'url' => $imageUrl
                             ]
                         ]
                         :
@@ -241,9 +242,7 @@ class ChatController extends Controller
                 [
                     [
                         'type' => 'image',
-                        'url' => asset(
-                            'storage/' . $imagePath
-                        )
+                        'url' => $imageUrl
                     ]
                 ]
                 :
