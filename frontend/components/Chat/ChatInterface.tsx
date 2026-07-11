@@ -100,7 +100,9 @@ export default function ChatInterface() {
       // setCurrentChat(result.chat);
 
       const previewUrl = imageFile ? URL.createObjectURL(imageFile) : null;
-
+      
+      
+      setImageFile(null);
       const tempUserMessage = {
         id: `temp-user-${Date.now()}`,
         chat_id: currentChat?.id || 0,
@@ -205,7 +207,6 @@ export default function ChatInterface() {
         }, 20);
       }
 
-      setImageFile(null);
     } catch (error: any) {
       alert(error.message || "خطا در ارسال پیام");
       setInput(messageText);
