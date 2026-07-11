@@ -1,51 +1,163 @@
 .inputArea {
-  padding: 16px 24px 20px;
-  background: rgba(255,255,255,0.6);
-  backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(108,99,255,0.08);
+
+  position: sticky;
+
+  bottom: 0;
+
+  padding: 20px 24px 28px;
+
+  background: linear-gradient(to top, #0b1020 70%, transparent);
+
 }
-.preview {
-  position: relative;
-  display: inline-block;
-  margin-bottom: 8px;
-}
-.preview img { width: 64px; height: 64px; object-fit: cover; border-radius: 12px; border: 2px solid #6C63FF; }
-.removeBtn {
-  position: absolute; top: -6px; right: -6px;
-  width: 22px; height: 22px; border-radius: 50%;
-  background: #FF6B6B; color: #fff; border: none;
-  cursor: pointer; font-size: 14px; line-height: 1;
-}
+
 .form {
+
+  max-width: 860px;
+
+  margin: 0 auto;
+
   display: flex;
+
   align-items: flex-end;
-  gap: 8px;
-  background: #fff;
-  border-radius: 20px;
-  padding: 4px 8px 4px 4px;
-  border: 1px solid rgba(108,99,255,0.15);
-  transition: border 0.3s;
+
+  gap: 12px;
+
+  padding: 14px;
+
+  border-radius: 24px;
+
+  background: rgba(255,255,255,.06);
+
+  border: 1px solid rgba(255,255,255,.08);
+
+  backdrop-filter: blur(16px);
+
 }
-.form:focus-within { border-color: #6C63FF; box-shadow: 0 0 0 4px rgba(108,99,255,0.08); }
-.uploadBtn {
-  background: none; border: none; font-size: 22px; cursor: pointer;
-  padding: 6px 8px; color: #8A8AAA; transition: color 0.2s;
-}
-.uploadBtn:hover { color: #6C63FF; }
+
 .input {
-  flex: 1; border: none; background: transparent; padding: 10px 4px;
-  font-size: 15px; outline: none; resize: none; font-family: inherit;
-  min-height: 44px; max-height: 120px; color: #1A1A2E;
+
+  flex: 1;
+
+  background: transparent;
+
+  border: none;
+
+  resize: none;
+
+  color: white;
+
+  font-size: 15px;
+
+  line-height: 1.7;
+
+  max-height: 180px;
+
+  outline: none;
+
 }
+
+.input::placeholder {
+
+  color: #94a3b8;
+
+}
+
+.uploadBtn,
+
 .sendBtn {
-  background: linear-gradient(135deg, #6C63FF, #3F3D9E);
-  color: #fff; border: none; border-radius: 16px;
-  width: 44px; height: 44px; font-size: 20px; cursor: pointer;
-  transition: all 0.3s; display: flex; align-items: center; justify-content: center;
+
+  width: 44px;
+
+  height: 44px;
+
+  border-radius: 14px;
+
+  border: none;
+
+  cursor: pointer;
+
+  transition: all .2s ease;
+
 }
-.sendBtn:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 4px 16px rgba(108,99,255,0.3); }
-.sendBtn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-@media (max-width: 480px) {
-  .inputArea { padding: 12px 16px; }
-  .input { font-size: 14px; }
+
+.uploadBtn {
+
+  background: rgba(255,255,255,.08);
+
+  color: white;
+
+}
+
+.sendBtn {
+
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+
+  color: white;
+
+}
+
+.sendBtn:disabled {
+
+  opacity: .5;
+
+  cursor: not-allowed;
+
+}
+
+.uploadBtn:hover,
+
+.sendBtn:hover:not(:disabled) {
+
+  transform: translateY(-1px);
+
+}
+
+.preview {
+
+  max-width: 860px;
+
+  margin: 0 auto 12px;
+
+  position: relative;
+
+  width: fit-content;
+
+}
+
+.preview img {
+
+  width: 96px;
+
+  height: 96px;
+
+  object-fit: cover;
+
+  border-radius: 16px;
+
+  border: 1px solid rgba(255,255,255,.1);
+
+}
+
+.removeBtn {
+
+  position: absolute;
+
+  top: -8px;
+
+  right: -8px;
+
+  width: 28px;
+
+  height: 28px;
+
+  border-radius: 50%;
+
+  border: none;
+
+  background: #ef4444;
+
+  color: white;
+
+  cursor: pointer;
+
 }

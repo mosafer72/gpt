@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import './globals.css';
 import AuthGuard from '@/components/Common/AuthGuard';
+import 'katex/dist/katex.min.css';
 
 const iranSans = localFont({
   src: [
@@ -27,7 +28,7 @@ const iranSans = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'نابغه‌ی هوش مصنوعی | ChatGPT Clone',
+  title: 'اکانتسرا‌ی هوش مصنوعی | ChatGPT Clone',
   description: 'دستیار هوشمند برای دانشجویان، محققان و علاقه‌مندان به AI',
   keywords: 'هوش مصنوعی, ChatGPT, دانشجویان, یادگیری ماشین',
   authors: [{ name: 'تیم توسعه' }],

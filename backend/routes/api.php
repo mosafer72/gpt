@@ -19,14 +19,19 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('/chats', ChatController::class);
 
+    Route::post('/chats/stream', [ChatController::class, 'stream'])
+
+        ->middleware('auth:sanctum');
     Route::get('/plans', [SubscriptionController::class, 'plans']);
     Route::get('/my-subscription', [SubscriptionController::class, 'mySubscription']);
     Route::post('/calculate-upgrade', [SubscriptionController::class, 'calculateUpgrade']);
     Route::post('/initiate-payment', [SubscriptionController::class, 'initiatePayment']);
     Route::post('auth/logout', [AuthController::class, 'logout']);
-        Route::get('/user/status', [AuthController::class, 'status']);
+    Route::get('/user/status', [AuthController::class, 'status']);
 
 });
 
 // Callback درگاه پرداخت (بدون middleware auth)
 Route::get('/payment/callback', [SubscriptionController::class, 'paymentCallback'])->name('payment.callback');
+
+

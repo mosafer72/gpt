@@ -1,45 +1,143 @@
 .wrapper {
+
   display: flex;
-  gap: 12px;
-  padding: 12px 0;
-  align-items: flex-start;
+
+  gap: 14px;
+
+  max-width: 900px;
+
+  margin: 0 auto 24px;
+
+  padding: 0 24px;
+
 }
-.user { flex-direction: row-reverse; }
+
+.user {
+
+  flex-direction: row-reverse;
+
+}
+
 .avatar {
-  width: 40px; height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 16px;
-  color: #fff;
+
+  width: 40px;
+
+  height: 40px;
+
+  border-radius: 12px;
+
   flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  font-size: 13px;
+
+  font-weight: 800;
+
+  color: white;
+
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+
 }
-.user .avatar { background: linear-gradient(135deg, #6C63FF, #3F3D9E); }
-.assistant .avatar { background: linear-gradient(135deg, #1A1A2E, #2A2A4A); }
+
+.assistant .avatar {
+
+  background: linear-gradient(135deg, #111827, #374151);
+
+}
+
 .bubble {
-  max-width: 75%;
-  padding: 14px 18px;
-  border-radius: 18px;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  word-break: break-word;
+
+  max-width: min(100%, 760px);
+
+  padding: 18px 20px;
+
+  border-radius: 22px;
+
+  box-shadow: 0 6px 24px rgba(0,0,0,.15);
+
 }
-.user .bubble {
-  background: linear-gradient(135deg, #6C63FF, #3F3D9E);
-  color: #fff;
-  border-radius: 18px 18px 4px 18px;
-}
+
 .assistant .bubble {
-  background: #fff;
-  border: 1px solid rgba(108,99,255,0.1);
-  border-radius: 18px 18px 18px 4px;
+
+  background: rgba(255,255,255,.05);
+
+  border: 1px solid rgba(255,255,255,.08);
+
+  backdrop-filter: blur(12px);
+
 }
-.text { margin: 0; line-height: 1.6; font-size: 15px; }
-.image { max-width: 300px; border-radius: 12px; display: block; }
-@media (max-width: 480px) {
-  .bubble { max-width: 85%; padding: 12px 14px; }
-  .image { max-width: 200px; }
+
+.user .bubble {
+
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+
+  color: white;
+
+}
+
+.text {
+
+  line-height: 1.9;
+
+  font-size: 15px;
+
+}
+
+.text p {
+
+  margin: 0 0 14px;
+
+}
+
+.text pre {
+
+  background: #0f172a;
+
+  color: #e2e8f0;
+
+  padding: 14px;
+
+  border-radius: 14px;
+
+  overflow-x: auto;
+
+  margin: 14px 0;
+
+}
+
+.text code {
+
+  background: rgba(148,163,184,.15);
+
+  padding: 2px 6px;
+
+  border-radius: 6px;
+
+  font-size: 14px;
+
+}
+
+.text pre code {
+
+  background: transparent;
+
+  padding: 0;
+
+  color: inherit;
+
+}
+
+.image {
+
+  max-width: 100%;
+
+  border-radius: 16px;
+
+  display: block;
+
 }

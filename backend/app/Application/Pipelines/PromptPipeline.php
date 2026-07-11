@@ -4,6 +4,7 @@ namespace App\Application\Pipelines;
 
 
 use App\Application\Context\ChatContext;
+use App\Application\Prompts\SystemPrompt;
 use App\Domain\Prompt\PromptCollection;
 
 
@@ -54,8 +55,8 @@ class PromptPipeline
          * 4 - Current User Message
          */
         $prompt->add(
-            role:'user',
-            content:$context->currentMessage
+            role: 'user',
+            content: $context->currentMessage
         );
 
 
@@ -80,9 +81,8 @@ class PromptPipeline
 
 
         $prompt->add(
-            role:'system',
-            content:
-            'You are a helpful AI assistant.'
+            role: 'system',
+            content: SystemPrompt::default()
         );
 
     }
@@ -98,7 +98,7 @@ class PromptPipeline
     ): void {
 
 
-        if(empty($context->memories)){
+        if (empty($context->memories)) {
             return;
         }
 
@@ -107,18 +107,18 @@ class PromptPipeline
         $memoryText = "User memories:\n";
 
 
-        foreach($context->memories as $memory){
+        foreach ($context->memories as $memory) {
 
             $memoryText .=
-                "- ".$memory->text."\n";
+                "- " . $memory->text . "\n";
 
         }
 
 
 
         $prompt->add(
-            role:'system',
-            content:$memoryText
+            role: 'system',
+            content: $memoryText
         );
 
     }
@@ -133,12 +133,12 @@ class PromptPipeline
     ): void {
 
 
-        foreach($context->messages as $message){
+        foreach ($context->messages as $message) {
 
 
             $prompt->add(
-                role:$message->role,
-                content:$message->content
+                role: $message->role,
+                content: $message->content
             );
 
         }

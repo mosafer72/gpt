@@ -80,3 +80,98 @@ export async function getUserStatus(): Promise<{
   if (!res.ok) throw new Error('Failed to fetch status');
   return res.json();
 }
+
+export async function sendMessageStream(
+
+  message: string,
+
+  chatId?: number,
+
+  image?: File | null,
+
+  onChunk?: (text: string) => void
+
+): Promise<void> {
+
+  const token = getToken();
+
+  if (!token) throw new Error('No token');
+
+  const formData = new FormData();
+
+  formData.append('message', message);
+
+  if (chatId) {
+
+    formData.append('chat_id', String(chatId));
+
+  }
+
+  if (image) {
+
+    formData.append('image', image);
+
+  }
+
+const res = await fetch(`${API_BASE}/chats/stream`, {
+
+    method: 'POST',
+
+    headers: {
+
+      'Authorization': `Bearer ${token}`,
+
+      'Accept': 'text/event-stream',
+
+    },
+
+    body: formData,
+
+  });
+
+  if (res.status === 401) {
+
+    handleUnauthorized(res);
+
+  }
+
+  if (!res.ok || !res.body) {
+
+    throw new Error('Failed to stream message');
+
+  }
+
+  const reader = res.body.getReader();
+
+  const decoder = new TextDecoder();
+
+  let buffer = '';
+
+  while (true) {
+
+    const { done, value } = await reader.read();
+
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    const events = buffer.split('\n\n');
+
+    buffer = events.pop() || '';
+
+    for (const event of events) {
+
+      if (!event.startsWith('data: ')) continue;
+
+      const json = JSON.parse(event.replace('data: ', ''));
+
+      if (json.type === 'token') {
+
+        onChunk?.(json.content);
+
+      }
+
+    }
+
+  }
+}

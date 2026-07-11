@@ -21,46 +21,99 @@ class AuthController extends Controller
     // ۱. ارسال کد تایید
     public function sendVerificationCode(Request $request): JsonResponse
     {
-        $request->validate([
-            'phone' => 'required|string|regex:/^09[0-9]{9}$/',
+
+        $validated = $request->validate([
+
+            'phone' => [
+
+                'required',
+
+                'string',
+
+                'regex:/^09[0-9]{9}$/',
+
+            ],
+
+            'name' => [
+
+                'required',
+
+                'string',
+
+                'min:2',
+
+                'max:100',
+
+            ],
+
         ]);
 
-        $phone = $request->phone;
+        $phone = $validated['phone'];
 
-        // پیدا کردن یا ایجاد کاربر
-        $user = User::firstOrCreate(
-            ['phone' => $phone]        );
+        $name = trim($validated['name']);
 
-        // تولید کد ۶ رقمی
-        $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        // محدودیت ارسال: هر ۶۰ ثانیه یک بار
 
-        // ذخیره کد با زمان انقضا (۵ دقیقه)
+        $cacheKey = 'sms_send_' . $phone;
+
+        if (cache()->has($cacheKey)) {
+
+            return response()->json([
+
+                'error' => 'لطفاً یک دقیقه بعد دوباره تلاش کنید.'
+
+            ], 429);
+
+        }
+
+        // ایجاد یا بروزرسانی کاربر و ذخیره نام
+
+        $user = User::updateOrCreate(
+
+            ['phone' => $phone],
+
+            ['name' => $name]
+
+        );
+
+        // تولید کد ۶ رقمی امن
+
+        $code = (string) random_int(100000, 999999);
+
+        // ذخیره کد هش شده و زمان انقضا
+
         $user->update([
+
             'verification_code' => Hash::make($code),
+
             'verification_code_expires_at' => now()->addMinutes(5),
+
         ]);
 
-        // ارسال پیامک از طریق sms.ir
+        // ثبت محدودیت ارسال
+
+        cache()->put($cacheKey, true, now()->addMinute());
+
+        // ارسال پیامک
+
         $sent = $this->smsService->sendVerificationCode($phone, $code);
 
         if (!$sent) {
-            // در محیط توسعه، کد را در پاسخ برگردان (برای تست)
-            if (app()->environment('local')) {
-                return response()->json([
-                    'message' => 'کد تایید ارسال شد (برای تست: ' . $code . ')',
-                    'debug_code' => $code,
-                ]);
-            }
 
             return response()->json([
+
                 'error' => 'ارسال پیامک با مشکل مواجه شد. لطفاً مجدداً تلاش کنید.'
+
             ], 500);
+
         }
 
         return response()->json([
-            'message' => 'کد تایید به شماره شما ارسال شد.',
-            'phone' => $phone,
+
+            'message' => 'کد تایید ارسال شد.',
+
         ]);
+
     }
 
     // ۲. تایید کد و ورود

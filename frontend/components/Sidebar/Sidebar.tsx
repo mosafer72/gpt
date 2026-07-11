@@ -9,7 +9,7 @@ export default function Sidebar({
   return (
     <aside className={styles.sidebar}>
       <div className={styles.header}>
-        <span className={styles.logo}>✨ نابغه</span>
+        <span className={styles.logo}>✨ اکانتسرا</span>
         <button className={styles.newBtn} onClick={onNewChat}>+ جدید</button>
       </div>
       <ul className={styles.list}>

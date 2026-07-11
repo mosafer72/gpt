@@ -13,7 +13,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
-    const publicPaths = ['/login', '/verify'];
+    const publicPaths = ['/login', '/verify','/'];
     const isPublicPath = publicPaths.includes(pathname);
 
     if (!token && !isPublicPath) {

@@ -1,20 +1,27 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
-import { Chat } from '@/types';
-import { getChats, sendMessage, deleteChat, getChat , getUserStatus} from '@/lib/api';
-import Sidebar from '@/components/Sidebar/Sidebar';
-import ChatMessage from '@/components/Chat/ChatMessage';
-import ChatInput from '@/components/Chat/ChatInput';
-import UserMenu from '@/components/Common/UserMenu';
-import styles from './ChatInterface.module.css';
-import SubscriptionWarning from '@/components/Chat/SubscriptionWarning'
+import { useState, useEffect, useRef, FormEvent } from "react";
+import { sendMessageStream } from "@/lib/api";
+import { useRouter } from "next/navigation";
+import { Chat } from "@/types";
+import {
+  getChats,
+  sendMessage,
+  deleteChat,
+  getChat,
+  getUserStatus,
+} from "@/lib/api";
+import Sidebar from "@/components/Sidebar/Sidebar";
+import ChatMessage from "@/components/Chat/ChatMessage";
+import ChatInput from "@/components/Chat/ChatInput";
+import UserMenu from "@/components/Common/UserMenu";
+import styles from "./ChatInterface.module.css";
+import SubscriptionWarning from "@/components/Chat/SubscriptionWarning";
 export default function ChatInterface() {
   const router = useRouter();
   const [chats, setChats] = useState<Chat[]>([]);
   const [currentChat, setCurrentChat] = useState<Chat | null>(null);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [isLoadingChats, setIsLoadingChats] = useState(true);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -27,27 +34,27 @@ export default function ChatInterface() {
     remaining_messages: number;
   } | null>(null);
 
-    useEffect(() => {
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        router.push('/login');
-        return;
-      }
-      loadChats();
-      fetchUserStatus();
-    }, []);
+  useEffect(() => {
+    const token = localStorage.getItem("auth_token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+    loadChats();
+    fetchUserStatus();
+  }, []);
 
-    const fetchUserStatus = async () => {
-      try {
-        const status = await getUserStatus();
-        setUserStatus(status);
-      } catch (error) {
-        console.error('Error fetching user status:', error);
-      }
-    };
+  const fetchUserStatus = async () => {
+    try {
+      const status = await getUserStatus();
+      setUserStatus(status);
+    } catch (error) {
+      console.error("Error fetching user status:", error);
+    }
+  };
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [currentChat?.messages]);
 
   const loadChats = async () => {
@@ -58,7 +65,7 @@ export default function ChatInterface() {
         setCurrentChat(data[0]);
       }
     } catch (error) {
-      console.error('Error loading chats:', error);
+      console.error("Error loading chats:", error);
     } finally {
       setIsLoadingChats(false);
     }
@@ -69,7 +76,7 @@ export default function ChatInterface() {
       const fullChat = await getChat(chat.id);
       setCurrentChat(fullChat);
     } catch (error) {
-      console.error('Error loading chat:', error);
+      console.error("Error loading chat:", error);
     }
   };
 
@@ -80,28 +87,160 @@ export default function ChatInterface() {
     if (userStatus) {
       const { has_subscription, remaining_messages } = userStatus;
       if (!has_subscription && remaining_messages <= 0) {
-        alert('⛔ پیام‌های رایگان شما تمام شده است. لطفاً اشتراک تهیه کنید.');
+        alert("⛔ پیام‌های رایگان شما تمام شده است. لطفاً اشتراک تهیه کنید.");
         return;
       }
     }
 
-
     const messageText = input.trim();
-    setInput('');
+    setInput("");
     setLoading(true);
     try {
-      const result = await sendMessage(messageText, currentChat?.id, imageFile);
-      setCurrentChat(result.chat);
-      setChats((prev) => {
-        const exists = prev.some((c) => c.id === result.chat.id);
-        if (exists) {
-          return prev.map((c) => (c.id === result.chat.id ? result.chat : c));
+      // const result = await sendMessage(messageText, currentChat?.id, imageFile);
+      // setCurrentChat(result.chat);
+
+      const tempUserMessage = {
+        id: Date.now(),
+
+        chat_id: currentChat?.id || 0,
+
+        role: "user" as const,
+
+        content: messageText,
+
+        created_at: new Date().toISOString(),
+      };
+
+      const tempAssistantMessage = {
+        id: Date.now() + 1,
+
+        chat_id: currentChat?.id || 0,
+
+        role: "assistant" as const,
+
+        content: "",
+
+        created_at: new Date().toISOString(),
+      };
+
+      setCurrentChat((prev) => ({
+        id: prev?.id || 0,
+
+        title: prev?.title || "چت جدید",
+
+        created_at: prev?.created_at || new Date().toISOString(),
+
+        messages: [
+          ...(prev?.messages || []),
+
+          tempUserMessage,
+
+          tempAssistantMessage,
+        ],
+      }));
+
+      let targetText = "";
+
+      let displayedText = "";
+
+      // تایمر افکت تایپ
+
+      const typingInterval = setInterval(() => {
+        if (displayedText.length < targetText.length) {
+          displayedText += targetText[displayedText.length];
+
+          setCurrentChat((prev) => {
+            if (!prev) return prev;
+
+            return {
+              ...prev,
+
+              messages: prev.messages.map((m) =>
+                m.id === tempAssistantMessage.id
+                  ? { ...m, content: displayedText }
+                  : m,
+              ),
+            };
+          });
         }
+      }, 15);
+
+      try {
+        // await sendMessageStream(
+        //   messageText,
+
+        //   currentChat?.id,
+
+        //   imageFile,
+
+        //   (chunk) => {
+        //     // فقط متن نهایی را جمع کن
+
+        //     targetText += chunk;
+        //   },
+        // );
+
+
+        const result = await sendMessage(messageText, currentChat?.id, imageFile);
+
+        setCurrentChat(result.chat);
+
+        setChats((prev) => {
+
+        const exists = prev.some((c) => c.id === result.chat.id);
+
+        if (exists) {
+
+        return prev.map((c) =>
+
+        c.id === result.chat.id ? result.chat : c
+
+        );
+
+        }
+
         return [result.chat, ...prev];
       });
+
+
+
+      } finally {
+        // صبر کن تا همه حروف نمایش داده شوند
+
+        const waitUntilFinished = setInterval(() => {
+          if (displayedText.length >= targetText.length) {
+            clearInterval(waitUntilFinished);
+
+            clearInterval(typingInterval);
+          }
+        }, 20);
+      }
+
+      setChats((prev) => {
+        const chatId = currentChat?.id || 0;
+
+        const exists = prev.some((c) => c.id === chatId);
+
+        if (exists) return prev;
+
+        return [
+          {
+            id: chatId,
+
+            title: messageText.slice(0, 50),
+
+            created_at: new Date().toISOString(),
+
+            messages: [],
+          },
+
+          ...prev,
+        ];
+      });
+
       setImageFile(null);
     } catch (error: any) {
-      alert(error.message || 'خطا در ارسال پیام');
+      alert(error.message || "خطا در ارسال پیام");
       setInput(messageText);
     } finally {
       setLoading(false);
@@ -110,7 +249,7 @@ export default function ChatInterface() {
   };
 
   const handleDeleteChat = async (chatId: number) => {
-    if (!confirm('آیا از حذف این چت اطمینان دارید؟')) return;
+    if (!confirm("آیا از حذف این چت اطمینان دارید؟")) return;
     try {
       await deleteChat(chatId);
       setChats((prev) => prev.filter((c) => c.id !== chatId));
@@ -119,7 +258,7 @@ export default function ChatInterface() {
         setCurrentChat(nextChat || null);
       }
     } catch (error) {
-      console.error('Error deleting chat:', error);
+      console.error("Error deleting chat:", error);
     }
   };
 
@@ -128,20 +267,20 @@ export default function ChatInterface() {
       {/* هدر جدید با منوی کاربر */}
       <header className={styles.header}>
         <div className={styles.headerLeft}>
-          <span className={styles.logo}>✨ نابغه</span>
+          <span className={styles.logo}>✨ اکانتسرا</span>
         </div>
         <div className={styles.headerRight}>
           <UserMenu />
         </div>
       </header>
 
-    {userStatus && (
-          <SubscriptionWarning
-            hasSubscription={userStatus.has_subscription}
-            remainingMessages={userStatus.remaining_messages}
-            dailyLimit={userStatus.daily_message_limit}
-          />
-        )}
+      {userStatus && (
+        <SubscriptionWarning
+          hasSubscription={userStatus.has_subscription}
+          remainingMessages={userStatus.remaining_messages}
+          dailyLimit={userStatus.daily_message_limit}
+        />
+      )}
       {/* بخش اصلی (سایدبار + چت) */}
       <div className={styles.mainArea}>
         <Sidebar
@@ -150,7 +289,7 @@ export default function ChatInterface() {
           onSelectChat={handleSelectChat}
           onNewChat={() => {
             setCurrentChat(null);
-            setInput('');
+            setInput("");
             setImageFile(null);
             inputRef.current?.focus();
           }}
@@ -172,7 +311,9 @@ export default function ChatInterface() {
             )}
             {loading && (
               <div className={styles.typingIndicator}>
-                <span></span><span></span><span></span>
+                <span></span>
+                <span></span>
+                <span></span>
               </div>
             )}
             <div ref={messagesEndRef} />
