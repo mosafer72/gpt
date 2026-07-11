@@ -15,50 +15,46 @@ import styles from "./ChatMessage.module.css";
 export default function ChatMessage({ message }: { message: Message }) {
   const isUser = message.role === "user";
   const isImage = message.content.startsWith("data:image/");
-
+  const imageUrl =
+    (message as any).image_url ||
+    (message as any).metadata?.attachments?.[0]?.url;
   return (
-    <div
-      className={`${styles.wrapper} ${isUser ? styles.user : styles.assistant}`}
-    >
-      <div className={styles.avatar}>{isUser ? "👤" : "✨"}</div>
+    <div className={styles.bubble}>
+      {imageUrl ? (
+        <ChatImage src={imageUrl} />
+      ) : (
+        <div className={styles.text}>
+          <ReactMarkdown
+            remarkPlugins={[remarkMath]}
+            rehypePlugins={[rehypeKatex]}
+            components={{
+              code({ className, children, ...props }) {
+                const match = /language-(\w+)/.exec(className || "");
 
-      <div className={styles.bubble}>
-        {isImage ? (
-          <ChatImage src={message.content} />
-        ) : (
-          <div className={styles.text}>
-            <ReactMarkdown
-              remarkPlugins={[remarkMath]}
-              rehypePlugins={[rehypeKatex]}
-              components={{
-                code({ className, children, ...props }) {
-                  const match = /language-(\w+)/.exec(className || "");
-
-                  if (match) {
-                    return (
-                      <SyntaxHighlighter language={match[1]}>
-                        {String(children).replace(/\n$/, "")}
-                      </SyntaxHighlighter>
-                    );
-                  }
-
+                if (match) {
                   return (
-                    <code className={className} {...props}>
-                      {children}
-                    </code>
+                    <SyntaxHighlighter language={match[1]}>
+                      {String(children).replace(/\n$/, "")}
+                    </SyntaxHighlighter>
                   );
-                },
+                }
 
-                p({ children }) {
-                  return <div className={styles.paragraph}>{children}</div>;
-                },
-              }}
-            >
-              {message.content}
-            </ReactMarkdown>
-          </div>
-        )}
-      </div>
+                return (
+                  <code className={className} {...props}>
+                    {children}
+                  </code>
+                );
+              },
+
+              p({ children }) {
+                return <div className={styles.paragraph}>{children}</div>;
+              },
+            }}
+          >
+            {message.content}
+          </ReactMarkdown>
+        </div>
+      )}
     </div>
   );
 }

@@ -319,7 +319,7 @@ export default function ChatInterface() {
             onImageUpload={setImageFile}
             onImageRemove={() => setImageFile(null)}
             imageFile={imageFile}
-            disabled={loading}
+            disabled={false}
             inputRef={inputRef}
           />
         </main>
