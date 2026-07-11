@@ -31,18 +31,22 @@ export default function ChatMessage({ message }: { message: Message }) {
               remarkPlugins={[remarkMath]}
               rehypePlugins={[rehypeKatex]}
               components={{
-                code({ inline, className, children }) {
+                code({ className, children, ...props }) {
                   const match = /language-(\w+)/.exec(className || "");
 
-                  if (!inline && match) {
+                  if (match) {
                     return (
-                      <CodeBlock language={match[1]}>
-                        {String(children)}
-                      </CodeBlock>
+                      <SyntaxHighlighter language={match[1]}>
+                        {String(children).replace(/\n$/, "")}
+                      </SyntaxHighlighter>
                     );
                   }
 
-                  return <code>{children}</code>;
+                  return (
+                    <code className={className} {...props}>
+                      {children}
+                    </code>
+                  );
                 },
 
                 p({ children }) {
