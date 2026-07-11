@@ -219,7 +219,7 @@ class SubscriptionController extends Controller
             //     'success' => false,
             //     'message' => $verifyResult['message'],
             // ]);
-            return redirect()->to('/failedpay?authority=' . $authority);
+            return redirect()->to('/payment/failed?authority=' . $authority);
         }
 
         // پرداخت موفق
@@ -240,6 +240,6 @@ class SubscriptionController extends Controller
             'is_active' => true,
             'transaction_id' => $verifyResult['ref_id'],
         ]);
-        return redirect()->to('/successpay/?ref_id=' . $subscription['transaction_id'] . '&authority=' . $transaction->transaction);
+        return redirect()->to('/payment/success/?ref_id=' . $subscription['transaction_id'] . '&authority=' . $transaction->transaction);
     }
 }
