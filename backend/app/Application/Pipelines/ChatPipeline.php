@@ -56,6 +56,13 @@ class ChatPipeline
          */
         $context = $this->intentPipeline->process($context);
 
+
+        logger()->info('AFTER INTENT', [
+            'message' => $context->currentMessage,
+            'response' => $context->assistantResponse
+        ]);
+
+
         $this->ensureConversation($context);
 
         $this->loadConversationEntity($context);
@@ -177,7 +184,7 @@ class ChatPipeline
 
                     token_count: (int) ($message->token_count ?? 0),
 
-                    metadata: $message->metadata ?? null,
+                    metadata: is_string($message->metadata ?? null) ? json_decode($message->metadata, true) : ($message->metadata ?? null),
 
                     created_at: (string) ($message->created_at ?? now())
 

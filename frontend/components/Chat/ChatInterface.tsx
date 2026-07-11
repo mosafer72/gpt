@@ -99,9 +99,9 @@ export default function ChatInterface() {
       // const result = await sendMessage(messageText, currentChat?.id, imageFile);
       // setCurrentChat(result.chat);
 
-      const previewUrl = imageFile ? URL.createObjectURL(imageFile) : null;
+      const fileToSend = imageFile;
 
-      setImageFile(null);
+      const previewUrl = fileToSend ? URL.createObjectURL(fileToSend) : null;
       const tempUserMessage = {
         id: `temp-user-${Date.now()}`,
         chat_id: currentChat?.id || 0,
@@ -126,13 +126,7 @@ export default function ChatInterface() {
 
         created_at: prev?.created_at || new Date().toISOString(),
 
-        messages: [
-          ...(prev?.messages || []),
-
-          tempUserMessage,
-
-          tempAssistantMessage,
-        ],
+        messages: [...(prev?.messages || []), tempUserMessage],
       }));
 
       let targetText = "";
@@ -164,9 +158,13 @@ export default function ChatInterface() {
       try {
         const result = await sendMessage(
           messageText,
+
           currentChat?.id,
-          imageFile,
+
+          fileToSend,
         );
+
+        setImageFile(null);
         setCurrentChat((prev) => {
           if (!prev) return result.chat;
           const userMessages = result.chat.messages.filter(
@@ -175,25 +173,32 @@ export default function ChatInterface() {
 
           const realUserMessage = userMessages[userMessages.length - 1];
 
-          const realAssistantMessage = result.chat.messages.find(
+          const assistantMessages = result.chat.messages.filter(
             (m: Message) => m.role === "assistant",
           );
+
+          const realAssistantMessage =
+            assistantMessages[assistantMessages.length - 1];
           return {
             ...prev,
             id: result.chat.id,
             title: result.chat.title,
-            messages: prev.messages.map((m) => {
-              if (m.id === tempUserMessage.id) {
-                return {
-                  ...realUserMessage!,
-                  image_url: previewUrl || undefined,
-                };
-              }
-              if (m.id === tempAssistantMessage.id) {
-                return realAssistantMessage!;
-              }
-              return m;
-            }),
+
+            messages: [
+              ...prev.messages.map((m) => {
+                if (m.id === tempUserMessage.id) {
+                  return {
+                    ...realUserMessage!,
+
+                    image_url: previewUrl || undefined,
+                  };
+                }
+
+                return m;
+              }),
+
+              realAssistantMessage!,
+            ],
           };
         });
       } finally {
@@ -274,7 +279,7 @@ export default function ChatInterface() {
               </div>
             ) : (
               currentChat.messages.map((msg) => (
-                <ChatMessage key={msg.id} message={msg} />
+                <ChatMessage key={`${msg.role}-${msg.id}`} message={msg} />
               ))
             )}
             {loading && (

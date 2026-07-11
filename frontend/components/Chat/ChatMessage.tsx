@@ -24,41 +24,20 @@ export default function ChatMessage({ message }: { message: Message }) {
       <div className={styles.avatar}>{isUser ? "👤" : "✨"}</div>
 
       <div className={styles.bubble}>
-        {imageUrl ? (
-          <ChatImage src={imageUrl} />
-        ) : (
-          <div className={styles.text}>
-            <ReactMarkdown
-              remarkPlugins={[remarkMath]}
-              rehypePlugins={[rehypeKatex]}
-              components={{
-                code({ className, children, ...props }) {
-                  const match = /language-(\w+)/.exec(className || "");
+        <div className={styles.bubble}>
+          {imageUrl && <ChatImage src={imageUrl} />}
 
-                  if (match) {
-                    return (
-                      <SyntaxHighlighter language={match[1]}>
-                        {String(children).replace(/\n$/, "")}
-                      </SyntaxHighlighter>
-                    );
-                  }
-
-                  return (
-                    <code className={className} {...props}>
-                      {children}
-                    </code>
-                  );
-                },
-
-                p({ children }) {
-                  return <div className={styles.paragraph}>{children}</div>;
-                },
-              }}
-            >
-              {message.content}
-            </ReactMarkdown>
-          </div>
-        )}
+          {message.content && (
+            <div className={styles.text}>
+              <ReactMarkdown
+                remarkPlugins={[remarkMath]}
+                rehypePlugins={[rehypeKatex]}
+              >
+                {message.content}
+              </ReactMarkdown>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
