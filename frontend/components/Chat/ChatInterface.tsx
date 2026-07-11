@@ -180,30 +180,23 @@ export default function ChatInterface() {
         //   },
         // );
 
-
-        const result = await sendMessage(messageText, currentChat?.id, imageFile);
+        const result = await sendMessage(
+          messageText,
+          currentChat?.id,
+          imageFile,
+        );
 
         setCurrentChat(result.chat);
 
         setChats((prev) => {
+          const exists = prev.some((c) => c.id === result.chat.id);
 
-        const exists = prev.some((c) => c.id === result.chat.id);
+          if (exists) {
+            return prev.map((c) => (c.id === result.chat.id ? result.chat : c));
+          }
 
-        if (exists) {
-
-        return prev.map((c) =>
-
-        c.id === result.chat.id ? result.chat : c
-
-        );
-
-        }
-
-        return [result.chat, ...prev];
-      });
-
-
-
+          return [result.chat, ...prev];
+        });
       } finally {
         // صبر کن تا همه حروف نمایش داده شوند
 
