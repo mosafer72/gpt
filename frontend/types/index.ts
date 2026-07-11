@@ -1,11 +1,19 @@
 export interface Message {
   id: string;
+  chat_id: number;
   role: "user" | "assistant";
   content: string;
+  created_at: string;
 
-  attachments?: Attachment[];
+  metadata?: {
+    attachments?: {
+      type: string;
+      url: string;
+    }[];
+  };
+
+  image_url?: string;
 }
-
 
 export interface Attachment {
   type: "image" | "file" | "audio";

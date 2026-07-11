@@ -25,6 +25,8 @@ class DatabaseMessageStore implements MessageStore
 
             'content' => $message->content,
 
+            'metadata' => json_encode($message->metadata),
+
             'created_at' => now(),
 
             'updated_at' => now(),

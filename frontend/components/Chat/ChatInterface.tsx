@@ -99,30 +99,24 @@ export default function ChatInterface() {
       // const result = await sendMessage(messageText, currentChat?.id, imageFile);
       // setCurrentChat(result.chat);
 
-
       const previewUrl = imageFile ? URL.createObjectURL(imageFile) : null;
 
       const tempUserMessage = {
         id: `temp-user-${Date.now()}`,
         chat_id: currentChat?.id || 0,
-        role: 'user' as const,
+        role: "user" as const,
         content: messageText,
         image_url: previewUrl || undefined,
         created_at: new Date().toISOString(),
       };
 
-
-
       const tempAssistantMessage = {
         id: `temp-ai-${Date.now()}`,
         chat_id: currentChat?.id || 0,
-        role: 'assistant' as const,
-        content: '',
+        role: "assistant" as const,
+        content: "",
         created_at: new Date().toISOString(),
       };
-
-
-
 
       setCurrentChat((prev) => ({
         id: prev?.id || 0,
@@ -167,37 +161,38 @@ export default function ChatInterface() {
       }, 15);
 
       try {
-        // await sendMessageStream(
-        //   messageText,
-
-        //   currentChat?.id,
-
-        //   imageFile,
-
-        //   (chunk) => {
-        //     // فقط متن نهایی را جمع کن
-
-        //     targetText += chunk;
-        //   },
-        // );
-
         const result = await sendMessage(
           messageText,
           currentChat?.id,
           imageFile,
         );
-
-        setCurrentChat(result.chat);
-
-        setChats((prev) => {
-          const exists = prev.some((c) => c.id === result.chat.id);
-
-          if (exists) {
-            return prev.map((c) => (c.id === result.chat.id ? result.chat : c));
-          }
-
-          return [result.chat, ...prev];
+        setCurrentChat((prev) => {
+          if (!prev) return result.chat;
+          const realUserMessage = result.chat.messages.find(
+            (m) => m.role === "user",
+          );
+          const realAssistantMessage = result.chat.messages.find(
+            (m) => m.role === "assistant",
+          );
+          return {
+            ...prev,
+            id: result.chat.id,
+            title: result.chat.title,
+            messages: prev.messages.map((m) => {
+              if (m.id === tempUserMessage.id) {
+                return {
+                  ...realUserMessage!,
+                  image_url: previewUrl || undefined,
+                };
+              }
+              if (m.id === tempAssistantMessage.id) {
+                return realAssistantMessage!;
+              }
+              return m;
+            }),
+          };
         });
+
       } finally {
         // صبر کن تا همه حروف نمایش داده شوند
 

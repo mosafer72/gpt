@@ -10,14 +10,18 @@ class Message extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['chat_id', 'role', 'content'];
+    protected $fillable = ['chat_id', 'role', 'content','metadata'];
 
     public function chat(): BelongsTo
     {
         return $this->belongsTo(Chat::class);
     }
     public function user()
-{
-    return $this->belongsTo(User::class);
-}
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    protected $casts = [
+        'metadata' => 'array',
+    ];
 }
