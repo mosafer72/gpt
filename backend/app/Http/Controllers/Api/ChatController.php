@@ -161,6 +161,13 @@ class ChatController extends Controller
          */
 
         $content = $request->input('message') ?? '';
+
+        $plannerMessage = $content;
+
+        if ($plannerMessage === '' && $imageUrl) {
+            $plannerMessage = '[Image attached]';
+        }
+
         $this->messageStore->store(
 
             new MessageDTO(
@@ -225,7 +232,7 @@ class ChatController extends Controller
 
 
                 currentMessage:
-                $content,
+                $plannerMessage,
 
 
                 model:

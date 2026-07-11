@@ -100,8 +100,7 @@ export default function ChatInterface() {
       // setCurrentChat(result.chat);
 
       const previewUrl = imageFile ? URL.createObjectURL(imageFile) : null;
-      
-      
+
       setImageFile(null);
       const tempUserMessage = {
         id: `temp-user-${Date.now()}`,
@@ -170,9 +169,11 @@ export default function ChatInterface() {
         );
         setCurrentChat((prev) => {
           if (!prev) return result.chat;
-          const realUserMessage = result.chat.messages.find(
+          const userMessages = result.chat.messages.filter(
             (m: Message) => m.role === "user",
           );
+
+          const realUserMessage = userMessages[userMessages.length - 1];
 
           const realAssistantMessage = result.chat.messages.find(
             (m: Message) => m.role === "assistant",
@@ -206,7 +207,6 @@ export default function ChatInterface() {
           }
         }, 20);
       }
-
     } catch (error: any) {
       alert(error.message || "خطا در ارسال پیام");
       setInput(messageText);
