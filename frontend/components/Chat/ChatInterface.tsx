@@ -100,7 +100,7 @@ export default function ChatInterface() {
       // setCurrentChat(result.chat);
 
       const tempUserMessage = {
-        id: Date.now(),
+        id: `temp-user-${Date.now()}`,
 
         chat_id: currentChat?.id || 0,
 
@@ -112,7 +112,7 @@ export default function ChatInterface() {
       };
 
       const tempAssistantMessage = {
-        id: Date.now() + 1,
+        id: `temp-assistant-${Date.now()}`,
 
         chat_id: currentChat?.id || 0,
 
