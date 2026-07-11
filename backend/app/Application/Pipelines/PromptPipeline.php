@@ -131,17 +131,23 @@ class PromptPipeline
         ChatContext $context
     ): void {
 
+        $lastIndex = count($context->messages) - 1;
 
-        foreach ($context->messages as $message) {
+        foreach ($context->messages as $index => $message) {
 
+            // آخرین پیام کاربر همان پیام فعلی است
+            if (
+                $index === $lastIndex
+                && $message->role === 'user'
+            ) {
+                continue;
+            }
 
             $prompt->add(
                 role: $message->role,
                 content: $message->content
             );
-
         }
-
     }
 
     protected function addCurrentMessage(

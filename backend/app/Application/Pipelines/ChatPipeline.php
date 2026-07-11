@@ -90,6 +90,8 @@ class ChatPipeline
          * Build Prompt
          *
          */
+
+
         $this->promptPipeline
             ->build(
                 $context
@@ -227,7 +229,9 @@ class ChatPipeline
             model: $context->model
 
         );
-
+        \Log::info('FINAL PROMPT', [
+            'messages' => $messages
+        ]);
 
 
         $response =
