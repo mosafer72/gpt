@@ -43,12 +43,12 @@ class ChatController extends Controller
                 'user_id',
                 auth()->id()
             )
-            ->with('messages')
-            ->orderBy(
-                'updated_at',
-                'desc'
-            )
-            ->get();
+                ->with('messages')
+                ->orderBy(
+                    'updated_at',
+                    'desc'
+                )
+                ->get();
 
 
         return response()->json(
@@ -75,21 +75,39 @@ class ChatController extends Controller
         if (!$user) {
 
             return response()->json([
-                'error'=>'Unauthenticated'
-            ],401);
+                'error' => 'Unauthenticated'
+            ], 401);
+
+        }
+
+        $request->validate([
+
+            'message' => 'nullable|string',
+
+            'chat_id' => 'nullable|exists:chats,id',
+
+            'image' => 'nullable|image|max:5120'
+
+        ]);
+
+
+
+        $imagePath = null;
+
+
+        if ($request->hasFile('image')) {
+
+            $imagePath = $request
+                ->file('image')
+                ->store(
+                    'chat-images',
+                    'public'
+                );
 
         }
 
 
 
-
-        $request->validate([
-
-            'message'=>'required|string',
-
-            'chat_id'=>'nullable|exists:chats,id'
-
-        ]);
 
 
 
@@ -110,18 +128,18 @@ class ChatController extends Controller
                 'user_id',
                 $user->id
             )
-            ->findOrFail(
-                $request->chat_id
-            )
+                ->findOrFail(
+                    $request->chat_id
+                )
 
             :
 
             Chat::create([
 
-                'user_id'=>$user->id,
+                'user_id' => $user->id,
 
-                'title'=>mb_substr(
-                    $request->message,
+                'title' => mb_substr(
+                    $request->input('message', 'Image'),
                     0,
                     50
                 )
@@ -139,30 +157,44 @@ class ChatController extends Controller
          * ذخیره پیام User
          */
 
+        $content = $request->input('message') ?? '';
         $this->messageStore->store(
 
             new MessageDTO(
 
-                id:uniqid(),
+                id: uniqid(),
 
                 conversation:
-                    (string)$chat->id,
+                (string) $chat->id,
 
-                role:'user',
+                role: 'user',
 
                 content:
-                    $request->message,
+                $content,
 
-                token_count:0,
+                token_count: 0,
 
-                metadata:[
+                metadata: [
 
-                    'user_id'=>$user->id
+                    'user_id' => $user->id,
+
+                    'attachments' => $imagePath
+                        ?
+                        [
+                            [
+                                'type' => 'image',
+                                'url' => asset(
+                                    'storage/' . $imagePath
+                                )
+                            ]
+                        ]
+                        :
+                        []
 
                 ],
 
                 created_at:
-                    now()->toDateTimeString()
+                now()->toDateTimeString()
 
             )
 
@@ -184,23 +216,41 @@ class ChatController extends Controller
             new ChatContext(
 
                 userId:
-                    (string)$user->id,
+                (string) $user->id,
 
 
                 conversationId:
-                    (string)$chat->id,
+                (string) $chat->id,
 
 
                 currentMessage:
-                    $request->message,
+                $content,
 
 
                 model:
-                    $user->currentPlan()->model
-                    ??
-                    'gpt-4o-mini'
+                $user->currentPlan()->model
+                ??
+                'gpt-4o-mini'
 
             );
+
+        $context->setMetadata([
+
+            'attachments' => $imagePath
+                ?
+                [
+                    [
+                        'type' => 'image',
+                        'url' => asset(
+                            'storage/' . $imagePath
+                        )
+                    ]
+                ]
+                :
+                []
+
+        ]);
+
 
 
 
@@ -234,24 +284,24 @@ class ChatController extends Controller
         return response()->json([
 
 
-            'chat'=>
+            'chat' =>
                 $chat->fresh()
                     ->load('messages'),
 
 
 
-            'message'=>[
+            'message' => [
 
-                'role'=>'assistant',
+                'role' => 'assistant',
 
-                'content'=>
+                'content' =>
                     $context->assistantResponse
 
             ],
 
 
 
-            'context'=>
+            'context' =>
                 $context->toArray()
 
 
@@ -273,13 +323,13 @@ class ChatController extends Controller
     ): JsonResponse {
 
 
-        if(
+        if (
             $chat->user_id !== auth()->id()
-        ){
+        ) {
 
             return response()->json([
-                'error'=>'Forbidden'
-            ],403);
+                'error' => 'Forbidden'
+            ], 403);
 
         }
 
@@ -305,13 +355,13 @@ class ChatController extends Controller
     ): JsonResponse {
 
 
-        if(
+        if (
             $chat->user_id !== auth()->id()
-        ){
+        ) {
 
             return response()->json([
-                'error'=>'Forbidden'
-            ],403);
+                'error' => 'Forbidden'
+            ], 403);
 
         }
 
@@ -321,7 +371,7 @@ class ChatController extends Controller
 
         return response()->json([
 
-            'message'=>'deleted'
+            'message' => 'deleted'
 
         ]);
 

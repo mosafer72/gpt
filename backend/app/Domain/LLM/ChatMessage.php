@@ -6,7 +6,7 @@ class ChatMessage
 {
     public function __construct(
         public readonly string $role,
-        public readonly string $content,
+        public readonly mixed $content,
     ) {
     }
 
@@ -20,7 +20,7 @@ class ChatMessage
     }
 
 
-    public static function user(string $content): self
+    public static function user(mixed $content): self
     {
         return new self(
             role: 'user',

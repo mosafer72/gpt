@@ -4,11 +4,13 @@ namespace App\Providers;
 
 use App\Domain\Contracts\ConversationRepository;
 use App\Domain\Contracts\MessageStore;
+use App\Domain\Contracts\PlannerProvider;
 use App\Infrastructure\Conversation\DatabaseConversationLoader;
 use App\Infrastructure\LLM\GapGPTProvider;
 use App\Infrastructure\LLM\OpenAIProvider;
 use App\Infrastructure\Memory\DatabaseMemoryRetriever;
 use App\Infrastructure\Message\DatabaseMessageStore;
+use App\Infrastructure\Planner\GapGPTPlannerProvider;
 use App\Infrastructure\Repositories\DatabaseConversationRepository;
 use Illuminate\Support\ServiceProvider;
 use App\Infrastructure\Memory\DatabaseMemoryStore;
@@ -54,6 +56,15 @@ class AppServiceProvider extends ServiceProvider
             MemoryStore::class,
             DatabaseMemoryStore::class
         );
+        $this->app->bind(
+
+            PlannerProvider::class,
+
+            GapGPTPlannerProvider::class
+
+
+        );
+
     }
 
     /**

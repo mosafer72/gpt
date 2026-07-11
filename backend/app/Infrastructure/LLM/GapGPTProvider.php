@@ -34,6 +34,11 @@ class GapGPTProvider implements LLMProvider
         ChatRequest $request
     ): ChatResponse {
 
+     \Log::info('FINAL LLM CALL', [
+        'provider' => self::class,
+        'model' => $request->model,
+        'messages' => $request->messages,
+    ]);
 
         $response = $this->client
             ->chat()
@@ -54,8 +59,6 @@ class GapGPTProvider implements LLMProvider
                 'max_tokens' => $request->maxTokens,
 
             ]);
-
-
 
         return new ChatResponse(
 

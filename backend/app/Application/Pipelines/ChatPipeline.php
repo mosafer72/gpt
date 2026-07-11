@@ -20,11 +20,14 @@ class ChatPipeline
 
     public function __construct(
 
+
         protected ConversationRepository $conversationRepository,
 
         protected ConversationLoader $conversationLoader,
 
         protected MemoryPipeline $memoryPipeline,
+
+        protected IntentPipeline $intentPipeline,
 
         protected PromptPipeline $promptPipeline,
 
@@ -34,7 +37,6 @@ class ChatPipeline
 
     ) {
     }
-
 
 
 
@@ -52,7 +54,7 @@ class ChatPipeline
          * Load Conversation History
          *
          */
-
+        $context = $this->intentPipeline->process($context);
 
         $this->ensureConversation($context);
 

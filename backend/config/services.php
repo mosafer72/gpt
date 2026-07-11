@@ -60,4 +60,16 @@ return [
         ),
 
     ],
+    'planner' => [
+
+        'api_key' => env('PLANNER_API_KEY'),
+
+        'base_url' => env('PLANNER_BASE_URL'),
+
+        'model' => env(
+            'PLANNER_MODEL',
+            'gapgpt-qwen-3.6'
+        ),
+
+    ],
 ];

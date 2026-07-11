@@ -9,7 +9,7 @@ class PromptCollection
     /**
      * @var array<int,array{
      * role:string,
-     * content:string
+     * content:string|array
      * }>
      */
     protected array $messages = [];
@@ -18,12 +18,12 @@ class PromptCollection
 
     public function add(
         string $role,
-        string $content
+        mixed $content
     ): self {
 
         $this->messages[] = [
-            'role'=>$role,
-            'content'=>$content
+            'role' => $role,
+            'content' => $content
         ];
 
 

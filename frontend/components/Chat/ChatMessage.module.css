@@ -141,3 +141,29 @@
   display: block;
 
 }
+.text {
+  direction: rtl;
+  text-align: right;
+}
+
+
+.codeWrapper {
+  direction: ltr;
+  text-align: left;
+}
+
+
+.codeHeader {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+
+.image {
+  max-width:100%;
+  cursor:pointer;
+}
+.katex {
+  direction: ltr;
+}

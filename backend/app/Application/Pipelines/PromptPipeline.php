@@ -54,11 +54,10 @@ class PromptPipeline
         /**
          * 4 - Current User Message
          */
-        $prompt->add(
-            role: 'user',
-            content: $context->currentMessage
+        $this->addCurrentMessage(
+            $prompt,
+            $context
         );
-
 
 
         $context->setPrompt(
@@ -145,5 +144,98 @@ class PromptPipeline
 
     }
 
+    protected function addCurrentMessage(
+        PromptCollection $prompt,
+        ChatContext $context
+    ): void {
+
+
+        $content = [];
+
+
+        if (!empty($context->currentMessage)) {
+
+            $content[] = [
+
+                'type' => 'text',
+
+                'text' => $context->currentMessage
+
+            ];
+
+        }
+
+
+        if (
+            !empty($context->metadata['attachments'])
+        ) {
+
+            foreach (
+                $context->metadata['attachments']
+                as $attachment
+            ) {
+
+                if (
+                    ($attachment['type'] ?? null)
+                    === 'image'
+                ) {
+
+                    $content[] = [
+
+                        'type' => 'image_url',
+
+                        'image_url' => [
+
+                            'url' => $attachment['url']
+
+                        ]
+
+                    ];
+
+                }
+
+            }
+
+        }
+
+
+        // هیچ محتوایی نداریم
+        if (empty($content)) {
+
+            return;
+
+        }
+
+
+        // فقط متن
+        if (
+            count($content) === 1
+            &&
+            $content[0]['type'] === 'text'
+        ) {
+
+            $prompt->add(
+
+                'user',
+
+                $content[0]['text']
+
+            );
+
+            return;
+
+        }
+
+
+        // متن + عکس یا فقط عکس
+        $prompt->add(
+
+            'user',
+
+            $content
+
+        );
+
+    }
 
 }
