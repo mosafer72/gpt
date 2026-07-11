@@ -99,29 +99,30 @@ export default function ChatInterface() {
       // const result = await sendMessage(messageText, currentChat?.id, imageFile);
       // setCurrentChat(result.chat);
 
+
+      const previewUrl = imageFile ? URL.createObjectURL(imageFile) : null;
+
       const tempUserMessage = {
         id: `temp-user-${Date.now()}`,
-
         chat_id: currentChat?.id || 0,
-
-        role: "user" as const,
-
+        role: 'user' as const,
         content: messageText,
-
+        image_url: previewUrl || undefined,
         created_at: new Date().toISOString(),
       };
+
+
 
       const tempAssistantMessage = {
-        id: `temp-assistant-${Date.now()}`,
-
+        id: `temp-ai-${Date.now()}`,
         chat_id: currentChat?.id || 0,
-
-        role: "assistant" as const,
-
-        content: "",
-
+        role: 'assistant' as const,
+        content: '',
         created_at: new Date().toISOString(),
       };
+
+
+
 
       setCurrentChat((prev) => ({
         id: prev?.id || 0,
