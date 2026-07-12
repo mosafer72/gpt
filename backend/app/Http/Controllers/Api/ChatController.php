@@ -13,6 +13,7 @@ use App\Application\Pipelines\ChatPipeline;
 
 use App\Domain\Contracts\MessageStore;
 use App\Domain\Message\DTOs\MessageDTO;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 
 class ChatController extends Controller
@@ -66,7 +67,7 @@ class ChatController extends Controller
      */
     public function store(
         Request $request
-    ): JsonResponse {
+    ) {
 
 
         $user = auth()->user();
@@ -263,17 +264,6 @@ class ChatController extends Controller
 
 
 
-        /**
-         * 4
-         *
-         * اجرای Chat Engine
-         */
-
-        $context =
-            $this->chatPipeline
-                ->handle(
-                    $context
-                );
 
 
 
@@ -281,35 +271,79 @@ class ChatController extends Controller
 
 
 
-        /**
-         * 5
-         *
-         * خروجی مثل قبل
-         */
-
-        return response()->json([
 
 
-            'chat' =>
-                $chat->fresh()
-                    ->load('messages'),
+        return response()->stream(function () use ($context) {
 
+            $stream = $this->chatPipeline->stream($context);
 
+            $full = '';
 
-            'message' => [
+            foreach ($stream as $response) {
 
-                'role' => 'assistant',
+                $text = $response->choices[0]->delta->content ?? '';
 
-                'content' =>
-                    $context->assistantResponse
+                if ($text === '') {
 
-            ],
+                    continue;
 
+                }
 
+                $full .= $text;
 
-            'context' =>
-                $context->toArray()
+                echo "data: " . json_encode(
 
+                    ['content' => $text],
+
+                    JSON_UNESCAPED_UNICODE
+
+                ) . "\n\n";
+
+                if (ob_get_level() > 0) {
+
+                    ob_flush();
+
+                }
+
+                flush();
+
+            }
+
+            // ذخیره پاسخ کامل
+
+            $this->messageStore->store(
+
+                new MessageDTO(
+
+                    id: uniqid(),
+
+                    conversation: $context->conversationId,
+
+                    role: 'assistant',
+
+                    content: $full,
+
+                    token_count: 0,
+
+                    metadata: [],
+
+                    created_at: now()->toDateTimeString()
+
+                )
+
+            );
+
+            echo "data: [DONE]\n\n";
+
+        }, 200, [
+
+            'Content-Type' => 'text/event-stream',
+
+            'Cache-Control' => 'no-cache',
+
+            'Connection' => 'keep-alive',
+
+            'X-Accel-Buffering' => 'no',
 
         ]);
 

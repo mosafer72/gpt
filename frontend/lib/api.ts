@@ -1,20 +1,20 @@
-import { Chat } from '@/types';
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+import { Chat } from "@/types";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
-
-const getToken = () => localStorage.getItem('auth_token');
+const getToken = () => localStorage.getItem("auth_token");
 const headers = (): HeadersInit => ({
-  'Authorization': `Bearer ${getToken()}`,
-  'Accept': 'application/json',
-  'Content-Type': 'application/json',
+  Authorization: `Bearer ${getToken()}`,
+  Accept: "application/json",
+  "Content-Type": "application/json",
 });
 
 const handleUnauthorized = (res: Response) => {
   if (res.status === 401) {
-    localStorage.removeItem('auth_token');
-    document.cookie = 'auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    window.location.href = '/login';
-    throw new Error('Unauthorized');
+    localStorage.removeItem("auth_token");
+    document.cookie =
+      "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    window.location.href = "/login";
+    throw new Error("Unauthorized");
   }
   return res;
 };
@@ -22,38 +22,45 @@ const handleUnauthorized = (res: Response) => {
 export const getChats = async (): Promise<Chat[]> => {
   const res = await fetch(`${API_BASE}/chats`, { headers: headers() });
   handleUnauthorized(res);
-  if (!res.ok) throw new Error('Failed to fetch');
+  if (!res.ok) throw new Error("Failed to fetch");
   return res.json();
 };
 
 export const getChat = async (id: number): Promise<Chat> => {
   const res = await fetch(`${API_BASE}/chats/${id}`, { headers: headers() });
   handleUnauthorized(res);
-  if (!res.ok) throw new Error('Failed to fetch chat');
+  if (!res.ok) throw new Error("Failed to fetch chat");
   return res.json();
 };
 
 export const deleteChat = async (id: number): Promise<void> => {
-  const res = await fetch(`${API_BASE}/chats/${id}`, { method: 'DELETE', headers: headers() });
+  const res = await fetch(`${API_BASE}/chats/${id}`, {
+    method: "DELETE",
+    headers: headers(),
+  });
   handleUnauthorized(res);
-  if (!res.ok) throw new Error('Failed to delete');
+  if (!res.ok) throw new Error("Failed to delete");
 };
 
-export const sendMessage = async (message: string, chatId?: number, image?: File | null) => {
+export const sendMessage = async (
+  message: string,
+  chatId?: number,
+  image?: File | null,
+) => {
   const formData = new FormData();
-  formData.append('message', message);
-  if (chatId) formData.append('chat_id', String(chatId));
-  if (image) formData.append('image', image);
+  formData.append("message", message);
+  if (chatId) formData.append("chat_id", String(chatId));
+  if (image) formData.append("image", image);
 
   const res = await fetch(`${API_BASE}/chats`, {
-    method: 'POST',
+    method: "POST",
     body: formData,
-    headers: { 'Authorization': `Bearer ${getToken()}` },
+    headers: { Authorization: `Bearer ${getToken()}` },
   });
   handleUnauthorized(res);
   if (!res.ok) {
     const err = await res.json();
-    throw new Error(err.error || 'خطا در ارسال');
+    throw new Error(err.error || "خطا در ارسال");
   }
   return res.json();
 };
@@ -66,112 +73,97 @@ export async function getUserStatus(): Promise<{
   remaining_messages: number;
 }> {
   const token = getToken();
-  if (!token) throw new Error('No token');
-  
+  if (!token) throw new Error("No token");
+
   const res = await fetch(`${API_BASE}/user/status`, {
     headers: {
-      'Authorization': `Bearer ${token}`,
-      'Accept': 'application/json',
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
     },
   });
   if (res.status === 401) {
     handleUnauthorized(res);
   }
-  if (!res.ok) throw new Error('Failed to fetch status');
+  if (!res.ok) throw new Error("Failed to fetch status");
   return res.json();
 }
 
 export async function sendMessageStream(
-
   message: string,
 
   chatId?: number,
 
   image?: File | null,
 
-  onChunk?: (text: string) => void
-
+  onChunk?: (text: string) => void,
 ): Promise<void> {
-
   const token = getToken();
 
-  if (!token) throw new Error('No token');
+  if (!token) throw new Error("No token");
 
   const formData = new FormData();
 
-  formData.append('message', message);
+  formData.append("message", message);
 
   if (chatId) {
-
-    formData.append('chat_id', String(chatId));
-
+    formData.append("chat_id", String(chatId));
   }
 
   if (image) {
-
-    formData.append('image', image);
-
+    formData.append("image", image);
   }
 
-const res = await fetch(`${API_BASE}/chats/stream`, {
-
-    method: 'POST',
+  const res = await fetch(`${API_BASE}/chats/stream`, {
+    method: "POST",
 
     headers: {
+      Authorization: `Bearer ${token}`,
 
-      'Authorization': `Bearer ${token}`,
-
-      'Accept': 'text/event-stream',
-
+      Accept: "text/event-stream",
     },
 
     body: formData,
-
   });
 
   if (res.status === 401) {
-
     handleUnauthorized(res);
-
   }
 
   if (!res.ok || !res.body) {
-
-    throw new Error('Failed to stream message');
-
+    throw new Error("Failed to stream message");
   }
 
   const reader = res.body.getReader();
 
   const decoder = new TextDecoder();
 
-  let buffer = '';
+  let buffer = "";
 
   while (true) {
-
     const { done, value } = await reader.read();
 
     if (done) break;
 
     buffer += decoder.decode(value, { stream: true });
 
-    const events = buffer.split('\n\n');
+    const events = buffer.split("\n\n");
 
-    buffer = events.pop() || '';
+    buffer = events.pop() || "";
 
     for (const event of events) {
+      if (!event.startsWith("data: ")) continue;
 
-      if (!event.startsWith('data: ')) continue;
+      const data = event.replace("data: ", "");
 
-      const json = JSON.parse(event.replace('data: ', ''));
-
-      if (json.type === 'token') {
-
-        onChunk?.(json.content);
-
+      if (data === "[DONE]") {
+        continue;
       }
 
-    }
+      const json = JSON.parse(data);
 
+      if (json.content) {
+        onChunk?.(json.content);
+      }
+    }
   }
 }

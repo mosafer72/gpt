@@ -4,13 +4,16 @@ import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import ChatImage from "./ChatImage";
+import { memo } from "react";
+
 
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 
 import { Message } from "@/types";
 import styles from "./ChatMessage.module.css";
 
-export default function ChatMessage({ message }: { message: Message }) {
+function ChatMessage({ message }: { message: Message }) {
+
   const isUser = message.role === "user";
 
   const imageUrl =
@@ -42,3 +45,5 @@ export default function ChatMessage({ message }: { message: Message }) {
     </div>
   );
 }
+export default memo(ChatMessage);
+

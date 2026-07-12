@@ -19,7 +19,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::apiResource('/chats', ChatController::class);
 
-    Route::post('/chats/stream', [ChatController::class, 'stream'])
+    Route::post('/chats/stream', [ChatController::class, 'store'])
 
         ->middleware('auth:sanctum');
     Route::get('/plans', [SubscriptionController::class, 'plans']);

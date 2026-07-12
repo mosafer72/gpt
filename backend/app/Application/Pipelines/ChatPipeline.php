@@ -38,6 +38,58 @@ class ChatPipeline
     ) {
     }
 
+    public function stream(ChatContext $context)
+    {
+
+        // تاریخچه گفتگو
+
+        $this->loadConversation($context);
+
+        // بازیابی حافظه
+
+        if (mb_strlen($context->currentMessage) > 10) {
+
+            $this->memoryPipeline->retrieve($context);
+
+        }
+
+        // ساخت پرامپت
+
+        $this->promptPipeline->build($context);
+
+        // تبدیل پیام‌ها
+
+        $messages = collect($context->prompt)
+
+            ->map(function ($message) {
+
+                return new ChatMessage(
+
+                    role: $message['role'],
+
+                    content: $message['content']
+
+                );
+
+            })
+
+            ->toArray();
+
+        $request = new ChatRequest(
+
+            messages: $messages,
+
+            model: $context->model,
+
+            temperature: 0.7,
+
+            maxTokens: 2000
+
+        );
+
+        return $this->llmProvider->stream($request);
+
+    }
 
 
     /**
@@ -82,12 +134,11 @@ class ChatPipeline
          * Retrieve Memory
          *
          */
-        $this->memoryPipeline
-            ->retrieve(
-                $context
-            );
+        if (mb_strlen($context->currentMessage) > 10) {
 
+            $this->memoryPipeline->retrieve($context);
 
+        }
 
 
 
@@ -165,7 +216,7 @@ class ChatPipeline
                     conversationId:
                     $context->conversationId,
 
-                    limit: 20
+                    limit: 8
 
                 );
 

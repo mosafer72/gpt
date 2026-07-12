@@ -1,6 +1,14 @@
 "use client";
 
-import { FormEvent, RefObject, useRef } from "react";
+import {
+  FormEvent,
+  RefObject,
+  useRef,
+  useMemo,
+  useEffect,
+  useState,
+} from "react";
+
 import styles from "./ChatInput.module.css";
 
 interface ChatInputProps {
@@ -34,6 +42,16 @@ export default function ChatInput({
     }
     e.target.value = "";
   };
+
+  const [isComposing, setIsComposing] = useState(false);
+  const previewUrl = useMemo(() => {
+    return imageFile ? URL.createObjectURL(imageFile) : null;
+  }, [imageFile]);
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   const compressImage = (file: File): Promise<File> => {
     return new Promise((resolve) => {
@@ -76,7 +94,7 @@ export default function ChatInput({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey && !isComposing) {
       e.preventDefault();
       onSubmit(e);
     }
@@ -116,6 +134,8 @@ export default function ChatInput({
           className={styles.input}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onCompositionStart={() => setIsComposing(true)}
+          onCompositionEnd={() => setIsComposing(false)}
           placeholder={
             imageFile ? "توضیح عکس (اختیاری)..." : "پیام خود را بنویسید..."
           }

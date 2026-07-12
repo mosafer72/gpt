@@ -18,10 +18,12 @@ class DatabaseConversationLoader implements ConversationLoader
             )
             ->orderBy(
                 'created_at',
-                'asc'
+                'desc'
             )
             ->limit($limit)
             ->get()
+            ->reverse()
+            ->values()
             ->toArray();
     }
 }
