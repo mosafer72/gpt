@@ -11,22 +11,30 @@ class Plan extends Model
     use HasFactory;
 
 protected $fillable = [
-    'name',
-    'display_name',
-    'model',
-    'price',
-    'duration_days',
-    'daily_message_limit', // ← اضافه کنید
-    'features',
-    'is_active',
-];
 
-protected $casts = [
-    'features' => 'array',
-    'price' => 'integer',
-    'daily_message_limit' => 'integer',
-    'is_active' => 'boolean',
-];
+        'name',
+        'display_name',
+        'model',
+        'price',
+        'duration_days',
+        'daily_message_limit',
+        'features',
+        'capabilities',
+        'is_active'
+
+    ];
+
+
+    protected $casts = [
+
+        'features' => 'array',
+
+        'capabilities' => 'array',
+
+        'is_active' => 'boolean',
+
+    ];
+
 
     public function subscriptions(): HasMany
     {
@@ -38,4 +46,5 @@ protected $casts = [
     {
         return (int) ($this->price / 10);
     }
+
 }

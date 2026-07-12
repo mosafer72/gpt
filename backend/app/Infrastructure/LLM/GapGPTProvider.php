@@ -34,6 +34,8 @@ public function stream(ChatRequest $request)
 
 {
 
+
+
     return $this->client->chat()->createStreamed([
 
         'model' => $request->model,
@@ -69,6 +71,7 @@ public function stream(ChatRequest $request)
             'request_options' => $request->toArray(),
             'status' => 'processing'
         ]);
+
 
         $response = $this->client
             ->chat()

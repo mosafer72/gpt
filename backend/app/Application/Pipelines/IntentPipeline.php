@@ -3,9 +3,7 @@
 namespace App\Application\Pipelines;
 
 use App\Application\Context\ChatContext;
-
 use App\Application\Intent\RuleIntentDetector;
-
 use App\Domain\Contracts\PlannerProvider;
 
 class IntentPipeline
@@ -20,11 +18,20 @@ class IntentPipeline
     ) {
     }
 
-    public function process(ChatContext $context): ChatContext
-    {
-        $text = mb_strtolower(trim($context->currentMessage));
+
+    public function process(
+        ChatContext $context,
+        bool $usePlanner = false
+    ): ChatContext {
+
+
+        $text = mb_strtolower(
+            trim($context->currentMessage)
+        );
+
 
         $simpleMessages = [
+
             'سلام',
             'سلامم',
             'خوبی',
@@ -36,32 +43,98 @@ class IntentPipeline
             'اوکی',
             'مرسی',
             'ممنون'
+
         ];
 
-        // پیام‌های ساده مستقیماً به مدل اصلی بروند
-        if (in_array($text, $simpleMessages)) {
+
+
+        /**
+         * پیام‌های ساده
+         */
+        if (
+            in_array($text, $simpleMessages)
+        ) {
+
             $context->metadata['intent'] = 'chat';
+
             $context->metadata['confidence'] = 1;
+
             $context->metadata['needs_clarification'] = false;
 
+
             return $context;
+
         }
 
-        // ابتدا Rule-based
-        $result = $this->rules->detect($context->currentMessage);
 
-        // اگر Rule پیدا نشد → Planner
-        if (!$result) {
-            $result = $this->planner->analyze($context->currentMessage);
+
+        /**
+         * انتخاب روش تشخیص
+         */
+        if ($usePlanner) {
+
+
+            $result =
+                $this->planner
+                    ->detect($context);
+
+
+        } else {
+
+
+            $result =
+                $this->rules
+                    ->detect($context);
+
         }
 
-        $context->metadata['intent'] = $result->intent;
-        $context->metadata['confidence'] = $result->confidence;
-        $context->metadata['needs_clarification'] = $result->needsClarification;
 
-        // پرامپت بازنویسی شده
-        $context->currentMessage = $result->rewrite;
+
+        /**
+         * اگر Rule چیزی پیدا نکرد
+         */
+        if (!$result && $usePlanner) {
+
+
+            $result =
+                $this->planner
+                    ->analyze(
+                        $context->currentMessage
+                    );
+
+        }
+
+
+
+        /**
+         * ذخیره نتیجه
+         */
+        if ($result) {
+
+
+            $context->metadata['intent']
+                = $result->intent;
+
+
+            $context->metadata['confidence']
+                = $result->confidence;
+
+
+            $context->metadata['needs_clarification']
+                = $result->needsClarification;
+
+
+
+            $context->currentMessage =
+                $result->rewrite;
+
+
+        }
+
+
 
         return $context;
+
     }
+
 }

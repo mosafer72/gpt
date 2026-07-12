@@ -258,21 +258,6 @@ class ChatController extends Controller
 
         ]);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         return response()->stream(function () use ($context) {
 
             $stream = $this->chatPipeline->stream($context);

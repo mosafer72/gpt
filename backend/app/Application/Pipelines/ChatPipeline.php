@@ -11,6 +11,8 @@ use App\Domain\Contracts\MessageStore;
 use App\Domain\LLM\ChatMessage;
 use App\Domain\LLM\ChatRequest;
 use App\Domain\Message\DTOs\MessageDTO;
+use App\Application\Capabilities\CapabilityResolver;
+use App\Models\User;
 
 
 
@@ -33,6 +35,8 @@ class ChatPipeline
 
         protected LLMProvider $llmProvider,
 
+        protected CapabilityResolver $capability,
+
         protected MessageStore $messageStore
 
     ) {
@@ -40,51 +44,45 @@ class ChatPipeline
 
     public function stream(ChatContext $context)
     {
+        $user = $this->prepareContext($context);
 
-        // تاریخچه گفتگو
 
-        $this->loadConversation($context);
+        if (
+            $this->capability->enabled(
+                $user,
+                'planner'
+            )
+        ) {
 
-        // بازیابی حافظه
-
-        if (mb_strlen($context->currentMessage) > 10) {
-
-            $this->memoryPipeline->retrieve($context);
+            $this->intentPipeline
+                ->process($context);
 
         }
 
-        // ساخت پرامپت
 
-        $this->promptPipeline->build($context);
+        if (
+            $this->capability->enabled(
+                $user,
+                'memory'
+            )
+            &&
+            mb_strlen($context->currentMessage) > 50
+        ) {
 
-        // تبدیل پیام‌ها
+            $this->memoryPipeline
+                ->retrieve($context);
 
-        $messages = collect($context->prompt)
+        }
 
-            ->map(function ($message) {
 
-                return new ChatMessage(
+        $this->promptPipeline
+            ->build($context);
 
-                    role: $message['role'],
 
-                    content: $message['content']
 
-                );
-
-            })
-
-            ->toArray();
-
-        $request = new ChatRequest(
-
-            messages: $messages,
-
-            model: $context->model,
-
-            temperature: 0.7,
-
-            maxTokens: 2000
-
+        $request = $this->createRequest(
+            $context,
+            $user
         );
 
         return $this->llmProvider->stream($request);
@@ -106,25 +104,22 @@ class ChatPipeline
          * Load Conversation History
          *
          */
-        $context = $this->intentPipeline->process($context);
 
 
-        logger()->info('AFTER INTENT', [
-            'message' => $context->currentMessage,
-            'response' => $context->assistantResponse
-        ]);
+        $user = $this->prepareContext($context);
 
+        if (
+            $this->capability->enabled(
+                $user,
+                'planner'
+            )
+        ) {
 
-        $this->ensureConversation($context);
+            $context =
+                $this->intentPipeline
+                    ->process($context);
 
-        $this->loadConversationEntity($context);
-
-
-        $this->loadConversation(
-            $context
-        );
-
-
+        }
 
 
 
@@ -134,9 +129,17 @@ class ChatPipeline
          * Retrieve Memory
          *
          */
-        if (mb_strlen($context->currentMessage) > 10) {
+        if (
+            $this->capability->enabled(
+                $user,
+                'memory'
+            )
+            &&
+            mb_strlen($context->currentMessage) > 100
+        ) {
 
-            $this->memoryPipeline->retrieve($context);
+            $this->memoryPipeline
+                ->retrieve($context);
 
         }
 
@@ -167,7 +170,8 @@ class ChatPipeline
          *
          */
         $this->generateResponse(
-            $context
+            $context,
+            $user
         );
 
 
@@ -182,10 +186,17 @@ class ChatPipeline
          * Store Memory
          *
          */
-        $this->memoryPipeline
-            ->store(
-                $context
-            );
+        if (
+            $this->capability->enabled(
+                $user,
+                'memory'
+            )
+        ) {
+
+            $this->memoryPipeline
+                ->store($context);
+
+        }
 
 
 
@@ -263,32 +274,34 @@ class ChatPipeline
      * ارتباط با LLM
      */
     protected function generateResponse(
-        ChatContext $context
+        ChatContext $context,
+        User $user
     ): void {
 
 
-        $messages = collect($context->prompt)
-            ->map(function ($message) {
 
-                return new ChatMessage(
-                    role: $message['role'],
-                    content: $message['content']
-                );
-
-            })
-            ->toArray();
-
-
-
-        $request = new ChatRequest(
-
-            messages: $messages,
-
-            model: $context->model
-
+        $model = $this->capability->value(
+            $user,
+            'model',
+            $context->model
         );
-        \Log::info('FINAL PROMPT', [
-            'messages' => $messages
+
+
+
+        $request = $this->createRequest(
+            $context,
+            $user
+        );
+
+
+        \Log::info('LLM REQUEST DEBUG', [
+
+            'model' => $request->model,
+
+            'messages_count' => count($request->messages),
+
+            'messages' => $request->messages,
+
         ]);
 
 
@@ -330,7 +343,7 @@ class ChatPipeline
 
                 metadata: [
                     'user_id' => $context->userId,
-                    'model' => $context->model
+                    'model' => $model
                 ],
 
                 created_at:
@@ -382,7 +395,7 @@ class ChatPipeline
                     mb_substr(
                         $context->currentMessage,
                         0,
-                        50
+                        100
                     )
 
                 );
@@ -396,5 +409,58 @@ class ChatPipeline
             $conversation
         );
 
+    }
+
+
+    protected function prepareContext(ChatContext $context): User
+    {
+        $this->ensureConversation($context);
+
+        $this->loadConversationEntity($context);
+
+        $this->loadConversation($context);
+
+        return User::findOrFail(
+            $context->userId
+        );
+    }
+
+
+    protected function createRequest(
+        ChatContext $context,
+        User $user
+    ): ChatRequest {
+
+        $model = $this->capability->value(
+            $user,
+            'model',
+            $context->model
+        );
+
+
+        return new ChatRequest(
+
+            messages: collect($context->prompt)
+                ->map(function ($message) {
+
+                    return new ChatMessage(
+                        role: $message['role'],
+                        content: $message['content']
+                    );
+
+                })
+                ->toArray(),
+
+            model: $model,
+
+            temperature: 0.7,
+
+            maxTokens: $this->capability->value(
+                $user,
+                'max_tokens',
+                2000
+            )
+
+        );
     }
 }

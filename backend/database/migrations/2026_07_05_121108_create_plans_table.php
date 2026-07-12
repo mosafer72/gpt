@@ -4,23 +4,76 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
+
     public function up(): void
     {
         Schema::create('plans', function (Blueprint $table) {
+
             $table->id();
-            $table->string('name'); // basic, standard, premium, enterprise
-            $table->string('display_name'); // پایه، متوسط، پیشرفته، ویژه
-            $table->string('model'); // gpt-4o-mini, gpt-4o, gpt-4.5, gpt-4-turbo
-            $table->decimal('price', 10, 0); // قیمت به ریال (تومان * ۱۰)
-            $table->integer('duration_days'); // تعداد روزهای اعتبار
-            $table->text('features')->nullable(); // ویژگی‌ها به صورت JSON
-            $table->boolean('is_active')->default(true);
+
+
+            // free, basic, standard, premium
+            $table->string('name')
+                ->unique();
+
+
+            // نام نمایشی
+            $table->string('display_name');
+
+
+            // مدل پیش فرض
+            $table->string('model')
+                ->default('gpt-4o-mini');
+
+
+            // قیمت
+            $table->decimal(
+                'price',
+                10,
+                0
+            )
+                ->default(0);
+
+
+
+            // مدت اعتبار
+            $table->integer('duration_days')
+                ->default(30);
+
+
+            // محدودیت پیام روزانه
+            $table->integer('daily_message_limit')
+                ->default(10);
+
+
+            /**
+             * تنظیمات پلن
+             *
+             * {
+             *   planner:true,
+             *   memory:true,
+             *   max_tokens:4000,
+             *   temperature:0.7
+             * }
+             */
+
+             $table->json('capabilities')
+                ->nullable();
+
+            $table->json('features')
+                ->nullable();
+
+
+            $table->boolean('is_active')
+                ->default(true);
+
+
             $table->timestamps();
 
         });
     }
+
 
     public function down(): void
     {

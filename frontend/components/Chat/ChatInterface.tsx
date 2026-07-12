@@ -196,7 +196,8 @@ export default function ChatInterface() {
     const text = input.trim();
 
     const file = imageFile;
-
+  
+  
     setInput("");
 
     setLoading(true);
