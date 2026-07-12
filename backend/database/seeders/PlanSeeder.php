@@ -15,7 +15,7 @@ class PlanSeeder extends Seeder
             [
                 'display_name' => 'رایگان',
 
-                'model' => 'gpt-4o-mini',
+                'model' => 'openai/gpt-oss-120b:free',
 
                 'price' => 0,
 
@@ -25,7 +25,7 @@ class PlanSeeder extends Seeder
 
                 'features' => [
                     'روزانه ۴ پیام رایگان',
-                    'مدل GPT-4o-mini',
+                    'مدل openai/gpt-oss-120b:free',
                     'بدون حافظه و Planner'
                 ],
 
@@ -47,7 +47,7 @@ class PlanSeeder extends Seeder
             [
                 'display_name' => 'پایه',
 
-                'model' => 'gpt-4o-mini',
+                'model' => 'openai/gpt-oss-120b:free',
 
                 'price' => 100000,
 
@@ -57,7 +57,7 @@ class PlanSeeder extends Seeder
 
                 'features' => [
                     'روزانه ۵۰ پیام',
-                    'مدل GPT-4o-mini',
+                    'مدل openai/gpt-oss-120b:free',
                     'حافظه گفتگو فعال'
                 ],
 
