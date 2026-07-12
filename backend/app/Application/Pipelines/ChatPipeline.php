@@ -47,6 +47,12 @@ class ChatPipeline
         $user = $this->prepareContext($context);
 
 
+        \Log::info('Planner capability check', [
+
+            'enabled' => $this->capability->enabled($user, 'planner'),
+
+        ]);
+
         if (
             $this->capability->enabled(
                 $user,
@@ -55,7 +61,7 @@ class ChatPipeline
         ) {
 
             $this->intentPipeline
-                ->process($context);
+                ->process($context, true);
 
         }
 
@@ -117,7 +123,7 @@ class ChatPipeline
 
             $context =
                 $this->intentPipeline
-                    ->process($context);
+                    ->process($context, true);
 
         }
 
@@ -458,7 +464,7 @@ class ChatPipeline
             maxTokens: $this->capability->value(
                 $user,
                 'max_tokens',
-                2000
+                700
             )
 
         );

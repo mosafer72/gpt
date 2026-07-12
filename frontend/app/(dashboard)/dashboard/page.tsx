@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "./page.module.css";
+import TokenUsageCard from "@/components/Common/TokenUsageCard";
 
 interface Plan {
   id: number;
@@ -275,6 +276,7 @@ export default function DashboardPage() {
             </p>
           )}
         </section>
+        <TokenUsageCard />
 
         <section className={styles.plansSection}>
           <div className={styles.sectionHeader}>

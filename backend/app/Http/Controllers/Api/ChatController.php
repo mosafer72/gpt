@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-
+use App\Models\Usage;
 use App\Models\Chat;
 
 use App\Application\Context\ChatContext;
@@ -209,6 +209,10 @@ class ChatController extends Controller
 
         );
 
+        // ذخیره Usage
+
+
+
 
 
 
@@ -266,6 +270,26 @@ class ChatController extends Controller
 
             foreach ($stream as $response) {
 
+                // کاربر استریم را قطع کرده
+                if (connection_aborted()) {
+
+                    break;
+
+                }
+
+                if (isset($response->usage)) {
+
+                    $context->tokenUsage = [
+
+                        'prompt_tokens' => $response->usage->promptTokens ?? 0,
+
+                        'completion_tokens' => $response->usage->completionTokens ?? 0,
+
+                        'total_tokens' => $response->usage->totalTokens ?? 0,
+
+                    ];
+
+                }
                 $text = $response->choices[0]->delta->content ?? '';
 
                 if ($text === '') {
@@ -295,30 +319,49 @@ class ChatController extends Controller
             }
 
             // ذخیره پاسخ کامل
+            if (!connection_aborted()) {
+                $this->messageStore->store(
 
-            $this->messageStore->store(
+                    new MessageDTO(
 
-                new MessageDTO(
+                        id: uniqid(),
 
-                    id: uniqid(),
+                        conversation: $context->conversationId,
 
-                    conversation: $context->conversationId,
+                        role: 'assistant',
 
-                    role: 'assistant',
+                        content: $full,
 
-                    content: $full,
+                        token_count: 0,
 
-                    token_count: 0,
+                        metadata: [],
 
-                    metadata: [],
+                        created_at: now()->toDateTimeString()
 
-                    created_at: now()->toDateTimeString()
+                    )
 
-                )
+                );
 
-            );
+                Usage::create([
 
-            echo "data: [DONE]\n\n";
+                    'user_id' => (int) $context->userId,
+
+                    'conversation_id' => (int) $context->conversationId,
+
+                    'type' => 'chat',
+
+                    'model' => $context->model,
+
+                    'prompt_tokens' => $context->tokenUsage['prompt_tokens'] ?? 0,
+
+                    'completion_tokens' => $context->tokenUsage['completion_tokens'] ?? 0,
+
+                    'total_tokens' => $context->tokenUsage['total_tokens'] ?? 0,
+
+                ]);
+                echo "data: [DONE]\n\n";
+            }
+
 
         }, 200, [
 

@@ -1,5 +1,4 @@
 .inputArea {
-
   position: sticky;
 
   bottom: 0;
@@ -7,11 +6,9 @@
   padding: 20px 24px 28px;
 
   background: linear-gradient(to top, #0b1020 70%, transparent);
-
 }
 
 .form {
-
   max-width: 860px;
 
   margin: 0 auto;
@@ -26,16 +23,14 @@
 
   border-radius: 24px;
 
-  background: rgba(255,255,255,.06);
+  background: rgba(255, 255, 255, 0.06);
 
-  border: 1px solid rgba(255,255,255,.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 
   backdrop-filter: blur(16px);
-
 }
 
 .input {
-
   flex: 1;
 
   background: transparent;
@@ -53,19 +48,14 @@
   max-height: 180px;
 
   outline: none;
-
 }
 
 .input::placeholder {
-
   color: #94a3b8;
-
 }
 
 .uploadBtn,
-
 .sendBtn {
-
   width: 44px;
 
   height: 44px;
@@ -76,44 +66,33 @@
 
   cursor: pointer;
 
-  transition: all .2s ease;
-
+  transition: all 0.2s ease;
 }
 
 .uploadBtn {
-
-  background: rgba(255,255,255,.08);
+  background: rgba(255, 255, 255, 0.08);
 
   color: white;
-
 }
 
 .sendBtn {
-
   background: linear-gradient(135deg, #2563eb, #7c3aed);
 
   color: white;
-
 }
 
 .sendBtn:disabled {
-
-  opacity: .5;
+  opacity: 0.5;
 
   cursor: not-allowed;
-
 }
 
 .uploadBtn:hover,
-
 .sendBtn:hover:not(:disabled) {
-
   transform: translateY(-1px);
-
 }
 
 .preview {
-
   max-width: 860px;
 
   margin: 0 auto 12px;
@@ -121,11 +100,9 @@
   position: relative;
 
   width: fit-content;
-
 }
 
 .preview img {
-
   width: 96px;
 
   height: 96px;
@@ -134,12 +111,10 @@
 
   border-radius: 16px;
 
-  border: 1px solid rgba(255,255,255,.1);
-
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .removeBtn {
-
   position: absolute;
 
   top: -8px;
@@ -159,5 +134,12 @@
   color: white;
 
   cursor: pointer;
-
+}
+.cancelBtn {
+  width: 44px;
+  height: 44px;
+  background: currentColor;
+  border-radius: 3px;
+  display: block;border-radius: 100%;
+  cursor: pointer;
 }

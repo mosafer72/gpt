@@ -18,7 +18,13 @@ interface ChatInputProps {
   onImageUpload: (file: File) => void;
   onImageRemove: () => void;
   imageFile: File | null;
+
   disabled?: boolean;
+
+  isStreaming?: boolean;
+
+  onCancel?: () => void;
+
   inputRef?: RefObject<HTMLTextAreaElement | null>;
 }
 
@@ -30,6 +36,8 @@ export default function ChatInput({
   onImageRemove,
   imageFile,
   disabled,
+  isStreaming = false,
+  onCancel,
   inputRef,
 }: ChatInputProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -143,13 +151,19 @@ export default function ChatInput({
           disabled={disabled}
           onKeyDown={handleKeyDown}
         />
-        <button
-          type="submit"
-          className={styles.sendBtn}
-          disabled={(!value.trim() && !imageFile) || disabled}
-        >
-          ➤
-        </button>
+        {isStreaming ? (
+          <button type="button" className={styles.cancelBtn} onClick={onCancel}>
+            ■
+          </button>
+        ) : (
+          <button
+            type="submit"
+            className={styles.sendBtn}
+            disabled={(!value.trim() && !imageFile) || disabled}
+          >
+            ➤
+          </button>
+        )}
       </form>
     </div>
   );

@@ -64,7 +64,7 @@ class PlanSeeder extends Seeder
                 'capabilities' => [
                     'planner' => false,
                     'memory' => true,
-                    'max_tokens' => 2000,
+                    'max_tokens' => 700,
                     'temperature' => 0.7
                 ],
 

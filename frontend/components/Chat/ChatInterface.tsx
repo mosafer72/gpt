@@ -17,9 +17,11 @@ import UserMenu from "@/components/Common/UserMenu";
 import styles from "./ChatInterface.module.css";
 
 import SubscriptionWarning from "@/components/Chat/SubscriptionWarning";
+import TokenUsageBadge from "../Common/TokenUsageBadge";
 
 export default function ChatInterface() {
   const router = useRouter();
+  const cancelledRef = useRef(false);
 
   const [chats, setChats] = useState<Chat[]>([]);
 
@@ -37,6 +39,8 @@ export default function ChatInterface() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const [userStatus, setUserStatus] = useState<{
     has_subscription: boolean;
     daily_message_limit: number;
@@ -44,9 +48,6 @@ export default function ChatInterface() {
     remaining_messages: number;
   } | null>(null);
 
-  /**
-   * هر استریم جداگانه
-   */
   const streams = useRef<
     Record<
       string,
@@ -63,6 +64,7 @@ export default function ChatInterface() {
 
     if (!token) {
       router.push("/login");
+
       return;
     }
 
@@ -81,9 +83,6 @@ export default function ChatInterface() {
     }
   };
 
-  /**
-   * فقط وقتی کاربر نزدیک پایین است اسکرول کن
-   */
   useEffect(() => {
     const container = document.querySelector(`.${styles.messagesContainer}`);
 
@@ -125,9 +124,20 @@ export default function ChatInterface() {
     }
   };
 
-  /**
-   * تایپ نرم پاسخ
-   */
+  const stopTyping = (chatId: string) => {
+    const stream = streams.current[chatId];
+
+    if (!stream) return;
+
+    if (stream.timer) {
+      clearInterval(stream.timer);
+
+      stream.timer = null;
+    }
+
+    stream.buffer = "";
+  };
+
   const startTyping = (chatId: string, messageId: string) => {
     const stream = streams.current[chatId];
 
@@ -148,26 +158,6 @@ export default function ChatInterface() {
 
       stream.buffer = stream.buffer.substring(1);
 
-      setChats((prev) => {
-        return prev.map((chat) => {
-          if (String(chat.id) !== chatId) return chat;
-
-          return {
-            ...chat,
-
-            messages: chat.messages.map((m) => {
-              if (String(m.id) !== messageId) return m;
-
-              return {
-                ...m,
-
-                content: m.content + char,
-              };
-            }),
-          };
-        });
-      });
-
       setCurrentChat((prev) => {
         if (!prev || String(prev.id) !== chatId) return prev;
 
@@ -185,7 +175,7 @@ export default function ChatInterface() {
           }),
         };
       });
-    }, 35);
+    }, 15);
   };
 
   const handleSendMessage = async (e: FormEvent) => {
@@ -196,11 +186,15 @@ export default function ChatInterface() {
     const text = input.trim();
 
     const file = imageFile;
-  
-  
+
     setInput("");
 
     setLoading(true);
+    cancelledRef.current = false;
+
+    const controller = new AbortController();
+
+    abortControllerRef.current = controller;
 
     const aiId = `ai-${Date.now()}`;
 
@@ -267,27 +261,78 @@ export default function ChatInterface() {
         file,
 
         (chunk) => {
-          streams.current[chatId].buffer += chunk.normalize("NFC");
+          const stream = streams.current[chatId];
+
+          if (!stream || !stream.active) return;
+
+          stream.buffer += chunk.normalize("NFC");
 
           startTyping(chatId, aiId);
         },
+
+        controller.signal,
       );
 
       while (streams.current[chatId]?.buffer.length) {
-        await new Promise((r) => setTimeout(r, 50));
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
 
       await loadChats();
     } catch (error: any) {
-      alert(error.message || "خطا در ارسال");
+      if (error.name === "AbortError") {
+        cancelledRef.current = true;
+
+        setCurrentChat((prev) => {
+          if (!prev) return prev;
+
+          return {
+            ...prev,
+
+            messages: prev.messages.map((msg) => {
+              if (msg.id === aiId) {
+                return {
+                  ...msg,
+
+                  content: "⏹ پاسخ لغو شد",
+                };
+              }
+
+              return msg;
+            }),
+          };
+        });
+      } else {
+        alert(error.message || "خطا در ارسال");
+      }
     } finally {
-      setLoading(false);
+      stopTyping(chatId);
+
+      if (streams.current[chatId]) {
+        streams.current[chatId].buffer = "";
+      }
 
       delete streams.current[chatId];
+
+      abortControllerRef.current = null;
+
+      setLoading(false);
 
       setImageFile(null);
 
       inputRef.current?.focus();
+    }
+  };
+  const handleCancelStream = () => {
+    cancelledRef.current = true;
+
+    abortControllerRef.current?.abort();
+
+    const chatId = String(currentChat?.id || 0);
+
+    stopTyping(chatId);
+
+    if (streams.current[chatId]) {
+      streams.current[chatId].active = false;
     }
   };
 
@@ -311,6 +356,8 @@ export default function ChatInterface() {
         </div>
 
         <div className={styles.headerRight}>
+          <TokenUsageBadge />
+
           <UserMenu />
         </div>
       </header>
@@ -363,7 +410,9 @@ export default function ChatInterface() {
             onImageUpload={setImageFile}
             onImageRemove={() => setImageFile(null)}
             imageFile={imageFile}
-            disabled={false}
+            disabled={loading}
+            isStreaming={loading}
+            onCancel={handleCancelStream}
             inputRef={inputRef}
           />
         </main>

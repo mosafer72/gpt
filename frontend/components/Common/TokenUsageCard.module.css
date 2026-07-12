@@ -1,0 +1,182 @@
+.card {
+
+
+    background: rgba(255,255,255,.05);
+
+    border:1px solid rgba(255,255,255,.08);
+
+    border-radius:28px;
+
+    padding:28px;
+
+    backdrop-filter:blur(16px);
+
+    margin-bottom:32px;
+
+
+}
+
+
+
+.header {
+
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+
+}
+
+
+
+.header span {
+
+
+    color:#94a3b8;
+
+    font-size:.9rem;
+
+
+}
+
+
+
+.header h2 {
+
+
+    margin-top:6px;
+
+    font-size:1.3rem;
+
+
+}
+
+
+
+.icon {
+
+
+    width:60px;
+
+    height:60px;
+
+    border-radius:20px;
+
+    background:
+
+    linear-gradient(
+        135deg,
+        #2563eb,
+        #7c3aed
+    );
+
+
+    display:flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    font-size:28px;
+
+
+}
+
+
+
+.mainNumber {
+
+
+    margin:28px 0;
+
+    font-size:3rem;
+
+    font-weight:900;
+
+
+}
+
+
+
+.mainNumber small {
+
+
+    font-size:1rem;
+
+    margin-right:10px;
+
+    color:#94a3b8;
+
+
+}
+
+
+
+.stats {
+
+
+    display:grid;
+
+    grid-template-columns:repeat(3,1fr);
+
+    gap:16px;
+
+
+}
+
+
+
+.stats div {
+
+
+    background:rgba(255,255,255,.05);
+
+    padding:16px;
+
+    border-radius:18px;
+
+
+}
+
+
+
+.stats span {
+
+
+    display:block;
+
+    color:#94a3b8;
+
+    font-size:.8rem;
+
+    margin-bottom:8px;
+
+
+}
+
+
+
+.stats strong {
+
+
+    font-size:1.1rem;
+
+
+}
+
+
+
+@media(max-width:768px){
+
+
+    .stats {
+
+        grid-template-columns:1fr;
+
+    }
+
+
+}

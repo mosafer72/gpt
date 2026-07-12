@@ -24,17 +24,17 @@ class CapabilityResolver
 
     }
 
-
-
     public function value(
+
         User $user,
+
         string $key,
+
         mixed $default = null
+
     ): mixed {
 
-
-        $plan = $user->plan;
-
+        $plan = $user->currentPlan();
 
         if (!$plan) {
 
@@ -42,23 +42,21 @@ class CapabilityResolver
 
         }
 
-
-        /**
-         * مدل جدا از features
-         */
         if ($key === 'model') {
 
             return $plan->model ?? $default;
 
         }
 
-
         return data_get(
-            $plan->features,
+
+            $plan->capabilities,
+
             $key,
+
             $default
+
         );
 
     }
-
 }

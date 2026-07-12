@@ -49,22 +49,27 @@ return [
     ],
     'gapgpt' => [
 
-        'key' => env(
-            'GAPGPT_API_KEY'
-        ),
-
+        'key' => env('GAPGPT_API_KEY'),
 
         'base_url' => env(
             'GAPGPT_BASE_URL',
             'https://api.gapgpt.app/v1'
         ),
 
+        'model' => env(
+            'GAPGPT_MODEL'
+        ),
+
     ],
+
+
     'planner' => [
 
-        'api_key' => env('PLANNER_API_KEY'),
+        'key' => env('PLANNER_API_KEY'),
 
-        'base_url' => env('PLANNER_BASE_URL'),
+        'base_url' => env(
+            'PLANNER_BASE_URL'
+        ),
 
         'model' => env(
             'PLANNER_MODEL',

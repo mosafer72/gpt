@@ -163,3 +163,53 @@
   40% { transform: scale(1); opacity: 1; }
 
 }
+.headerRight {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 14px;
+
+}
+
+
+.headerLeft {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+}
+
+
+
+/* واکنش‌گرا برای موبایل */
+
+@media (max-width: 768px) {
+
+
+  .header {
+
+    padding: 0 14px;
+
+  }
+
+
+  .headerRight {
+
+    gap: 8px;
+
+  }
+
+
+  .logo {
+
+    font-size: 1rem;
+
+  }
+
+
+}

@@ -87,7 +87,6 @@ export async function getUserStatus(): Promise<{
   if (!res.ok) throw new Error("Failed to fetch status");
   return res.json();
 }
-
 export async function sendMessageStream(
   message: string,
 
@@ -96,6 +95,8 @@ export async function sendMessageStream(
   image?: File | null,
 
   onChunk?: (text: string) => void,
+
+  signal?: AbortSignal,
 ): Promise<void> {
   const token = getToken();
 
@@ -123,6 +124,9 @@ export async function sendMessageStream(
     },
 
     body: formData,
+
+    // اضافه شد
+    signal,
   });
 
   if (res.status === 401) {
@@ -139,31 +143,62 @@ export async function sendMessageStream(
 
   let buffer = "";
 
-  while (true) {
-    const { done, value } = await reader.read();
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
 
-    if (done) break;
+      if (done) break;
 
-    buffer += decoder.decode(value, { stream: true });
+      buffer += decoder.decode(value, {
+        stream: true,
+      });
 
-    const events = buffer.split("\n\n");
+      const events = buffer.split("\n\n");
 
-    buffer = events.pop() || "";
+      buffer = events.pop() || "";
 
-    for (const event of events) {
-      if (!event.startsWith("data: ")) continue;
+      for (const event of events) {
+        if (!event.startsWith("data: ")) continue;
 
-      const data = event.replace("data: ", "");
+        const data = event.replace("data: ", "");
 
-      if (data === "[DONE]") {
-        continue;
-      }
+        if (data === "[DONE]") {
+          continue;
+        }
 
-      const json = JSON.parse(data);
+        const json = JSON.parse(data);
 
-      if (json.content) {
-        onChunk?.(json.content);
+        if (json.content) {
+          onChunk?.(json.content);
+        }
       }
     }
+  } catch (error: any) {
+    if (error.name === "AbortError") {
+      console.log("Stream aborted");
+
+      // مهم:
+      // reader را آزاد کن
+      await reader.cancel();
+
+      throw error;
+    }
+
+    throw error;
   }
+}
+export async function getTodayUsage() {
+  const token = localStorage.getItem("auth_token");
+
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/usage/today`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+
+      Accept: "application/json",
+    },
+  });
+
+  const json = await res.json();
+
+  return json.data;
 }

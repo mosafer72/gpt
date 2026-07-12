@@ -30,34 +30,38 @@ class GapGPTProvider implements LLMProvider
     }
 
 
-public function stream(ChatRequest $request)
+    public function stream(ChatRequest $request)
+    {
 
-{
+        return $this->client->chat()->createStreamed([
 
+            'model' => $request->model,
 
+            'messages' => array_map(
 
-    return $this->client->chat()->createStreamed([
+                fn($message) => $message->toArray(),
 
-        'model' => $request->model,
+                $request->messages
 
-        'messages' => array_map(
+            ),
 
-            fn($message) => $message->toArray(),
+            'temperature' => $request->temperature,
 
-            $request->messages
+            'max_tokens' => $request->maxTokens,
 
-        ),
+            'stream' => true,
 
-        'temperature' => $request->temperature,
+            // این خط مهم است
 
-        'max_tokens' => $request->maxTokens,
+            'stream_options' => [
 
-        'stream' => true,
+                'include_usage' => false,
 
-    ]);
+            ],
 
-}
+        ]);
 
+    }
 
 
     public function chat(

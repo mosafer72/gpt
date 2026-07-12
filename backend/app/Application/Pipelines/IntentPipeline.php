@@ -5,6 +5,7 @@ namespace App\Application\Pipelines;
 use App\Application\Context\ChatContext;
 use App\Application\Intent\RuleIntentDetector;
 use App\Domain\Contracts\PlannerProvider;
+use App\Models\Usage;
 
 class IntentPipeline
 {
@@ -73,19 +74,11 @@ class IntentPipeline
          */
         if ($usePlanner) {
 
-
-            $result =
-                $this->planner
-                    ->detect($context);
-
+            $result = $this->planner->analyze($context);
 
         } else {
 
-
-            $result =
-                $this->rules
-                    ->detect($context);
-
+            $result = $this->rules->detect($context);
         }
 
 
@@ -93,16 +86,16 @@ class IntentPipeline
         /**
          * اگر Rule چیزی پیدا نکرد
          */
-        if (!$result && $usePlanner) {
+        // if (!$result && $usePlanner) {
 
 
-            $result =
-                $this->planner
-                    ->analyze(
-                        $context->currentMessage
-                    );
+        //     $result =
+        //         $this->planner
+        //             ->analyze(
+        //                 $context->currentMessage
+        //             );
 
-        }
+        // }
 
 
 
@@ -111,24 +104,13 @@ class IntentPipeline
          */
         if ($result) {
 
+            $context->metadata['intent'] = $result->intent;
 
-            $context->metadata['intent']
-                = $result->intent;
+            $context->metadata['confidence'] = $result->confidence;
 
+            $context->metadata['needs_clarification'] = $result->needsClarification;
 
-            $context->metadata['confidence']
-                = $result->confidence;
-
-
-            $context->metadata['needs_clarification']
-                = $result->needsClarification;
-
-
-
-            $context->currentMessage =
-                $result->rewrite;
-
-
+            $context->currentMessage = $result->rewrite;
         }
 
 
