@@ -44,7 +44,7 @@ function ChatMessage({ message }: { message: Message }) {
                   return <>{children}</>;
                 },
 
-                code({ inline, className, children }) {
+                code({ inline, className, children }:any) {
                   const match = /language-(\w+)/.exec(className || "");
 
                   if (!inline) {
