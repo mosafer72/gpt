@@ -2,12 +2,16 @@
 
 import { useState } from "react";
 
+import { Copy, Check } from "lucide-react";
+
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
+
 import styles from "./CodeBlock.module.css";
 
 interface Props {
   language?: string;
+
   children: string;
 }
 
@@ -29,8 +33,12 @@ export default function CodeBlock({ language, children }: Props) {
       <div className={styles.header}>
         <span className={styles.language}>{language || "text"}</span>
 
-        <button className={styles.copyButton} onClick={copyCode}>
-          {copied ? "✓ Copied" : "Copy"}
+        <button
+          className={styles.copyButton}
+          onClick={copyCode}
+          title="Copy code"
+        >
+          {copied ? <Check size={16} /> : <Copy size={16} />}
         </button>
       </div>
 

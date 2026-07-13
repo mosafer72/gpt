@@ -6,7 +6,6 @@
   border: 1px solid #e5e7eb;
 }
 
-
 .header {
   height: 38px;
   display: flex;
@@ -22,13 +21,11 @@
   color: #555;
 }
 
-
 .language {
   font-family: monospace;
   font-weight: 600;
   text-transform: lowercase;
 }
-
 
 .copyButton {
   border: none;
@@ -44,15 +41,13 @@
 
   color: #444;
 
-  transition: all .2s ease;
+  transition: all 0.2s ease;
 }
-
 
 .copyButton:hover {
   background: #ddd;
   color: #111;
 }
-
 
 .code {
   margin: 0 !important;
@@ -65,21 +60,44 @@
 
   overflow-x: auto;
 
-  font-family:
-    "JetBrains Mono",
-    "Fira Code",
-    Consolas,
-    monospace !important;
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace !important;
 }
-
 
 /* scrollbar */
 .code::-webkit-scrollbar {
   height: 8px;
 }
 
-
 .code::-webkit-scrollbar-thumb {
   background: #bbb;
   border-radius: 10px;
+}
+.copyButton {
+  width: 32px;
+
+  height: 32px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  border: none;
+
+  border-radius: 6px;
+
+  background: transparent;
+
+  cursor: pointer;
+
+  color: #555;
+
+  transition: all 0.2s ease;
+}
+
+.copyButton:hover {
+  background: rgba(0, 0, 0, 0.08);
+
+  color: #111;
 }

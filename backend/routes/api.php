@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\MessageExportController;
 use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\UsageController;
 use Illuminate\Http\Request;
@@ -35,6 +36,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/usage/today',[UsageController::class, 'today']);
     Route::get('/usage/summary',[UsageController::class, 'summary']);
     Route::get('/usage/{id}',[UsageController::class, 'show']);
+    Route::get('/messages/{message}/export', [MessageExportController::class, 'export']);
 
 
 });

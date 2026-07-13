@@ -1,19 +1,20 @@
 "use client";
 
+import { memo } from "react";
+
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+
 import ChatImage from "./ChatImage";
-import { memo } from "react";
-
-
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import CopyButton from "./CopyButton";
+import CodeBlock from "./CodeBlock";
 
 import { Message } from "@/types";
+
 import styles from "./ChatMessage.module.css";
 
 function ChatMessage({ message }: { message: Message }) {
-
   const isUser = message.role === "user";
 
   const imageUrl =
@@ -27,23 +28,46 @@ function ChatMessage({ message }: { message: Message }) {
       <div className={styles.avatar}>{isUser ? "👤" : "✨"}</div>
 
       <div className={styles.bubble}>
-        <div className={styles.bubble}>
-          {imageUrl && <ChatImage src={imageUrl} />}
+        {imageUrl && <ChatImage src={imageUrl} />}
 
-          {message.content && (
-            <div className={styles.text}>
-              <ReactMarkdown
-                remarkPlugins={[remarkMath]}
-                rehypePlugins={[rehypeKatex]}
-              >
-                {message.content}
-              </ReactMarkdown>
-            </div>
-          )}
-        </div>
+        {message.content && (
+          <div className={styles.text}>
+            <ReactMarkdown
+              remarkPlugins={[remarkMath]}
+              rehypePlugins={[rehypeKatex]}
+              components={{
+                p({ children }) {
+                  return <div className={styles.paragraph}>{children}</div>;
+                },
+
+                pre({ children }) {
+                  return <>{children}</>;
+                },
+
+                code({ inline, className, children }) {
+                  const match = /language-(\w+)/.exec(className || "");
+
+                  if (!inline) {
+                    return (
+                      <CodeBlock language={match?.[1]}>
+                        {String(children).replace(/\n$/, "")}
+                      </CodeBlock>
+                    );
+                  }
+
+                  return <code className={className}>{children}</code>;
+                },
+              }}
+            >
+              {message.content}
+            </ReactMarkdown>
+
+            <CopyButton text={message.content} />
+          </div>
+        )}
       </div>
     </div>
   );
 }
-export default memo(ChatMessage);
 
+export default memo(ChatMessage);
