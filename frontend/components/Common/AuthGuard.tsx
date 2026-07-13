@@ -20,7 +20,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       router.replace('/login');
       setIsAuthenticated(false);
     } else if (token && isPublicPath) {
-      router.replace('/dashboard');
+      // router.replace('/dashboard');
       setIsAuthenticated(true);
     } else if (token) {
       setIsAuthenticated(true);
