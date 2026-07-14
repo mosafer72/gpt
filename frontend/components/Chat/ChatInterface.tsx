@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, FormEvent } from "react";
+import { useState, useEffect, useRef, FormEvent, useCallback } from "react";
 import { sendMessageStream } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { Chat } from "@/types";
@@ -37,7 +37,6 @@ export default function ChatInterface() {
   const [isLoadingChats, setIsLoadingChats] = useState(true);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const [userStatus, setUserStatus] = useState<{
     has_subscription: boolean;
@@ -45,6 +44,12 @@ export default function ChatInterface() {
     today_messages_count: number;
     remaining_messages: number;
   } | null>(null);
+
+  // ref برای آخرین پیام (برای اسکرول با دکمه)
+  const lastMessageRef = useRef<HTMLDivElement | null>(null);
+
+  // state برای نمایش خطاهای استریم
+  const [streamError, setStreamError] = useState<string | null>(null);
 
   const streams = useRef<
     Record<
@@ -57,9 +62,7 @@ export default function ChatInterface() {
     >
   >({});
 
-  // تشخیص موبایل (عرض کمتر از 768px)
   const isMobile = useMediaQuery("(max-width: 767px)");
-  // وضعیت نمایش سایدبار در موبایل
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -81,17 +84,7 @@ export default function ChatInterface() {
     }
   };
 
-  useEffect(() => {
-    const container = document.querySelector(`.${styles.messagesContainer}`);
-    if (!container) return;
-    const distance =
-      container.scrollHeight - container.scrollTop - container.clientHeight;
-    if (distance < 150) {
-      messagesEndRef.current?.scrollIntoView({
-        behavior: "smooth",
-      });
-    }
-  }, [currentChat?.messages]);
+  // اسکرول خودکار حذف شد (فقط با کلیک دکمه)
 
   const loadChats = async () => {
     try {
@@ -109,9 +102,10 @@ export default function ChatInterface() {
 
   const handleSelectChat = async (chat: Chat) => {
     try {
+      // پاک کردن خطا هنگام انتخاب چت جدید
+      setStreamError(null);
       const full = await getChat(chat.id);
       setCurrentChat(full);
-      // در موبایل بعد از انتخاب، سایدبار را ببند
       if (isMobile) setSidebarOpen(false);
     } catch (error) {
       console.error(error);
@@ -156,9 +150,24 @@ export default function ChatInterface() {
     }, 15);
   };
 
+  // تابع اسکرول به پایین (فقط با کلیک دکمه)
+  const handleScrollToBottom = useCallback(() => {
+    if (lastMessageRef.current) {
+      lastMessageRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+      });
+    }
+  }, []);
+
   const handleSendMessage = async (e: FormEvent) => {
     e.preventDefault();
     if (!input.trim() && !imageFile) return;
+    if (loading) return;
+
+    // پاک کردن خطاهای قبلی
+    setStreamError(null);
+
     const text = input.trim();
     const file = imageFile;
     setInput("");
@@ -226,6 +235,7 @@ export default function ChatInterface() {
       }
       await loadChats();
     } catch (error: any) {
+      // اگر خطا مربوط به لغو شدن توسط کاربر باشد، پیام خاصی نشان نمی‌دهیم
       if (error.name === "AbortError") {
         cancelledRef.current = true;
         setCurrentChat((prev) => {
@@ -243,9 +253,24 @@ export default function ChatInterface() {
             }),
           };
         });
-      } else {
-        alert(error.message || "خطا در ارسال");
+        return; // از ادامه کد خارج می‌شویم
       }
+
+      // نمایش خطای زیبا به کاربر
+      const errorMessage =
+        error?.message ||
+        error?.error ||
+        "خطا در برقراری ارتباط با سرور. لطفاً دوباره تلاش کنید.";
+      setStreamError(errorMessage);
+
+      // حذف پیام دستیار ناقص
+      setCurrentChat((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          messages: prev.messages.filter((msg) => msg.id !== aiId),
+        };
+      });
     } finally {
       stopTyping(chatId);
       if (streams.current[chatId]) {
@@ -278,14 +303,12 @@ export default function ChatInterface() {
     }
   };
 
-  // باز/بسته کردن سایدبار با دکمه همبرگر
   const toggleSidebar = () => setSidebarOpen((prev) => !prev);
 
   return (
     <div className={styles.container}>
       <header className={styles.header}>
         <div className={styles.headerLeft}>
-          {/* دکمه همبرگر در موبایل */}
           {isMobile && (
             <button
               className={styles.hamburger}
@@ -315,7 +338,6 @@ export default function ChatInterface() {
       )}
 
       <div className={styles.mainArea}>
-        {/* سایدبار با کلاس اضافی برای نمایش در موبایل */}
         <div
           className={`${styles.sidebarWrapper} ${
             isMobile ? styles.sidebarMobile : ""
@@ -329,6 +351,7 @@ export default function ChatInterface() {
               setCurrentChat(null);
               setInput("");
               setImageFile(null);
+              setStreamError(null); // پاک کردن خطا در چت جدید
               if (isMobile) setSidebarOpen(false);
             }}
             onDeleteChat={handleDeleteChat}
@@ -336,24 +359,49 @@ export default function ChatInterface() {
           />
         </div>
 
-        {/* در موبایل یک لایه backdrop برای بستن سایدبار */}
         {isMobile && sidebarOpen && (
           <div className={styles.backdrop} onClick={() => setSidebarOpen(false)} />
         )}
 
         <main className={styles.main}>
           <div className={styles.messagesContainer}>
+            {/* نمایش بنر خطا در بالای لیست پیام‌ها */}
+            {streamError && (
+              <div className={styles.errorBanner}>
+                <span className={styles.errorIcon}>⚠️</span>
+                <div className={styles.errorContent}>
+                  <span className={styles.errorTitle}>خطا در ارسال پیام</span>
+                  <span className={styles.errorMessage}>{streamError}</span>
+                  <span className={styles.errorHint}>به زودی برطرف خواهد شد</span>
+                </div>
+                <button
+                  className={styles.errorDismiss}
+                  onClick={() => setStreamError(null)}
+                  aria-label="بستن"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
             {!currentChat || currentChat.messages.length === 0 ? (
               <div className={styles.emptyState}>
                 <span>💬</span>
                 <h2>چت جدید</h2>
               </div>
             ) : (
-              currentChat.messages.map((msg) => (
-                <ChatMessage key={`${msg.role}-${msg.id}`} message={msg} />
-              ))
+              currentChat.messages.map((msg, index) => {
+                const isLast = index === currentChat.messages.length - 1;
+                return (
+                  <div
+                    key={`${msg.role}-${msg.id}`}
+                    ref={isLast ? lastMessageRef : null}
+                  >
+                    <ChatMessage message={msg} />
+                  </div>
+                );
+              })
             )}
-            <div ref={messagesEndRef} />
           </div>
 
           <ChatInput
@@ -367,6 +415,7 @@ export default function ChatInterface() {
             isStreaming={loading}
             onCancel={handleCancelStream}
             inputRef={inputRef}
+            onScrollToBottom={handleScrollToBottom}
           />
         </main>
       </div>

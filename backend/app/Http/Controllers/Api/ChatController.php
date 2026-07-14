@@ -59,7 +59,31 @@ class ChatController extends Controller
     }
 
 
+    public function messages(Chat $chat, Request $request): JsonResponse
+    {
+        if ($chat->user_id !== auth()->id()) {
+            return response()->json(['error' => 'Forbidden'], 403);
+        }
 
+        $perPage = (int) $request->input('per_page', 10);
+        $page = (int) $request->input('page', 1);
+
+        // دریافت پیام‌ها با ترتیب نزولی (جدیدترین اول) برای صفحه‌بندی
+        $paginator = $chat->messages()
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        // معکوس کردن آیتم‌ها تا ترتیب قدیم به جدید شود (برای نمایش درست)
+        $items = array_reverse($paginator->items());
+
+        return response()->json([
+            'data' => $items,
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'per_page' => $paginator->perPage(),
+            'total' => $paginator->total(),
+        ]);
+    }
 
 
     /**

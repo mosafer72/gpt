@@ -7,9 +7,12 @@ import {
   useMemo,
   useEffect,
   useState,
+  useCallback,
 } from "react";
 
 import styles from "./ChatInput.module.css";
+
+type ScrollBehavior = 'auto' | 'smooth';
 
 interface ChatInputProps {
   value: string;
@@ -18,14 +21,11 @@ interface ChatInputProps {
   onImageUpload: (file: File) => void;
   onImageRemove: () => void;
   imageFile: File | null;
-
   disabled?: boolean;
-
   isStreaming?: boolean;
-
   onCancel?: () => void;
-
   inputRef?: RefObject<HTMLTextAreaElement | null>;
+  onScrollToBottom: (behavior?: ScrollBehavior) => void;
 }
 
 export default function ChatInput({
@@ -39,8 +39,40 @@ export default function ChatInput({
   isStreaming = false,
   onCancel,
   inputRef,
+  onScrollToBottom,
 }: ChatInputProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // ترکیب refهای داخلی و خارجی
+  const setTextareaRef = useCallback(
+    (element: HTMLTextAreaElement | null) => {
+      textareaRef.current = element;
+      if (inputRef) {
+        // @ts-ignore - برای سازگاری با RefObject
+        inputRef.current = element;
+      }
+    },
+    [inputRef]
+  );
+
+  // تابع تنظیم ارتفاع خودکار
+  const autoResize = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    // ریست کردن ارتفاع برای محاسبه صحیح scrollHeight
+    textarea.style.height = 'auto';
+    // تنظیم ارتفاع جدید با محدودیت 400px
+    const newHeight = Math.min(textarea.scrollHeight, 400);
+    textarea.style.height = `${newHeight}px`;
+    textarea.style.maxHeight = '400px';
+  }, []);
+
+  // هر بار value تغییر کند، ارتفاع را تنظیم کن
+  useEffect(() => {
+    autoResize();
+  }, [value, autoResize]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -55,6 +87,7 @@ export default function ChatInput({
   const previewUrl = useMemo(() => {
     return imageFile ? URL.createObjectURL(imageFile) : null;
   }, [imageFile]);
+
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -108,11 +141,25 @@ export default function ChatInput({
     }
   };
 
+  const handleScrollDown = useCallback(() => {
+    onScrollToBottom('smooth');
+  }, [onScrollToBottom]);
+
   return (
     <div className={styles.inputArea}>
+      <button
+        type="button"
+        className={styles.scrollDownBtn}
+        onClick={handleScrollDown}
+        aria-label="رفتن به انتهای گفتگو"
+      >
+        <span>↓</span>
+        رفتن به آخر گفتگو
+      </button>
+
       {imageFile && (
         <div className={styles.preview}>
-          <img src={URL.createObjectURL(imageFile)} alt="preview" />
+          <img src={previewUrl ?? undefined} alt="preview" />
           <button
             type="button"
             className={styles.removeBtn}
@@ -122,6 +169,7 @@ export default function ChatInput({
           </button>
         </div>
       )}
+
       <form className={styles.form} onSubmit={onSubmit}>
         <button
           type="button"
@@ -138,7 +186,7 @@ export default function ChatInput({
           hidden
         />
         <textarea
-          ref={inputRef}
+          ref={setTextareaRef}
           className={styles.input}
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -150,6 +198,12 @@ export default function ChatInput({
           rows={1}
           disabled={disabled}
           onKeyDown={handleKeyDown}
+          style={{
+            resize: 'none',
+            overflow: 'auto',
+            maxHeight: '400px',
+            minHeight: '44px',
+          }}
         />
         {isStreaming ? (
           <button type="button" className={styles.cancelBtn} onClick={onCancel}>

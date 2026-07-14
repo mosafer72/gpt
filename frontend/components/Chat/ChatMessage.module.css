@@ -1,252 +1,252 @@
-/* ===== پایه ===== */
-.wrapper {
-  display: flex;
-  gap: 14px;
-  width: 100%;
-  max-width: 900px;
-  margin: 0 auto 24px;
-  padding: 0 24px;
-}
-
-.user {
-  flex-direction: row-reverse;
-}
-
-.avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 800;
-  color: white;
-  background: linear-gradient(135deg, #2563eb, #7c3aed);
-}
-
-.assistant .avatar {
-  background: linear-gradient(135deg, #111827, #374151);
-}
-
-.bubble {
-  max-width: min(100%, 760px);
-  padding: 18px 20px;
-  border-radius: 22px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
-  position: relative;
-  /* جلوگیری از خروج محتوا از حباب */
-  overflow: hidden;
-  word-break: break-word;
-}
-
-.assistant .bubble {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(12px);
-}
-
-.user .bubble {
-  background: linear-gradient(135deg, #2563eb, #7c3aed);
-  color: white;
-}
-
-/* ===== محتوای متن ===== */
-.text {
-  direction: rtl;
-  text-align: right;
-  line-height: 1.9;
-  font-size: 15px;
-  /* شکستن کلمات طولانی */
-  overflow-wrap: break-word;
-  word-break: break-word;
-  max-width: 100%;
-  margin: 10px;
-  color: #fff;
-}
-
-.text p {
-  margin: 0 0 14px;
-}
-
-/* کد بلاک‌ها */
-.text pre {
-  background: #0f172a;
-  color: #e2e8f0;
-  padding: 14px;
-  border-radius: 14px;
-  overflow-x: auto;
-  margin: 14px 0;
-  direction: ltr;
-  text-align: left;
-  max-width: 100%;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.text code {
-  background: rgba(148, 163, 184, 0.15);
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-size: 14px;
-  overflow-wrap: break-word;
-  word-break: break-word;
-}
-
-.text pre code {
-  background: transparent;
-  padding: 0;
-  color: inherit;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-/* ===== تصویر ===== */
-.image {
-  max-width: 100%;
-  border-radius: 16px;
-  display: block;
-  cursor: pointer;
-}
-
-/* ===== کپی دکمه ===== */
-.copyButton {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: #666;
-  cursor: pointer;
-  opacity: 0.7;
-  transition: all 0.2s ease;
-}
-
-.copyButton:hover {
-  background: rgba(0, 0, 0, 0.08);
-  color: #111;
-  opacity: 1;
-}
-
-.paragraph {
-  margin-bottom: 12px;
-}
-
-/* ===== ریاضی (Katex) ===== */
-.katex {
-  direction: ltr;
-  overflow-x: auto;
-  overflow-y: hidden;
-  max-width: 100%;
-}
-
-/* ========================================== */
-/* ===== ریسپانسیو ===== */
-
-/* تبلت و صفحه‌های متوسط */
-@media (max-width: 1024px) {
+  /* ===== پایه ===== */
   .wrapper {
-    padding: 0 16px;
-    max-width: 100%;
+    display: flex;
+    gap: 14px;
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto 24px;
+    padding: 0 24px;
   }
-  .bubble {
-    max-width: min(100%, 680px);
-    padding: 16px 18px;
-  }
-  .text {
-    font-size: 14.5px;
-  }
-}
 
-/* موبایل (عرض تا 767px) */
-@media (max-width: 767px) {
-  .wrapper {
-    padding: 0 8px;
-    gap: 10px;
-    margin-bottom: 16px;
+  .user {
+    flex-direction: row-reverse;
   }
+
   .avatar {
-    width: 32px;
-    height: 32px;
-    font-size: 11px;
-    border-radius: 10px;
-  }
-  .bubble {
-    padding: 12px 14px;
-    border-radius: 18px;
-    max-width: 100%;
-  }
-  .text {
-    font-size: 14px;
-    line-height: 1.8;
-  }
-  .text p {
-    margin-bottom: 10px;
-  }
-  .text pre {
-    padding: 10px;
-    border-radius: 10px;
-    margin: 10px 0;
-    font-size: 13px;
-  }
-  .text code {
-    font-size: 13px;
-    padding: 1px 5px;
-  }
-  .copyButton {
-    width: 36px;
-    height: 36px;
-    right: 6px;
-    bottom: 6px;
-    opacity: 0.9;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-  }
-  .copyButton:hover {
-    background: rgba(0, 0, 0, 0.12);
-  }
-  .image {
+    width: 40px;
+    height: 40px;
     border-radius: 12px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+    color: white;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
   }
-}
 
-/* صفحه‌های بسیار کوچک (تا 480px) */
-@media (max-width: 480px) {
-  .wrapper {
-    padding: 0 4px;
-    gap: 8px;
+  .assistant .avatar {
+    background: linear-gradient(135deg, #111827, #374151);
+  }
+
+  .bubble {
+    max-width: min(100%, 760px);
+    padding: 18px 20px;
+    border-radius: 22px;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+    position: relative;
+    /* جلوگیری از خروج محتوا از حباب */
+    overflow: hidden;
+    word-break: break-word;
+  }
+
+  .assistant .bubble {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+  }
+
+  .user .bubble {
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    color: white;
+  }
+
+  /* ===== محتوای متن ===== */
+  .text {
+    direction: rtl;
+    text-align: right;
+    line-height: 1.9;
+    font-size: 15px;
+    /* شکستن کلمات طولانی */
+    overflow-wrap: break-word;
+    word-break: break-word;
+    max-width: 100%;
+    margin: 10px;
+    color: #fff;
+  }
+
+  .text p {
+    margin: 0 0 14px;
+  }
+
+  /* کد بلاک‌ها */
+  .text pre {
+    background: #0f172a;
+    color: #e2e8f0;
+    padding: 14px;
+    border-radius: 14px;
+    overflow-x: auto;
+    margin: 14px 0;
+    direction: ltr;
+    text-align: left;
+    max-width: 100%;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .text code {
+    background: rgba(148, 163, 184, 0.15);
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 14px;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  .text pre code {
+    background: transparent;
+    padding: 0;
+    color: inherit;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /* ===== تصویر ===== */
+  .image {
+    max-width: 100%;
+    border-radius: 16px;
+    display: block;
+    cursor: pointer;
+  }
+
+  /* ===== کپی دکمه ===== */
+  .copyButton {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #666;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: all 0.2s ease;
+  }
+
+  .copyButton:hover {
+    background: rgba(0, 0, 0, 0.08);
+    color: #111;
+    opacity: 1;
+  }
+
+  .paragraph {
     margin-bottom: 12px;
   }
-  .bubble {
-    padding: 10px 12px;
-    border-radius: 14px;
+
+  /* ===== ریاضی (Katex) ===== */
+  .katex {
+    direction: ltr;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-width: 100%;
   }
-  .text {
-    font-size: 13.5px;
-    line-height: 1.7;
+
+  /* ========================================== */
+  /* ===== ریسپانسیو ===== */
+
+  /* تبلت و صفحه‌های متوسط */
+  @media (max-width: 1024px) {
+    .wrapper {
+      padding: 0 16px;
+      max-width: 100%;
+    }
+    .bubble {
+      max-width: min(100%, 680px);
+      padding: 16px 18px;
+    }
+    .text {
+      font-size: 14.5px;
+    }
   }
-  .text pre {
-    padding: 8px;
-    border-radius: 8px;
-    font-size: 12.5px;
+
+  /* موبایل (عرض تا 767px) */
+  @media (max-width: 767px) {
+    .wrapper {
+      padding: 0 8px;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .avatar {
+      width: 32px;
+      height: 32px;
+      font-size: 11px;
+      border-radius: 10px;
+    }
+    .bubble {
+      padding: 12px 14px;
+      border-radius: 18px;
+      max-width: 100%;
+    }
+    .text {
+      font-size: 14px;
+      line-height: 1.8;
+    }
+    .text p {
+      margin-bottom: 10px;
+    }
+    .text pre {
+      padding: 10px;
+      border-radius: 10px;
+      margin: 10px 0;
+      font-size: 13px;
+    }
+    .text code {
+      font-size: 13px;
+      padding: 1px 5px;
+    }
+    .copyButton {
+      width: 36px;
+      height: 36px;
+      right: 6px;
+      bottom: 6px;
+      opacity: 0.9;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+    }
+    .copyButton:hover {
+      background: rgba(0, 0, 0, 0.12);
+    }
+    .image {
+      border-radius: 12px;
+    }
   }
-  .avatar {
-    width: 28px;
-    height: 28px;
-    font-size: 10px;
-    border-radius: 8px;
+
+  /* صفحه‌های بسیار کوچک (تا 480px) */
+  @media (max-width: 480px) {
+    .wrapper {
+      padding: 0 4px;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .bubble {
+      padding: 10px 12px;
+      border-radius: 14px;
+    }
+    .text {
+      font-size: 13.5px;
+      line-height: 1.7;
+    }
+    .text pre {
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 12.5px;
+    }
+    .avatar {
+      width: 28px;
+      height: 28px;
+      font-size: 10px;
+      border-radius: 8px;
+    }
+    .copyButton {
+      width: 32px;
+      height: 32px;
+      right: 4px;
+      bottom: 4px;
+    }
   }
-  .copyButton {
-    width: 32px;
-    height: 32px;
-    right: 4px;
-    bottom: 4px;
-  }
-}

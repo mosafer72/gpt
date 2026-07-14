@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Http\Services\SmsIrService;
+use Cache;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
@@ -19,101 +20,102 @@ class AuthController extends Controller
     }
 
     // ۱. ارسال کد تایید
-    public function sendVerificationCode(Request $request): JsonResponse
+    // متد ورود
+    public function sendLoginCode(Request $request): JsonResponse
     {
-
         $validated = $request->validate([
-
-            'phone' => [
-
-                'required',
-
-                'string',
-
-                'regex:/^09[0-9]{9}$/',
-
-            ],
-
-            'name' => [
-
-                'required',
-
-                'string',
-
-                'min:2',
-
-                'max:100',
-
-            ],
-
+            'phone' => 'required|string|regex:/^09[0-9]{9}$/',
         ]);
 
         $phone = $validated['phone'];
 
-        $name = trim($validated['name']);
-
-        // محدودیت ارسال: هر ۶۰ ثانیه یک بار
-
+        // محدودیت ارسال
         $cacheKey = 'sms_send_' . $phone;
-
-        if (cache()->has($cacheKey)) {
-
+        if (Cache::has($cacheKey)) {
             return response()->json([
-
                 'error' => 'لطفاً یک دقیقه بعد دوباره تلاش کنید.'
-
             ], 429);
-
         }
 
-        // ایجاد یا بروزرسانی کاربر و ذخیره نام
+        // بررسی وجود کاربر
+        $user = User::where('phone', $phone)->first();
+        if (!$user) {
+            return response()->json([
+                'error' => 'کاربری با این شماره یافت نشد. لطفاً ثبت‌نام کنید.'
+            ], 404);
+        }
 
-        $user = User::updateOrCreate(
-
-            ['phone' => $phone],
-
-            ['name' => $name]
-
-        );
-
-        // تولید کد ۶ رقمی امن
-
+        // تولید و ذخیره کد
         $code = (string) random_int(100000, 999999);
-
-        // ذخیره کد هش شده و زمان انقضا
-
         $user->update([
-
             'verification_code' => Hash::make($code),
-
             'verification_code_expires_at' => now()->addMinutes(5),
-
         ]);
 
-        // ثبت محدودیت ارسال
-
-        cache()->put($cacheKey, true, now()->addMinute());
+        Cache::put($cacheKey, true, now()->addMinute());
 
         // ارسال پیامک
-
         $sent = $this->smsService->sendVerificationCode($phone, $code);
-
         if (!$sent) {
-
             return response()->json([
-
                 'error' => 'ارسال پیامک با مشکل مواجه شد. لطفاً مجدداً تلاش کنید.'
-
             ], 500);
-
         }
 
         return response()->json([
+            'message' => 'کد تایید برای ورود ارسال شد.',
+        ]);
+    }
 
-            'message' => 'کد تایید ارسال شد.',
-
+    // متد ثبت‌نام
+    public function sendRegisterCode(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'phone' => 'required|string|regex:/^09[0-9]{9}$/',
+            'name'  => 'required|string|min:2|max:100',
         ]);
 
+        $phone = $validated['phone'];
+        $name  = trim($validated['name']);
+
+        // محدودیت ارسال
+        $cacheKey = 'sms_send_' . $phone;
+        if (Cache::has($cacheKey)) {
+            return response()->json([
+                'error' => 'لطفاً یک دقیقه بعد دوباره تلاش کنید.'
+            ], 429);
+        }
+
+        // ایجاد یا بروزرسانی کاربر با نام جدید
+        $user = User::updateOrCreate(
+            ['phone' => $phone],
+            ['name' => $name]
+        );
+        // اگر کاربر قبلاً وجود داشت، نام را به‌روز می‌کنیم
+        if (!$user->wasRecentlyCreated) {
+            $user->update(['name' => $name]);
+        }
+
+        // تولید و ذخیره کد
+        $code = (string) random_int(100000, 999999);
+        $user->update([
+            'verification_code' => Hash::make($code),
+            'verification_code_expires_at' => now()->addMinutes(5),
+        ]);
+
+        Cache::put($cacheKey, true, now()->addMinute());
+
+        // ارسال پیامک
+        $sent = $this->smsService->sendVerificationCode($phone, $code);
+        if (!$sent) {
+            return response()->json([
+                'error' => 'ارسال پیامک با مشکل مواجه شد. لطفاً مجدداً تلاش کنید.'
+            ], 500);
+        }
+
+        return response()->json([
+            'message' => 'کد تایید برای ثبت‌نام ارسال شد.',
+        ]);
     }
 
     // ۲. تایید کد و ورود

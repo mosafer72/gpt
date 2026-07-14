@@ -1,7 +1,6 @@
 "use client";
 
 import { memo } from "react";
-
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
@@ -14,7 +13,13 @@ import { Message } from "@/types";
 
 import styles from "./ChatMessage.module.css";
 
-function ChatMessage({ message }: { message: Message }) {
+function ChatMessage({
+  message,
+  className,
+}: {
+  message: Message;
+  className?: string;
+}) {
   const isUser = message.role === "user";
 
   const imageUrl =
@@ -23,7 +28,9 @@ function ChatMessage({ message }: { message: Message }) {
 
   return (
     <div
-      className={`${styles.wrapper} ${isUser ? styles.user : styles.assistant}`}
+      className={`${styles.wrapper} ${isUser ? styles.user : styles.assistant} ${
+        className || ""
+      }`}
     >
       <div className={styles.avatar}>{isUser ? "👤" : "✨"}</div>
 
@@ -39,14 +46,11 @@ function ChatMessage({ message }: { message: Message }) {
                 p({ children }) {
                   return <div className={styles.paragraph}>{children}</div>;
                 },
-
                 pre({ children }) {
                   return <>{children}</>;
                 },
-
-                code({ inline, className, children }:any) {
+                code({ inline, className, children }: any) {
                   const match = /language-(\w+)/.exec(className || "");
-
                   if (!inline) {
                     return (
                       <CodeBlock language={match?.[1]}>
@@ -54,7 +58,6 @@ function ChatMessage({ message }: { message: Message }) {
                       </CodeBlock>
                     );
                   }
-
                   return <code className={className}>{children}</code>;
                 },
               }}

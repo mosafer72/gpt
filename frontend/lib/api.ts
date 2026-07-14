@@ -202,3 +202,28 @@ export async function getTodayUsage() {
 
   return json.data;
 }
+export async function getChatMessages(
+  chatId: number,
+  page: number = 1,
+  perPage: number = 10,
+): Promise<{
+  data: Message[];
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+}> {
+  const token = localStorage.getItem("auth_token");
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/chats/${chatId}/messages?page=${page}&per_page=${perPage}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+  if (!response.ok) {
+    throw new Error("Failed to fetch messages");
+  }
+  return response.json();
+}

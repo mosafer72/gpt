@@ -8,7 +8,9 @@ use App\Http\Controllers\Api\UsageController;
 use Illuminate\Http\Request;
 
 // روت‌های عمومی (بدون احراز هویت)
-Route::post('auth/send-code', [AuthController::class, 'sendVerificationCode']); // حذف ->name("login")
+Route::post('/auth/send-login-code', [AuthController::class, 'sendLoginCode']);
+Route::post('/auth/send-register-code', [AuthController::class, 'sendRegisterCode']);
+
 Route::post('auth/verify-code', [AuthController::class, 'verifyCode']);
 Route::post('auth/resend-code', [AuthController::class, 'resendCode']);
 
@@ -20,6 +22,8 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::apiResource('/chats', ChatController::class);
+    Route::get('/chats/{chat}/messages', [ChatController::class, 'messages']);
+
 
     Route::post('/chats/stream', [ChatController::class, 'store'])
 
