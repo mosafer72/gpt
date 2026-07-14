@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Plan;
-use App\Models\AIModel;
+use App\Models\AiModel;
 
 
 class PlanSeeder extends Seeder
@@ -264,7 +264,7 @@ class PlanSeeder extends Seeder
 
         $free->models()->sync([
 
-            AIModel::where(
+            AiModel::where(
                 'key',
                 'openai/gpt-oss-120b:free'
             )->first()->id
@@ -277,9 +277,9 @@ class PlanSeeder extends Seeder
 
         $basic->models()->sync([
 
-            AIModel::where('key', 'openai/gpt-oss-120b:free')->first()->id,
+            AiModel::where('key', 'openai/gpt-oss-120b:free')->first()->id,
 
-            AIModel::where('key', 'deepseek-chat')->first()->id
+            AiModel::where('key', 'deepseek-chat')->first()->id
 
         ]);
 
@@ -289,11 +289,11 @@ class PlanSeeder extends Seeder
 
         $standard->models()->sync([
 
-            AIModel::where('key', 'gpt-4.1-mini')->first()->id,
+            AiModel::where('key', 'gpt-4.1-mini')->first()->id,
 
-            AIModel::where('key', 'deepseek-chat')->first()->id,
+            AiModel::where('key', 'deepseek-chat')->first()->id,
 
-            AIModel::where('key', 'qwen-3')->first()->id
+            AiModel::where('key', 'qwen-3')->first()->id
 
         ]);
 
@@ -303,13 +303,13 @@ class PlanSeeder extends Seeder
 
         $premium->models()->sync([
 
-            AIModel::where('key', 'gpt-5')->first()->id,
+            AiModel::where('key', 'gpt-5')->first()->id,
 
-            AIModel::where('key', 'claude-sonnet-4')->first()->id,
+            AiModel::where('key', 'claude-sonnet-4')->first()->id,
 
-            AIModel::where('key', 'qwen-3')->first()->id,
+            AiModel::where('key', 'qwen-3')->first()->id,
 
-            AIModel::where('key', 'deepseek-chat')->first()->id
+            AiModel::where('key', 'deepseek-chat')->first()->id
 
         ]);
 
@@ -319,11 +319,11 @@ class PlanSeeder extends Seeder
 
         $enterprise->models()->sync([
 
-            AIModel::where('key', 'gpt-5')->first()->id,
+            AiModel::where('key', 'gpt-5')->first()->id,
 
-            AIModel::where('key', 'claude-sonnet-4')->first()->id,
+            AiModel::where('key', 'claude-sonnet-4')->first()->id,
 
-            AIModel::where('key', 'gpt-4.1-mini')->first()->id
+            AiModel::where('key', 'gpt-4.1-mini')->first()->id
 
         ]);
 

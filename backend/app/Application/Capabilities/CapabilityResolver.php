@@ -4,7 +4,7 @@ namespace App\Application\Capabilities;
 
 
 use App\Models\User;
-use App\Models\AIModel;
+use App\Models\AiModel;
 
 
 class CapabilityResolver

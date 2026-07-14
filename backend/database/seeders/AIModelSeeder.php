@@ -3,16 +3,16 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\AIModel;
+use App\Models\AiModel;
 
-class AIModelSeeder extends Seeder
+class AiModelSeeder extends Seeder
 {
 
     public function run(): void
     {
 
 
-        AIModel::updateOrCreate(
+        AiModel::updateOrCreate(
             [
                 'key'=>'openai/gpt-oss-120b:free'
             ],
@@ -25,7 +25,7 @@ class AIModelSeeder extends Seeder
         );
 
 
-        AIModel::updateOrCreate(
+        AiModel::updateOrCreate(
             [
                 'key'=>'gpt-4.1-mini'
             ],
@@ -39,7 +39,7 @@ class AIModelSeeder extends Seeder
 
 
 
-        AIModel::updateOrCreate(
+        AiModel::updateOrCreate(
             [
                 'key'=>'gpt-5'
             ],
@@ -53,7 +53,7 @@ class AIModelSeeder extends Seeder
 
 
 
-        AIModel::updateOrCreate(
+        AiModel::updateOrCreate(
             [
                 'key'=>'deepseek-chat'
             ],
@@ -67,7 +67,7 @@ class AIModelSeeder extends Seeder
 
 
 
-        AIModel::updateOrCreate(
+        AiModel::updateOrCreate(
             [
                 'key'=>'claude-sonnet-4'
             ],
@@ -81,7 +81,7 @@ class AIModelSeeder extends Seeder
 
 
 
-        AIModel::updateOrCreate(
+        AiModel::updateOrCreate(
             [
                 'key'=>'qwen-3'
             ],

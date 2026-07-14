@@ -70,7 +70,7 @@ class Plan extends Model
 public function models()
 {
     return $this->belongsToMany(
-        AIModel::class,
+        AiModel::class,
         'plan_model',
         'plan_id',
         'ai_model_id'
