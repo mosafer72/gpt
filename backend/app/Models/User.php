@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable
 {
@@ -101,5 +102,37 @@ class User extends Authenticatable
     {
         $plan = $this->currentPlan();
         return $plan ? $plan->daily_message_limit : 4; // پیش‌فرض ۴ پیام
+    }
+
+    public function tokenWallet()
+    {
+        return $this->hasOne(TokenWallet::class);
+    }
+    public function availableModels()
+    {
+
+        $subscription =
+            $this->activeSubscription()
+                ->with('plan.models')
+                ->first();
+
+
+
+        if (!$subscription) {
+            return collect([]);
+        }
+
+
+
+        return $subscription
+            ->plan
+            ->models;
+
+    }
+    public function currentSubscription(): HasOne
+    {
+        return $this->hasOne(Subscription::class)
+            ->where('is_active', true)
+            ->latest();
     }
 }

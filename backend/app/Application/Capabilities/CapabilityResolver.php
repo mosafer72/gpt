@@ -4,6 +4,7 @@ namespace App\Application\Capabilities;
 
 
 use App\Models\User;
+use App\Models\AIModel;
 
 
 class CapabilityResolver
@@ -13,8 +14,8 @@ class CapabilityResolver
     public function enabled(
         User $user,
         string $key
-    ): bool {
-
+    ): bool
+    {
 
         return (bool) $this->value(
             $user,
@@ -24,6 +25,10 @@ class CapabilityResolver
 
     }
 
+
+
+
+
     public function value(
 
         User $user,
@@ -32,9 +37,13 @@ class CapabilityResolver
 
         mixed $default = null
 
-    ): mixed {
+    ): mixed
+    {
+
 
         $plan = $user->currentPlan();
+
+
 
         if (!$plan) {
 
@@ -42,11 +51,89 @@ class CapabilityResolver
 
         }
 
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | مدل انتخابی
+        |--------------------------------------------------------------------------
+        */
+
+
         if ($key === 'model') {
 
-            return $plan->model ?? $default;
+
+            /*
+             * اگر کاربر مدل انتخاب کرده باشد
+             * مثلا از فرانت:
+             *
+             * selected_model_id
+             *
+             */
+
+
+            if ($user->selected_model_id) {
+
+
+                $model = $plan
+                    ->models()
+                    ->where(
+                        'ai_models.id',
+                        $user->selected_model_id
+                    )
+                    ->first();
+
+
+
+                if ($model) {
+
+                    return $model->model_key;
+
+                }
+
+            }
+
+
+
+
+
+            /*
+             * اگر کاربر انتخاب نکرده بود
+             * مدل پیش فرض پلن
+             */
+
+
+            $defaultModel =
+                $plan->defaultModel();
+
+
+
+            if ($defaultModel) {
+
+
+                return $defaultModel->model_key;
+
+
+            }
+
+
+
+            return $default;
 
         }
+
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | بقیه capability ها
+        |--------------------------------------------------------------------------
+        */
+
 
         return data_get(
 
@@ -58,5 +145,8 @@ class CapabilityResolver
 
         );
 
+
     }
+
+
 }

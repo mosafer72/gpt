@@ -13,7 +13,7 @@ use App\Domain\LLM\ChatRequest;
 use App\Domain\Message\DTOs\MessageDTO;
 use App\Application\Capabilities\CapabilityResolver;
 use App\Models\User;
-
+use App\Services\TokenService;
 
 
 class ChatPipeline
@@ -21,7 +21,6 @@ class ChatPipeline
 
 
     public function __construct(
-
 
         protected ConversationRepository $conversationRepository,
 
@@ -37,7 +36,9 @@ class ChatPipeline
 
         protected CapabilityResolver $capability,
 
-        protected MessageStore $messageStore
+        protected MessageStore $messageStore,
+
+        protected TokenService $tokenService
 
     ) {
     }
@@ -52,6 +53,21 @@ class ChatPipeline
             'enabled' => $this->capability->enabled($user, 'planner'),
 
         ]);
+
+
+        if (
+            !$this->tokenService->check(
+                $user,
+                1000
+            )
+        ) {
+
+            throw new \Exception(
+                'اعتبار توکن شما کافی نیست'
+            );
+
+        }
+
 
         if (
             $this->capability->enabled(
@@ -90,6 +106,16 @@ class ChatPipeline
             $context,
             $user
         );
+
+        $this->tokenService->consume($user, 1000);
+
+        \Log::info('STREAM TOKENS RESERVED', [
+
+            'user_id' => $user->id,
+
+            'reserved_tokens' => 1000,
+
+        ]);
 
         return $this->llmProvider->stream($request);
 
@@ -311,6 +337,19 @@ class ChatPipeline
         ]);
 
 
+        if (
+            !$this->tokenService->check(
+                $user,
+                1000
+            )
+        ) {
+
+            throw new \Exception(
+                'اعتبار توکن شما کافی نیست'
+            );
+
+        }
+
         $response =
             $this->llmProvider
                 ->chat(
@@ -325,6 +364,15 @@ class ChatPipeline
             $response->content,
 
             tokenUsage:
+            $response->usage->totalTokens
+
+        );
+
+
+        $this->tokenService->consume(
+
+            $user,
+
             $response->usage->totalTokens
 
         );

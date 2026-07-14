@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use App\Models\TokenWallet;
 
 class SubscriptionController extends Controller
 {
@@ -23,10 +24,21 @@ class SubscriptionController extends Controller
     }
 
     // 1. دریافت لیست تمام پلن‌های فعال
-    public function plans(): JsonResponse
+    public function plans()
     {
-        $plans = Plan::where('is_active', true)->get();
+
+        $plans = Plan::with([
+            'models'
+        ])
+            ->where(
+                'is_active',
+                true
+            )
+            ->get();
+
+
         return response()->json($plans);
+
     }
 
     // 2. دریافت اطلاعات اشتراک فعال کاربر
@@ -37,7 +49,12 @@ class SubscriptionController extends Controller
             return response()->json(['error' => 'احراز هویت نشده‌اید.'], 401);
         }
 
-        $subscription = $user->activeSubscription()->with('plan')->first();
+        $subscription = $user
+            ->activeSubscription()
+            ->with([
+                'plan.models'
+            ])
+            ->first();
 
         if (!$subscription) {
             return response()->json([
@@ -164,6 +181,7 @@ class SubscriptionController extends Controller
             'transaction_id' => 'free_upgrade_' . time(),
         ]);
 
+
         return response()->json([
             'success' => true,
             'message' => 'اشتراک شما با موفقیت ارتقا یافت.',
@@ -240,6 +258,51 @@ class SubscriptionController extends Controller
             'is_active' => true,
             'transaction_id' => $verifyResult['ref_id'],
         ]);
+        $wallet = TokenWallet::firstOrCreate(
+            [
+                'user_id' => $user->id
+            ],
+            [
+                'total_tokens' => 0,
+                'used_tokens' => 0,
+                'remaining_tokens' => 0,
+            ]
+        );
+
+
+        $wallet->update([
+
+            'total_tokens' => $plan->token_limit,
+
+            'remaining_tokens' => $plan->token_limit,
+
+            'used_tokens' => 0
+
+        ]);
         return redirect()->to('/payment/success/?ref_id=' . $subscription['transaction_id'] . '&authority=' . $transaction->transaction);
+    }
+
+
+    public function wallet()
+    {
+        $user = Auth::user();
+
+        $wallet = TokenWallet::firstOrCreate(
+            [
+                'user_id' => $user->id
+            ],
+            [
+                'total_tokens' => 0,
+                'used_tokens' => 0,
+                'remaining_tokens' => 0
+            ]
+        );
+
+
+        return response()->json([
+            "total_tokens" => $wallet->total_tokens,
+            "used_tokens" => $wallet->used_tokens,
+            "remaining_tokens" => $wallet->remaining_tokens
+        ]);
     }
 }

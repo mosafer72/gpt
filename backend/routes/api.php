@@ -3,8 +3,10 @@
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\MessageExportController;
+use App\Http\Controllers\Api\ModelController;
 use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\UsageController;
+use App\Http\Controllers\Api\TokenWalletController;
 use Illuminate\Http\Request;
 
 // روت‌های عمومی (بدون احراز هویت)
@@ -36,12 +38,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user/status', [AuthController::class, 'status']);
 
 
-    Route::get('/usage',[UsageController::class, 'index']);
-    Route::get('/usage/today',[UsageController::class, 'today']);
-    Route::get('/usage/summary',[UsageController::class, 'summary']);
-    Route::get('/usage/{id}',[UsageController::class, 'show']);
+    Route::get('/usage', [UsageController::class, 'index']);
+    Route::get('/usage/today', [UsageController::class, 'today']);
+    Route::get('/usage/summary', [UsageController::class, 'summary']);
+    Route::get('/usage/{id}', [UsageController::class, 'show']);
     Route::get('/messages/{message}/export', [MessageExportController::class, 'export']);
-
+    Route::get(
+        '/user/models',
+        [ModelController::class, 'index']
+    );
+    Route::get(
+        '/token-wallet',
+        [TokenWalletController::class, 'show']
+    );
 
 });
 

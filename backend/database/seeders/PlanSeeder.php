@@ -2,175 +2,339 @@
 
 namespace Database\Seeders;
 
-use App\Models\Plan;
 use Illuminate\Database\Seeder;
+use App\Models\Plan;
+use App\Models\AIModel;
+
 
 class PlanSeeder extends Seeder
 {
+
     public function run(): void
     {
 
-        Plan::updateOrCreate(
-            ['name' => 'free'],
-            [
-                'display_name' => 'رایگان',
 
-                'model' => 'openai/gpt-oss-120b:free',
-
-                'price' => 0,
-
-                'duration_days' => 365,
-
-                'daily_message_limit' => 4,
-
-                'features' => [
-                    'روزانه ۴ پیام رایگان',
-                    'مدل openai/gpt-oss-120b:free',
-                    'بدون حافظه و Planner'
+        $free =
+            Plan::updateOrCreate(
+                [
+                    'name' => 'free'
                 ],
+                [
 
-                'capabilities' => [
-                    'planner' => false,
-                    'memory' => false,
-                    'max_tokens' => 1000,
-                    'temperature' => 0.7
+                    'display_name' => 'رایگان',
+
+                    'price' => 0,
+
+                    'token_limit' => 50000,
+
+                    'duration_days' => 365,
+
+                    'daily_message_limit' => 4,
+
+
+                    'features' => [
+                        'روزانه ۴ پیام رایگان',
+                        'مدل رایگان'
+                    ],
+
+
+                    'capabilities' => [
+
+                        'planner' => false,
+
+                        'memory' => false,
+
+                        'max_tokens' => 1000,
+
+                        'temperature' => 0.7
+
+                    ],
+
+
+                    'is_active' => true
+
+                ]
+            );
+
+
+
+
+        $basic =
+            Plan::updateOrCreate(
+                [
+                    'name' => 'basic'
                 ],
+                [
 
-                'is_active' => true,
-            ]
+                    'display_name' => 'پایه',
+
+                    'price' => 100000,
+
+                    'token_limit' => 1000000,
+
+
+                    'duration_days' => 30,
+
+
+                    'daily_message_limit' => 50,
+
+
+                    'features' => [
+                        'حافظه گفتگو',
+                        'مدل های پایه'
+                    ],
+
+
+                    'capabilities' => [
+
+                        'planner' => false,
+
+                        'memory' => true,
+
+                        'max_tokens' => 2000,
+
+                        'temperature' => 0.7
+
+                    ],
+
+
+                    'is_active' => true
+
+                ]
+            );
+
+
+
+
+
+        $standard =
+            Plan::updateOrCreate(
+                [
+                    'name' => 'standard'
+                ],
+                [
+
+                    'display_name' => 'متوسط',
+
+                    'price' => 250000,
+
+                    'token_limit' => 3000000,
+
+
+                    'duration_days' => 30,
+
+
+                    'daily_message_limit' => 200,
+
+
+                    'features' => [
+                        'Planner',
+                        'Memory',
+                        'مدل های حرفه ای'
+                    ],
+
+
+                    'capabilities' => [
+
+                        'planner' => true,
+
+                        'memory' => true,
+
+                        'max_tokens' => 4000,
+
+                        'temperature' => 0.7
+
+                    ],
+
+
+                    'is_active' => true
+
+                ]
+            );
+
+
+
+
+
+
+        $premium =
+            Plan::updateOrCreate(
+                [
+                    'name' => 'premium'
+                ],
+                [
+
+                    'display_name' => 'پیشرفته',
+
+                    'price' => 450000,
+
+                    'token_limit' => 10000000,
+
+
+                    'duration_days' => 30,
+
+
+                    'daily_message_limit' => 500,
+
+
+                    'features' => [
+                        'تمام مدل ها',
+                        'Planner پیشرفته',
+                        'Memory هوشمند'
+                    ],
+
+
+                    'capabilities' => [
+
+                        'planner' => true,
+
+                        'memory' => true,
+
+                        'max_tokens' => 8000,
+
+                        'temperature' => 0.6
+
+                    ],
+
+
+                    'is_active' => true
+
+                ]
+            );
+
+
+
+
+
+        $enterprise =
+            Plan::updateOrCreate(
+                [
+                    'name' => 'enterprise'
+                ],
+                [
+
+                    'display_name' => 'ویژه',
+
+                    'price' => 750000,
+
+
+                    'token_limit' => 30000000,
+
+
+                    'duration_days' => 30,
+
+
+                    'daily_message_limit' => 1000,
+
+
+                    'features' => [
+                        'تمام مدل ها',
+                        'بالاترین کیفیت'
+                    ],
+
+
+                    'capabilities' => [
+
+                        'planner' => true,
+
+                        'memory' => true,
+
+                        'max_tokens' => 16000,
+
+                        'temperature' => 0.5
+
+                    ],
+
+
+                    'is_active' => true
+
+                ]
+            );
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | اتصال مدل ها به پلن ها
+        |--------------------------------------------------------------------------
+        */
+
+
+        $free->models()->sync([
+
+            AIModel::where(
+                'key',
+                'openai/gpt-oss-120b:free'
+            )->first()->id
+
+        ]);
+
+
+
+
+
+        $basic->models()->sync([
+
+            AIModel::where('key', 'openai/gpt-oss-120b:free')->first()->id,
+
+            AIModel::where('key', 'deepseek-chat')->first()->id
+
+        ]);
+
+
+
+
+
+        $standard->models()->sync([
+
+            AIModel::where('key', 'gpt-4.1-mini')->first()->id,
+
+            AIModel::where('key', 'deepseek-chat')->first()->id,
+
+            AIModel::where('key', 'qwen-3')->first()->id
+
+        ]);
+
+
+
+
+
+        $premium->models()->sync([
+
+            AIModel::where('key', 'gpt-5')->first()->id,
+
+            AIModel::where('key', 'claude-sonnet-4')->first()->id,
+
+            AIModel::where('key', 'qwen-3')->first()->id,
+
+            AIModel::where('key', 'deepseek-chat')->first()->id
+
+        ]);
+
+
+
+
+
+        $enterprise->models()->sync([
+
+            AIModel::where('key', 'gpt-5')->first()->id,
+
+            AIModel::where('key', 'claude-sonnet-4')->first()->id,
+
+            AIModel::where('key', 'gpt-4.1-mini')->first()->id
+
+        ]);
+
+
+
+
+        $this->command->info(
+            '✅ پلن‌ها و مدل‌ها با موفقیت ساخته شدند'
         );
 
 
-
-        Plan::updateOrCreate(
-            ['name' => 'basic'],
-            [
-                'display_name' => 'پایه',
-
-                'model' => 'openai/gpt-oss-120b:free',
-
-                'price' => 100000,
-
-                'duration_days' => 30,
-
-                'daily_message_limit' => 50,
-
-                'features' => [
-                    'روزانه ۵۰ پیام',
-                    'مدل openai/gpt-oss-120b:free',
-                    'حافظه گفتگو فعال'
-                ],
-
-                'capabilities' => [
-                    'planner' => false,
-                    'memory' => true,
-                    'max_tokens' => 700,
-                    'temperature' => 0.7
-                ],
-
-                'is_active' => true,
-            ]
-        );
-
-
-
-        Plan::updateOrCreate(
-            ['name' => 'standard'],
-            [
-                'display_name' => 'متوسط',
-
-                'model' => 'gpt-4o',
-
-                'price' => 250000,
-
-                'duration_days' => 30,
-
-                'daily_message_limit' => 200,
-
-                'features' => [
-                    'روزانه ۲۰۰ پیام',
-                    'Planner فعال',
-                    'حافظه بلندمدت',
-                    'مدل GPT-4o'
-                ],
-
-                'capabilities' => [
-                    'planner' => true,
-                    'memory' => true,
-                    'max_tokens' => 4000,
-                    'temperature' => 0.7
-                ],
-
-                'is_active' => true,
-            ]
-        );
-
-
-
-        Plan::updateOrCreate(
-            ['name' => 'premium'],
-            [
-                'display_name' => 'پیشرفته',
-
-                'model' => 'gpt-4.5',
-
-                'price' => 450000,
-
-                'duration_days' => 30,
-
-                'daily_message_limit' => 500,
-
-                'features' => [
-                    'روزانه ۵۰۰ پیام',
-                    'Planner پیشرفته',
-                    'حافظه هوشمند',
-                    'مدل GPT-4.5'
-                ],
-
-                'capabilities' => [
-                    'planner' => true,
-                    'memory' => true,
-                    'max_tokens' => 8000,
-                    'temperature' => 0.6
-                ],
-
-                'is_active' => true,
-            ]
-        );
-
-
-
-        Plan::updateOrCreate(
-            ['name' => 'enterprise'],
-            [
-                'display_name' => 'ویژه',
-
-                'model' => 'gpt-4-turbo',
-
-                'price' => 750000,
-
-                'duration_days' => 30,
-
-                'daily_message_limit' => 1000,
-
-                'features' => [
-                    'روزانه ۱۰۰۰ پیام',
-                    'تمام قابلیت‌های هوشمند فعال',
-                    'بالاترین کیفیت پاسخ'
-                ],
-
-                'capabilities' => [
-                    'planner' => true,
-                    'memory' => true,
-                    'max_tokens' => 16000,
-                    'temperature' => 0.5
-                ],
-
-                'is_active' => true,
-            ]
-        );
-
-
-        $this->command->info('✅ پلن‌ها با موفقیت ایجاد شدند.');
     }
+
 }

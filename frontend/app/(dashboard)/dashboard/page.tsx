@@ -1,213 +1,99 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
 import { useRouter } from "next/navigation";
 
 import styles from "./page.module.css";
 import TokenUsageCard from "@/components/Common/TokenUsageCard";
 
-interface Plan {
-  id: number;
+import { getDashboardData, initiatePayment } from "@/lib/api";
 
-  name: string;
-
-  display_name: string;
-
-  model: string;
-
-  price: number;
-
-  price_in_tomans: number;
-
-  duration_days: number;
-
-  features: string[];
-}
-
-interface SubscriptionInfo {
-  has_subscription: boolean;
-
-  subscription?: {
-    id: number;
-
-    plan: Plan;
-
-    started_at: string;
-
-    expires_at: string;
-
-    days_remaining: number;
-
-    is_valid: boolean;
-  };
-}
+import {Plan,Subscription} from "@/types";
 
 export default function DashboardPage() {
   const router = useRouter();
 
-  const [user, setUser] = useState<any>(null);
-
   const [plans, setPlans] = useState<Plan[]>([]);
 
-  const [mySubscription, setMySubscription] = useState<SubscriptionInfo | null>(
-    null,
-  );
-
-  const [loading, setLoading] = useState(true);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
 
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
 
-  const [upgradeCost, setUpgradeCost] = useState<number | null>(null);
+  const [user, setUser] = useState<any>(null);
+
+  const [loading, setLoading] = useState(true);
 
   const [processing, setProcessing] = useState(false);
 
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
-  const getToken = () => localStorage.getItem("auth_token");
-
-  const redirectToLogin = () => {
-    localStorage.removeItem("auth_token");
-
-    localStorage.removeItem("user");
-
-    document.cookie =
-      "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-
-    router.push("/login");
-  };
-
-  const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
-    const token = getToken();
-
-    if (!token) {
-      redirectToLogin();
-
-      throw new Error("No token");
-    }
-
-    const response = await fetch(url, {
-      ...options,
-
-      headers: {
-        Authorization: `Bearer ${token}`,
-
-        "Content-Type": "application/json",
-
-        Accept: "application/json",
-
-        ...options.headers,
-      },
-    });
-
-    if (response.status === 401) {
-      redirectToLogin();
-
-      throw new Error("Unauthorized");
-    }
-
-    return response;
-  };
-
-  useEffect(() => {
-    const token = getToken();
-
-    if (!token) {
-      redirectToLogin();
-
-      return;
-    }
-
-    const userData = localStorage.getItem("user");
-
-    if (userData) {
-      try {
-        setUser(JSON.parse(userData));
-      } catch {}
-    }
-
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
+  async function load() {
     try {
-      setError(null);
+      const userData = localStorage.getItem("user");
 
-      const plansRes = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/plans`,
-      );
-
-      const plansData = await plansRes.json();
-
-      setPlans(plansData);
-
-      const subRes = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/my-subscription`,
-      );
-
-      const subData = await subRes.json();
-
-      setMySubscription(subData);
-    } catch (err: any) {
-      if (err.message !== "Unauthorized" && err.message !== "No token") {
-        setError("خطا در دریافت اطلاعات. لطفاً دوباره تلاش کنید.");
+      if (userData) {
+        setUser(JSON.parse(userData));
       }
+
+      const data = await getDashboardData();
+
+      setPlans(data.plans);
+
+      setSubscription(data.subscription);
+    } catch (error) {
+      console.log(error);
+
+      setError("خطا در دریافت اطلاعات");
     } finally {
       setLoading(false);
     }
-  };
+  }
+  useEffect(() => {
+    load();
+  }, []);
 
-  const handleCalculateUpgrade = async (plan: Plan) => {
-    try {
-      setSelectedPlan(plan);
+  function selectPlan(plan: Plan) {
+    setSelectedPlan(plan);
 
-      setUpgradeCost(Math.floor(plan.price / 10));
-    } catch {
-      setError("خطا در محاسبه هزینه");
-    }
-  };
-  const handlePayment = async () => {
+    setTimeout(() => {
+      document.getElementById("checkout")?.scrollIntoView({
+        behavior: "smooth",
+      });
+    }, 100);
+  }
+
+  async function payment() {
     if (!selectedPlan) return;
 
-    setProcessing(true);
-
     try {
-      const res = await fetchWithAuth(
-        `${process.env.NEXT_PUBLIC_API_URL}/initiate-payment`,
-        {
-          method: "POST",
+      setProcessing(true);
 
-          body: JSON.stringify({ plan_id: selectedPlan.id }),
-        },
-      );
+      const data = await initiatePayment(selectedPlan.id);
 
-      const data = await res.json();
-
-      if (res.ok && data.payment_url) {
+      if (data.payment_url) {
         window.location.href = data.payment_url;
-      } else {
-        setError(data.error || "خطا در شروع پرداخت");
       }
+    } catch (error) {
+      console.log(error);
+
+      setError("خطا در پرداخت");
     } finally {
       setProcessing(false);
     }
-  };
-
-  const handleLogout = () => {
+  }
+  function logout() {
     localStorage.removeItem("auth_token");
 
     localStorage.removeItem("user");
 
     router.push("/login");
-  };
-
-  if (loading) {
-    return <div className={styles.loading}>در حال بارگذاری...</div>;
   }
 
-  const currentPlan = mySubscription?.subscription?.plan;
+  if (loading) {
+    return <div className={styles.loading}>در حال بارگذاری داشبورد...</div>;
+  }
 
-  const daysRemaining = mySubscription?.subscription?.days_remaining || 0;
+  const currentPlan = subscription?.subscription?.plan;
 
   return (
     <div className={styles.container}>
@@ -220,72 +106,38 @@ export default function DashboardPage() {
           <div>
             <h1>اکانتسرا</h1>
 
-            <p>پنل مدیریت اشتراک هوش مصنوعی</p>
+            <p>پنل مدیریت هوش مصنوعی</p>
           </div>
         </div>
 
-        <div className={styles.userInfo}>
-          <span>{user?.name || "کاربر"}</span>
+        <div className={styles.userBox}>
+          <strong>{user?.name || "کاربر"}</strong>
 
-          <small>{user?.phone}</small>
+          <span>{user?.phone}</span>
         </div>
       </header>
 
       <main className={styles.content}>
-        <section className={styles.subscriptionCard}>
-          <div className={styles.subscriptionTop}>
-            <div>
-              <span className={styles.subscriptionLabel}>بسته فعال</span>
+        <section className={styles.heroCard}>
+          <div>
+            <span>اشتراک فعال</span>
 
-              <h2>{currentPlan ? currentPlan.display_name : "بدون اشتراک"}</h2>
-            </div>
-
-            <div className={styles.subscriptionBadge}>
-              {currentPlan ? "فعال" : "غیرفعال"}
-            </div>
+            <h2>{currentPlan ? currentPlan.display_name : "بدون اشتراک"}</h2>
           </div>
 
-          {currentPlan ? (
-            <>
-              <div className={styles.subscriptionMeta}>
-                <div>
-                  <span>مدل</span>
-
-                  <strong>{currentPlan.model}</strong>
-                </div>
-
-                <div>
-                  <span>روز باقی‌مانده</span>
-
-                  <strong>{daysRemaining} روز</strong>
-                </div>
-              </div>
-
-              <div className={styles.progress}>
-                <div
-                  className={styles.progressFill}
-                  style={{
-                    width: `${Math.min((daysRemaining / currentPlan.duration_days) * 100, 100)}%`,
-                  }}
-                />
-              </div>
-            </>
-          ) : (
-            <p className={styles.noSubscription}>
-              هنوز اشتراکی فعال نکرده‌اید.
-            </p>
-          )}
+          <div className={styles.badge}>{currentPlan ? "فعال" : "رایگان"}</div>
         </section>
+
         <TokenUsageCard />
 
-        <section className={styles.plansSection}>
-          <div className={styles.sectionHeader}>
-            <h2>پلن‌های موجود</h2>
+        <section>
+          <div className={styles.sectionTitle}>
+            <h2>انتخاب پلن</h2>
 
-            <p>پلن مناسب خود را انتخاب کنید</p>
+            <p>مدل مناسب خودت را انتخاب کن</p>
           </div>
 
-          <div className={styles.plansGrid}>
+          <div className={styles.grid}>
             {plans.map((plan) => {
               const isCurrent = currentPlan?.id === plan.id;
 
@@ -294,47 +146,59 @@ export default function DashboardPage() {
               return (
                 <div
                   key={plan.id}
-                  className={`${styles.planCard} ${isCurrent ? styles.activePlan : ""} ${isSelected ? styles.selectedPlan : ""}`}
+                  className={`
+                ${styles.planCard}
+                ${isCurrent ? styles.activePlan : ""}
+                ${isSelected ? styles.selected : ""}
+                `}
                 >
                   {isCurrent && (
-                    <div className={styles.currentRibbon}>پلن فعال</div>
+                    <div className={styles.currentRibbon}>اشتراک فعال شما</div>
                   )}
-
-                  <div className={styles.planIcon}>
-                    {plan.name === "free" && "🎁"}
-
-                    {plan.name === "basic" && "🌱"}
-
-                    {plan.name === "standard" && "🚀"}
-
-                    {plan.name === "premium" && "💎"}
-
-                    {plan.name === "enterprise" && "🏢"}
-                  </div>
 
                   <h3>{plan.display_name}</h3>
 
-                  <p className={styles.planModel}>{plan.model}</p>
-
-                  <div className={styles.planPrice}>
-                    {plan.price === 0
+                  <div className={styles.price}>
+                    {Number(plan.price) === 0
                       ? "رایگان"
-                      : `${Math.floor(plan.price / 10).toLocaleString()} تومان`}
+                      : `${(Number(plan.price) / 10).toLocaleString()} تومان`}
                   </div>
 
-                  <ul className={styles.features}>
-                    {plan.features.map((feature, idx) => (
-                      <li key={idx}>✓ {feature}</li>
+                  <div className={styles.token}>
+                    🪙
+                    {plan.token_limit.toLocaleString()}
+                    توکن
+                  </div>
+
+                  <div className={styles.modelsBox}>
+                    <div className={styles.modelsTitle}>🤖 مدل‌ها</div>
+
+                    {plan.models?.map((model) => (
+                      <div key={model.id} className={styles.modelBadge}>
+                        {model.name}
+
+                        <small>{model.provider}</small>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
+
+                  <div className={styles.featuresBox}>
+                    {plan.features?.map((feature, index) => (
+                      <div key={index} className={styles.featureBadge}>
+                        ✓ {feature}
+                      </div>
+                    ))}
+                  </div>
 
                   {isCurrent ? (
-                    <button className={styles.activeButton}>فعال</button>
+                    <button disabled className={styles.activeButton}>
+                      ✓ پلن فعلی شما
+                    </button>
                   ) : (
                     <button
                       className={styles.selectButton}
-                      onClick={() => handleCalculateUpgrade(plan)}
                       disabled={processing}
+                      onClick={() => selectPlan(plan)}
                     >
                       انتخاب پلن
                     </button>
@@ -345,45 +209,27 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {selectedPlan && upgradeCost !== null && (
-          <section className={styles.checkoutCard}>
-            <div className={styles.checkoutRow}>
-              <span>پلن انتخابی</span>
+        {selectedPlan && (
+          <section id="checkout" className={styles.checkout}>
+            <h2>تکمیل خرید</h2>
 
-              <strong>{selectedPlan.display_name}</strong>
+            <strong>{selectedPlan.display_name}</strong>
+
+            <div>
+              {(Number(selectedPlan.price) / 10).toLocaleString()}
+              تومان
             </div>
 
-            <div className={styles.checkoutRow}>
-              <span>مبلغ قابل پرداخت</span>
-
-              <strong className={styles.checkoutPrice}>
-                {upgradeCost === 0
-                  ? "رایگان"
-                  : `${upgradeCost.toLocaleString()} تومان`}
-              </strong>
-            </div>
-
-            <button
-              className={styles.payButton}
-              onClick={handlePayment}
-              disabled={processing}
-            >
-              {processing ? "در حال اتصال به درگاه..." : "پرداخت و ارتقا"}
+            <button onClick={payment} disabled={processing}>
+              {processing ? "در حال اتصال..." : "پرداخت و فعال سازی"}
             </button>
           </section>
         )}
 
         <div className={styles.actions}>
-          <button
-            onClick={() => router.push("/chat")}
-            className={styles.chatButton}
-          >
-            💬 ورود به چت
-          </button>
+          <button onClick={() => router.push("/chat")}>💬 ورود به چت</button>
 
-          <button onClick={handleLogout} className={styles.logoutButton}>
-            🚪 خروج
-          </button>
+          <button onClick={logout}>🚪 خروج</button>
         </div>
       </main>
     </div>

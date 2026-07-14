@@ -1,163 +1,127 @@
 "use client";
 
-
 import { useEffect, useState } from "react";
 
 import styles from "./TokenUsageCard.module.css";
 
-import { getTodayUsage } from "@/lib/api";
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
+interface Usage {
+  total_tokens: number;
 
+  used_tokens: number;
 
-export default function TokenUsageCard()
-{
+  remaining_tokens: number;
+}
 
-    const [usage,setUsage] = useState({
+export default function TokenUsageCard() {
+  const [usage, setUsage] = useState<Usage | null>(null);
 
-        total_tokens:0,
+  const [loading, setLoading] = useState(true);
 
-        prompt_tokens:0,
+  useEffect(() => {
+    async function load() {
+      try {
+        const token = localStorage.getItem("auth_token");
 
-        completion_tokens:0,
+        const res = await fetch(`${API}/token-wallet`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
 
-        requests:0
+            Accept: "application/json",
+          },
+        });
 
-    });
-
-
-
-    useEffect(()=>{
-
-        loadUsage();
-
-    },[]);
-
-
-
-    const loadUsage = async()=>{
-
-        try{
-
-            const data = await getTodayUsage();
-
-
-            setUsage({
-
-                total_tokens:data.total_tokens || 0,
-
-                prompt_tokens:data.prompt_tokens || 0,
-
-                completion_tokens:data.completion_tokens || 0,
-
-                requests:data.requests || 0
-
-            });
-
-
-        }catch(error){
-
-            console.error(error);
-
+        if (!res.ok) {
+          throw new Error("Token wallet failed");
         }
 
-    };
+        const data = await res.json();
 
+        console.log("TOKEN WALLET:", data);
 
+        setUsage({
+          total_tokens: Number(data.total_tokens ?? 0),
 
+          used_tokens: Number(data.used_tokens ?? 0),
 
-    return (
+          remaining_tokens: Number(data.remaining_tokens ?? 0),
+        });
+      } catch (error) {
+        console.error(error);
 
-        <section className={styles.card}>
+        setUsage({
+          total_tokens: 0,
 
+          used_tokens: 0,
 
-            <div className={styles.header}>
+          remaining_tokens: 0,
+        });
+      } finally {
+        setLoading(false);
+      }
+    }
 
+    load();
+  }, []);
 
-                <div>
+  if (loading) {
+    return <section className={styles.card}>در حال دریافت اعتبار...</section>;
+  }
 
-                    <span>
-                        مصرف امروز
-                    </span>
+  if (!usage) {
+    return null;
+  }
 
-                    <h2>
-                        توکن‌های استفاده شده
-                    </h2>
+  const percent =
+    usage.total_tokens > 0
+      ? Math.min(
+          100,
 
-                </div>
+          Math.round((usage.used_tokens / usage.total_tokens) * 100),
+        )
+      : 0;
 
+  return (
+    <section className={styles.card}>
+      <div className={styles.header}>
+        <div>
+          <h3>اعتبار توکن</h3>
 
-                <div className={styles.icon}>
-                    🧠
-                </div>
+          <span>مصرف اشتراک فعلی شما</span>
+        </div>
 
+        <div className={styles.percent}>{percent}%</div>
+      </div>
 
-            </div>
+      <div className={styles.progress}>
+        <div
+          className={styles.progressBar}
+          style={{
+            width: `${percent}%`,
+          }}
+        />
+      </div>
 
+      <div className={styles.stats}>
+        <div>
+          <small>کل اعتبار</small>
 
+          <strong>{usage.total_tokens.toLocaleString()}</strong>
+        </div>
 
-            <div className={styles.mainNumber}>
+        <div>
+          <small>مصرف شده</small>
 
-                {usage.total_tokens.toLocaleString()}
+          <strong>{usage.used_tokens.toLocaleString()}</strong>
+        </div>
 
-                <small>
-                    توکن
-                </small>
+        <div>
+          <small>باقی مانده</small>
 
-            </div>
-
-
-
-            <div className={styles.stats}>
-
-
-                <div>
-
-                    <span>
-                        ورودی
-                    </span>
-
-                    <strong>
-                        {usage.prompt_tokens.toLocaleString()}
-                    </strong>
-
-                </div>
-
-
-
-                <div>
-
-                    <span>
-                        خروجی
-                    </span>
-
-                    <strong>
-                        {usage.completion_tokens.toLocaleString()}
-                    </strong>
-
-                </div>
-
-
-
-                <div>
-
-                    <span>
-                        درخواست
-                    </span>
-
-                    <strong>
-                        {usage.requests}
-                    </strong>
-
-                </div>
-
-
-            </div>
-
-
-
-        </section>
-
-    );
-
-
+          <strong>{usage.remaining_tokens.toLocaleString()}</strong>
+        </div>
+      </div>
+    </section>
+  );
 }
