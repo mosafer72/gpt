@@ -18,6 +18,10 @@ class PlanSeeder extends Seeder
     {
 
 
+
+
+
+
         $free = Plan::updateOrCreate(
 
             [

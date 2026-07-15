@@ -15,6 +15,8 @@ class LlmProviderSeeder extends Seeder
 
         LlmProvider::updateOrCreate(
 
+
+
             [
                 'key'=>'openai'
             ],

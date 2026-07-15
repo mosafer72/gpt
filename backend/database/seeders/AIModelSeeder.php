@@ -22,6 +22,8 @@ class AiModelSeeder extends Seeder
 
 
 
+
+
         $openrouter =
             LlmProvider::where('key','openrouter')
             ->first();
