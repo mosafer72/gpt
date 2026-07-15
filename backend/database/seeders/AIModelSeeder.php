@@ -119,7 +119,7 @@ class AiModelSeeder extends Seeder
 
             [
 
-                'name'=>'GPT OSS 120B Free',
+                'name'=>'gapgpt-qwen-3.6',
 
                 'model_name'=>'gapgpt-qwen-3.6',
 
