@@ -1,0 +1,215 @@
+.overlay {
+  position: fixed;
+
+  inset: 0;
+
+  background: rgba(0, 0, 0, 0.65);
+
+  backdrop-filter: blur(8px);
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  z-index: 100;
+
+  padding: 20px;
+}
+
+.modal {
+  width: 100%;
+
+  max-width: 520px;
+
+  background: linear-gradient(145deg, #111827, #0b1020);
+
+  border: 1px solid rgba(255, 255, 255, 0.12);
+
+  border-radius: 28px;
+
+  padding: 28px;
+
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+
+  animation: show 0.25s ease;
+}
+
+@keyframes show {
+  from {
+    opacity: 0;
+
+    transform: translateY(20px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+
+    transform: translateY(0) scale(1);
+  }
+}
+
+.header {
+  display: flex;
+
+  justify-content: space-between;
+
+  align-items: flex-start;
+
+  margin-bottom: 25px;
+}
+
+.header h2 {
+  margin: 0;
+
+  font-size: 24px;
+
+  color: white;
+}
+
+.header p {
+  margin-top: 8px;
+
+  color: #94a3b8;
+
+  font-size: 14px;
+}
+
+.close {
+  background: rgba(255, 255, 255, 0.08);
+
+  border: none;
+
+  color: #cbd5e1;
+
+  width: 36px;
+
+  height: 36px;
+
+  border-radius: 12px;
+
+  cursor: pointer;
+
+  font-size: 18px;
+}
+
+.close:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.models {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 12px;
+}
+
+.modelCard {
+  width: 100%;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 16px;
+
+  padding: 18px;
+
+  background: rgba(255, 255, 255, 0.05);
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+
+  border-radius: 20px;
+
+  cursor: pointer;
+
+  color: white;
+
+  text-align: right;
+
+  transition: 0.25s;
+}
+
+.modelCard:hover {
+  background: rgba(37, 99, 235, 0.15);
+
+  border-color: rgba(96, 165, 250, 0.5);
+
+  transform: translateY(-3px);
+}
+
+.icon {
+  width: 50px;
+
+  height: 50px;
+
+  border-radius: 16px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  font-size: 26px;
+
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.info {
+  flex: 1;
+}
+
+.info h3 {
+  margin: 0 0 5px;
+
+  font-size: 17px;
+}
+
+.info span {
+  font-size: 13px;
+
+  color: #60a5fa;
+}
+
+.info p {
+  margin: 8px 0 0;
+
+  font-size: 13px;
+
+  color: #94a3b8;
+
+  line-height: 1.7;
+}
+
+.arrow {
+  font-size: 30px;
+
+  color: #64748b;
+}
+
+.empty {
+  text-align: center;
+
+  padding: 30px;
+
+  color: #94a3b8;
+}
+
+@media (max-width: 600px) {
+  .modal {
+    padding: 20px;
+
+    border-radius: 22px;
+  }
+
+  .header h2 {
+    font-size: 20px;
+  }
+
+  .modelCard {
+    padding: 14px;
+  }
+}

@@ -111,22 +111,17 @@ class User extends Authenticatable
     public function availableModels()
     {
 
-        $subscription =
-            $this->activeSubscription()
-                ->with('plan.models')
-                ->first();
+        $plan = $this->currentPlan();
 
 
+        if (!$plan) {
 
-        if (!$subscription) {
             return collect([]);
+
         }
 
 
-
-        return $subscription
-            ->plan
-            ->models;
+        return $plan->models;
 
     }
     public function currentSubscription(): HasOne

@@ -4,13 +4,14 @@ namespace App\Models;
 
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
 
 
 class AiModel extends Model
 {
 
-    protected $table="ai_models";
 
     protected $fillable = [
 
@@ -18,7 +19,9 @@ class AiModel extends Model
 
         'name',
 
-        'provider',
+        'model_name',
+
+        'provider_id',
 
         'input_cost',
 
@@ -27,6 +30,19 @@ class AiModel extends Model
         'is_active',
 
     ];
+
+
+
+
+    public function provider(): BelongsTo
+    {
+
+        return $this->belongsTo(
+            LLMProvider::class
+        );
+
+    }
+
 
 
 
@@ -39,9 +55,9 @@ class AiModel extends Model
             'ai_model_id',
             'plan_id'
         )
-        ->withPivot(
-            'is_default'
-        );
+            ->withPivot(
+                'is_default'
+            );
 
     }
 

@@ -163,13 +163,18 @@ export async function sendMessageStream(
 
   chatId?: number,
 
+
   image?: File | null,
+  
+  modelId?: number,
 
   onChunk?: (text: string) => void,
 
   signal?: AbortSignal,
 ) {
   const formData = new FormData();
+
+  formData.append("model_id", String(modelId));
 
   formData.append("message", message);
 
@@ -282,4 +287,9 @@ export function initiatePayment(planId: number) {
       }),
     },
   );
+}
+export function getAvailableModels() {
+  return request<{
+    models: AIModel[];
+  }>("/models");
 }

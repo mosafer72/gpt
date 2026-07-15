@@ -1,37 +1,78 @@
+// ============================
+// Message
+// ============================
+
 export interface Message {
   id: string;
+
   chat_id: number;
+
   role: "user" | "assistant";
+
   content: string;
+
   created_at: string;
 
   metadata?: {
-    attachments?: {
-      type: string;
-      url: string;
-    }[];
+    attachments?: Attachment[];
   };
 
   image_url?: string;
 }
 
+// ============================
+// Attachment
+// ============================
+
 export interface Attachment {
   type: "image" | "file" | "audio";
+
   url: string;
 }
-export interface Chat {
-  id: number;
-  title: string;
-  messages: Message[];
-  created_at: string;
-}
+
+// ============================
+// AI Model
+// ============================
 
 export interface AIModel {
   id: number;
+
   key: string;
+
   name: string;
+
   provider: string;
+
+  description?: string;
+
+  icon?: string;
 }
+
+// ============================
+// Chat
+// ============================
+
+export interface Chat {
+  id: number;
+
+  title: string;
+
+  messages: Message[];
+
+  created_at: string;
+
+  // مدل انتخاب شده برای این چت
+
+  model_id?: number;
+
+  model_name?: string;
+
+  model?: AIModel;
+}
+
+// ============================
+// Plan
+// ============================
 
 export interface Plan {
   id: number;
@@ -42,13 +83,13 @@ export interface Plan {
 
   price: string | number;
 
-  duration_days: number;
+  duration_days?: number;
 
   daily_message_limit: number;
 
   token_limit: number;
 
-  capabilities: {
+  capabilities?: {
     memory: boolean;
 
     planner: boolean;
@@ -62,6 +103,10 @@ export interface Plan {
 
   models: AIModel[];
 }
+
+// ============================
+// Subscription
+// ============================
 
 export interface Subscription {
   has_subscription: boolean;
@@ -79,32 +124,9 @@ export interface Subscription {
   };
 }
 
-export interface AIModel {
-  id: number;
-
-  key: string;
-
-  name: string;
-
-  provider: string;
-}
-
-export interface Plan {
-  id: number;
-
-  name: string;
-
-  display_name: string;
-
-  price: string | number;
-
-  token_limit: number;
-
-  features: string[];
-
-  models: AIModel[];
-}
-
+// ============================
+// Token Wallet
+// ============================
 
 export interface TokenWallet {
   total_tokens: number;
@@ -113,6 +135,10 @@ export interface TokenWallet {
 
   remaining_tokens: number;
 }
+
+// ============================
+// Usage
+// ============================
 
 export interface TodayUsage {
   date: string;
@@ -128,6 +154,10 @@ export interface TodayUsage {
   tokens_remaining: number;
 }
 
+// ============================
+// User Status
+// ============================
+
 export interface UserStatus {
   has_subscription: boolean;
 
@@ -136,26 +166,4 @@ export interface UserStatus {
   today_messages_count: number;
 
   remaining_messages: number;
-}
-
-export interface Message {
-  id: string;
-
-  chat_id: number;
-
-  role: "user" | "assistant";
-
-  content: string;
-
-  created_at: string;
-}
-
-export interface Chat {
-  id: number;
-
-  title: string;
-
-  messages: Message[];
-
-  created_at: string;
 }

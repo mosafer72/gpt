@@ -44,7 +44,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/usage/{id}', [UsageController::class, 'show']);
     Route::get('/messages/{message}/export', [MessageExportController::class, 'export']);
     Route::get(
-        '/user/models',
+        '/models',
         [ModelController::class, 'index']
     );
     Route::get(

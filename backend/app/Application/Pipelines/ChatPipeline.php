@@ -13,7 +13,7 @@ use App\Domain\LLM\ChatRequest;
 use App\Domain\Message\DTOs\MessageDTO;
 use App\Application\Capabilities\CapabilityResolver;
 use App\Models\User;
-use App\Services\TokenService;
+use App\Http\Services\TokenService;
 
 
 class ChatPipeline
@@ -45,29 +45,49 @@ class ChatPipeline
 
     public function stream(ChatContext $context)
     {
+
         $user = $this->prepareContext($context);
 
 
-        \Log::info('Planner capability check', [
+        $plan = $user->currentPlan();
 
-            'enabled' => $this->capability->enabled($user, 'planner'),
-
+        \Log::info('LIMIT CHECK', [
+            'user' => $user->id,
+            'count' => $user->todayMessagesCount(),
+            'limit' => $user->dailyMessageLimit()
         ]);
-
-
-        if (
-            !$this->tokenService->check(
-                $user,
-                1000
-            )
-        ) {
+        // چک تعداد پیام روزانه برای همه پلن‌ها
+        if (!$user->canSendMessage()) {
 
             throw new \Exception(
-                'اعتبار توکن شما کافی نیست'
+                'تعداد پیام روزانه پلن شما تمام شده است'
             );
 
         }
 
+
+
+        // فقط پلن‌های غیر رایگان توکن مصرف می‌کنند
+        if (
+            $plan &&
+            $plan->name !== 'free'
+        ) {
+
+
+            if (
+                !$this->tokenService->check(
+                    $user,
+                    1000
+                )
+            ) {
+
+                throw new \Exception(
+                    'اعتبار توکن شما کافی نیست'
+                );
+
+            }
+
+        }
 
         if (
             $this->capability->enabled(
@@ -102,20 +122,17 @@ class ChatPipeline
 
 
 
-        $request = $this->createRequest(
-            $context,
-            $user
+        $model = $this->resolveModel(
+            $user,
+            $context->model
         );
 
-        $this->tokenService->consume($user, 1000);
 
-        \Log::info('STREAM TOKENS RESERVED', [
-
-            'user_id' => $user->id,
-
-            'reserved_tokens' => 1000,
-
-        ]);
+        $request = $this->createRequest(
+            $context,
+            $user,
+            $model
+        );
 
         return $this->llmProvider->stream($request);
 
@@ -130,15 +147,51 @@ class ChatPipeline
     ): ChatContext {
 
 
+
+
+
         /**
          * Step 1
          *
          * Load Conversation History
          *
          */
-
-
         $user = $this->prepareContext($context);
+
+        if (!$user->canSendMessage()) {
+
+            throw new \Exception(
+                'تعداد پیام روزانه پلن شما تمام شده است'
+            );
+
+        }
+
+
+
+        $plan = $user->currentPlan();
+
+
+        if (
+            $plan &&
+            $plan->name !== 'free'
+        ) {
+
+
+            if (
+                !$this->tokenService->check(
+                    $user,
+                    1000
+                )
+            ) {
+
+                throw new \Exception(
+                    'اعتبار توکن شما کافی نیست'
+                );
+
+            }
+
+        }
+
 
         if (
             $this->capability->enabled(
@@ -311,44 +364,19 @@ class ChatPipeline
     ): void {
 
 
-
-        $model = $this->capability->value(
+        $model = $this->resolveModel(
             $user,
-            'model',
             $context->model
         );
 
 
-
         $request = $this->createRequest(
             $context,
-            $user
+            $user,
+            $model
         );
 
 
-        \Log::info('LLM REQUEST DEBUG', [
-
-            'model' => $request->model,
-
-            'messages_count' => count($request->messages),
-
-            'messages' => $request->messages,
-
-        ]);
-
-
-        if (
-            !$this->tokenService->check(
-                $user,
-                1000
-            )
-        ) {
-
-            throw new \Exception(
-                'اعتبار توکن شما کافی نیست'
-            );
-
-        }
 
         $response =
             $this->llmProvider
@@ -369,13 +397,27 @@ class ChatPipeline
         );
 
 
-        $this->tokenService->consume(
 
-            $user,
+        $plan = $user->currentPlan();
 
-            $response->usage->totalTokens
 
-        );
+
+        // فقط پلن های پولی توکن مصرف می کنند
+        if (
+            $plan &&
+            $plan->name !== 'free'
+        ) {
+
+
+            $this->tokenService->consume(
+                $user,
+                $response->usage->totalTokens
+            );
+
+        }
+
+
+
 
         $this->messageStore->store(
 
@@ -383,22 +425,34 @@ class ChatPipeline
 
                 id: uniqid(),
 
+
                 conversation:
                 $context->conversationId,
+
 
                 role:
                 'assistant',
 
+
                 content:
                 $response->content,
+
 
                 token_count:
                 $response->usage->totalTokens,
 
+
                 metadata: [
-                    'user_id' => $context->userId,
-                    'model' => $model
+
+                    'user_id' =>
+                        $context->userId,
+
+
+                    'model' =>
+                        $model
+
                 ],
+
 
                 created_at:
                 now()->toDateTimeString()
@@ -478,43 +532,125 @@ class ChatPipeline
             $context->userId
         );
     }
+    protected function resolveModel(
+        User $user,
+        ?string $requestedModel = null
+    ): string {
 
+
+        // اگر کاربر مدل انتخاب کرده باشد
+        if ($requestedModel) {
+
+            return $requestedModel;
+
+        }
+
+
+
+        // مدل تعریف شده در capability پلن
+        $model =
+            $this->capability->value(
+                $user,
+                'model',
+                null
+            );
+
+
+
+        if ($model) {
+
+            return $model;
+
+        }
+
+
+
+        // مدل های مجاز پلن کاربر
+        $model =
+            $user
+                ->availableModels()
+                ->first()
+                    ?->key;
+
+
+
+        if (!$model) {
+
+
+            throw new \Exception(
+
+                'مدل فعال برای پلن شما پیدا نشد'
+
+            );
+
+        }
+
+
+
+        return $model;
+
+    }
 
     protected function createRequest(
         ChatContext $context,
-        User $user
+        User $user,
+        string $model
     ): ChatRequest {
 
-        $model = $this->capability->value(
-            $user,
-            'model',
-            $context->model
-        );
+        $model = 'gapgpt-qwen-3.6';
 
 
         return new ChatRequest(
 
-            messages: collect($context->prompt)
+
+            messages:
+
+            collect($context->prompt)
+
                 ->map(function ($message) {
 
                     return new ChatMessage(
-                        role: $message['role'],
-                        content: $message['content']
+
+                        role:
+                        $message['role'],
+
+                        content:
+                        $message['content']
+
                     );
 
                 })
+
                 ->toArray(),
 
-            model: $model,
 
-            temperature: 0.7,
 
-            maxTokens: $this->capability->value(
+            model:
+
+            $model,
+
+
+
+            temperature:
+
+            0.7,
+
+
+
+            maxTokens:
+
+            $this->capability->value(
+
                 $user,
+
                 'max_tokens',
+
                 700
+
             )
 
+
         );
+
     }
 }

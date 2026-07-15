@@ -2,254 +2,271 @@
 
 namespace Database\Seeders;
 
+
 use Illuminate\Database\Seeder;
+
 use App\Models\Plan;
 use App\Models\AiModel;
+
 
 
 class PlanSeeder extends Seeder
 {
 
+
     public function run(): void
     {
 
 
-        $free =
-            Plan::updateOrCreate(
-                [
-                    'name' => 'free'
+        $free = Plan::updateOrCreate(
+
+            [
+                'name'=>'free'
+            ],
+
+            [
+
+                'display_name'=>'رایگان',
+
+                'price'=>0,
+
+                'token_limit'=>50000,
+
+                'duration_days'=>365,
+
+                'daily_message_limit'=>4,
+
+
+                'features'=>[
+                    'روزانه ۴ پیام رایگان',
+                    'مدل رایگان'
                 ],
-                [
-
-                    'display_name' => 'رایگان',
-
-                    'price' => 0,
-
-                    'token_limit' => 50000,
-
-                    'duration_days' => 365,
-
-                    'daily_message_limit' => 4,
 
 
-                    'features' => [
-                        'روزانه ۴ پیام رایگان',
-                        'مدل رایگان'
-                    ],
+                'capabilities'=>[
 
+                    'planner'=>false,
 
-                    'capabilities' => [
+                    'memory'=>false,
 
-                        'planner' => false,
+                    'max_tokens'=>1000,
 
-                        'memory' => false,
+                    'temperature'=>0.7
 
-                        'max_tokens' => 1000,
-
-                        'temperature' => 0.7
-
-                    ],
-
-
-                    'is_active' => true
-
-                ]
-            );
-
-
-
-
-        $basic =
-            Plan::updateOrCreate(
-                [
-                    'name' => 'basic'
                 ],
-                [
-
-                    'display_name' => 'پایه',
-
-                    'price' => 100000,
-
-                    'token_limit' => 1000000,
 
 
-                    'duration_days' => 30,
+                'is_active'=>true
 
+            ]
 
-                    'daily_message_limit' => 50,
-
-
-                    'features' => [
-                        'حافظه گفتگو',
-                        'مدل های پایه'
-                    ],
-
-
-                    'capabilities' => [
-
-                        'planner' => false,
-
-                        'memory' => true,
-
-                        'max_tokens' => 2000,
-
-                        'temperature' => 0.7
-
-                    ],
-
-
-                    'is_active' => true
-
-                ]
-            );
+        );
 
 
 
 
 
-        $standard =
-            Plan::updateOrCreate(
-                [
-                    'name' => 'standard'
+
+
+        $basic = Plan::updateOrCreate(
+
+            [
+                'name'=>'basic'
+            ],
+
+            [
+
+                'display_name'=>'پایه',
+
+                'price'=>100000,
+
+                'token_limit'=>1000000,
+
+                'duration_days'=>30,
+
+                'daily_message_limit'=>50,
+
+
+                'features'=>[
+                    'حافظه گفتگو',
+                    'مدل های پایه'
                 ],
-                [
-
-                    'display_name' => 'متوسط',
-
-                    'price' => 250000,
-
-                    'token_limit' => 3000000,
 
 
-                    'duration_days' => 30,
+                'capabilities'=>[
 
+                    'planner'=>false,
 
-                    'daily_message_limit' => 200,
+                    'memory'=>true,
 
+                    'max_tokens'=>2000,
 
-                    'features' => [
-                        'Planner',
-                        'Memory',
-                        'مدل های حرفه ای'
-                    ],
+                    'temperature'=>0.7
 
-
-                    'capabilities' => [
-
-                        'planner' => true,
-
-                        'memory' => true,
-
-                        'max_tokens' => 4000,
-
-                        'temperature' => 0.7
-
-                    ],
-
-
-                    'is_active' => true
-
-                ]
-            );
-
-
-
-
-
-
-        $premium =
-            Plan::updateOrCreate(
-                [
-                    'name' => 'premium'
                 ],
-                [
-
-                    'display_name' => 'پیشرفته',
-
-                    'price' => 450000,
-
-                    'token_limit' => 10000000,
 
 
-                    'duration_days' => 30,
+                'is_active'=>true
 
+            ]
 
-                    'daily_message_limit' => 500,
-
-
-                    'features' => [
-                        'تمام مدل ها',
-                        'Planner پیشرفته',
-                        'Memory هوشمند'
-                    ],
-
-
-                    'capabilities' => [
-
-                        'planner' => true,
-
-                        'memory' => true,
-
-                        'max_tokens' => 8000,
-
-                        'temperature' => 0.6
-
-                    ],
-
-
-                    'is_active' => true
-
-                ]
-            );
+        );
 
 
 
 
 
-        $enterprise =
-            Plan::updateOrCreate(
-                [
-                    'name' => 'enterprise'
+
+
+        $standard = Plan::updateOrCreate(
+
+            [
+                'name'=>'standard'
+            ],
+
+            [
+
+                'display_name'=>'متوسط',
+
+                'price'=>250000,
+
+                'token_limit'=>3000000,
+
+                'duration_days'=>30,
+
+                'daily_message_limit'=>200,
+
+
+                'features'=>[
+                    'Planner',
+                    'Memory',
+                    'مدل های حرفه ای'
                 ],
-                [
-
-                    'display_name' => 'ویژه',
-
-                    'price' => 750000,
 
 
-                    'token_limit' => 30000000,
+                'capabilities'=>[
+
+                    'planner'=>true,
+
+                    'memory'=>true,
+
+                    'max_tokens'=>4000,
+
+                    'temperature'=>0.7
+
+                ],
 
 
-                    'duration_days' => 30,
+                'is_active'=>true
+
+            ]
+
+        );
 
 
-                    'daily_message_limit' => 1000,
 
 
-                    'features' => [
-                        'تمام مدل ها',
-                        'بالاترین کیفیت'
-                    ],
 
 
-                    'capabilities' => [
 
-                        'planner' => true,
+        $premium = Plan::updateOrCreate(
 
-                        'memory' => true,
+            [
+                'name'=>'premium'
+            ],
 
-                        'max_tokens' => 16000,
+            [
 
-                        'temperature' => 0.5
+                'display_name'=>'پیشرفته',
 
-                    ],
+                'price'=>450000,
+
+                'token_limit'=>10000000,
+
+                'duration_days'=>30,
+
+                'daily_message_limit'=>500,
 
 
-                    'is_active' => true
+                'features'=>[
+                    'تمام مدل ها',
+                    'Planner پیشرفته',
+                    'Memory هوشمند'
+                ],
 
-                ]
-            );
+
+                'capabilities'=>[
+
+                    'planner'=>true,
+
+                    'memory'=>true,
+
+                    'max_tokens'=>8000,
+
+                    'temperature'=>0.6
+
+                ],
+
+
+                'is_active'=>true
+
+            ]
+
+        );
+
+
+
+
+
+
+
+
+        $enterprise = Plan::updateOrCreate(
+
+            [
+                'name'=>'enterprise'
+            ],
+
+            [
+
+                'display_name'=>'ویژه',
+
+                'price'=>750000,
+
+                'token_limit'=>30000000,
+
+                'duration_days'=>30,
+
+                'daily_message_limit'=>1000,
+
+
+                'features'=>[
+                    'تمام مدل ها',
+                    'بالاترین کیفیت'
+                ],
+
+
+                'capabilities'=>[
+
+                    'planner'=>true,
+
+                    'memory'=>true,
+
+                    'max_tokens'=>16000,
+
+                    'temperature'=>0.5
+
+                ],
+
+
+                'is_active'=>true
+
+            ]
+
+        );
+
+
+
 
 
 
@@ -257,19 +274,28 @@ class PlanSeeder extends Seeder
 
         /*
         |--------------------------------------------------------------------------
-        | اتصال مدل ها به پلن ها
+        | Attach Models
         |--------------------------------------------------------------------------
         */
 
 
+        $models = AiModel::pluck('id','key');
+
+
+
+
+
         $free->models()->sync([
 
-            AiModel::where(
-                'key',
-                'openai/gpt-oss-120b:free'
-            )->first()->id
+            $models['oss-120b'] => [
+
+                'is_default'=>true
+
+            ]
 
         ]);
+
+
 
 
 
@@ -277,11 +303,18 @@ class PlanSeeder extends Seeder
 
         $basic->models()->sync([
 
-            AiModel::where('key', 'openai/gpt-oss-120b:free')->first()->id,
+            $models['oss-120b']=>[
 
-            AiModel::where('key', 'deepseek-chat')->first()->id
+                'is_default'=>true
+
+            ],
+
+
+            $models['deepseek-chat']=>[]
 
         ]);
+
+
 
 
 
@@ -289,13 +322,21 @@ class PlanSeeder extends Seeder
 
         $standard->models()->sync([
 
-            AiModel::where('key', 'gpt-4.1-mini')->first()->id,
+            $models['gpt-4.1-mini']=>[
 
-            AiModel::where('key', 'deepseek-chat')->first()->id,
+                'is_default'=>true
 
-            AiModel::where('key', 'qwen-3')->first()->id
+            ],
+
+
+            $models['deepseek-chat']=>[],
+
+            $models['qwen-3']=>[]
 
         ]);
+
+
+
 
 
 
@@ -303,15 +344,24 @@ class PlanSeeder extends Seeder
 
         $premium->models()->sync([
 
-            AiModel::where('key', 'gpt-5')->first()->id,
+            $models['gpt-5']=>[
 
-            AiModel::where('key', 'claude-sonnet-4')->first()->id,
+                'is_default'=>true
 
-            AiModel::where('key', 'qwen-3')->first()->id,
+            ],
 
-            AiModel::where('key', 'deepseek-chat')->first()->id
+
+            $models['claude-sonnet-4']=>[],
+
+
+            $models['qwen-3']=>[],
+
+
+            $models['deepseek-chat']=>[]
 
         ]);
+
+
 
 
 
@@ -319,13 +369,22 @@ class PlanSeeder extends Seeder
 
         $enterprise->models()->sync([
 
-            AiModel::where('key', 'gpt-5')->first()->id,
+            $models['gpt-5']=>[
 
-            AiModel::where('key', 'claude-sonnet-4')->first()->id,
+                'is_default'=>true
 
-            AiModel::where('key', 'gpt-4.1-mini')->first()->id
+            ],
+
+
+            $models['claude-sonnet-4']=>[],
+
+
+            $models['gpt-4.1-mini']=>[]
 
         ]);
+
+
+
 
 
 

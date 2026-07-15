@@ -1,309 +1,453 @@
 "use client";
 
 import { useState, useEffect, useRef, FormEvent, useCallback } from "react";
-import { sendMessageStream } from "@/lib/api";
+
 import { useRouter } from "next/navigation";
-import { Chat } from "@/types";
-import { getChats, deleteChat, getChat, getUserStatus } from "@/lib/api";
+
+import {
+  sendMessageStream,
+  getChats,
+  deleteChat,
+  getChat,
+  getUserStatus,
+} from "@/lib/api";
+
+import { Chat, AIModel } from "@/types";
+
 import Sidebar from "@/components/Sidebar/Sidebar";
 import ChatMessage from "@/components/Chat/ChatMessage";
 import ChatInput from "@/components/Chat/ChatInput";
 import UserMenu from "@/components/Common/UserMenu";
 import SubscriptionWarning from "@/components/Chat/SubscriptionWarning";
 import TokenUsageBadge from "../Common/TokenUsageBadge";
+
 import styles from "./ChatInterface.module.css";
 
-// هوک سفارشی برای تشخیص اندازه صفحه
-function useMediaQuery(query: string): boolean {
+interface ChatInterfaceProps {
+  selectedModel?: AIModel | null;
+
+  onNewChat: () => void;
+}
+
+function useMediaQuery(query: string) {
   const [matches, setMatches] = useState(false);
+
   useEffect(() => {
     const media = window.matchMedia(query);
-    if (media.matches !== matches) setMatches(media.matches);
+
+    setMatches(media.matches);
+
     const listener = (e: MediaQueryListEvent) => setMatches(e.matches);
+
     media.addEventListener("change", listener);
-    return () => media.removeEventListener("change", listener);
-  }, [matches, query]);
+
+    return () => {
+      media.removeEventListener("change", listener);
+    };
+  }, [query]);
+
   return matches;
 }
 
-export default function ChatInterface() {
+export default function ChatInterface({
+  selectedModel,
+
+  onNewChat,
+}: ChatInterfaceProps) {
   const router = useRouter();
-  const cancelledRef = useRef(false);
 
   const [chats, setChats] = useState<Chat[]>([]);
-  const [currentChat, setCurrentChat] = useState<Chat | null>(null);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+
   const [isLoadingChats, setIsLoadingChats] = useState(true);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const [userStatus, setUserStatus] = useState<any>(null);
+
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+
   const abortControllerRef = useRef<AbortController | null>(null);
-  const [userStatus, setUserStatus] = useState<{
-    has_subscription: boolean;
-    daily_message_limit: number;
-    today_messages_count: number;
-    remaining_messages: number;
-  } | null>(null);
 
-  // ref برای آخرین پیام (برای اسکرول با دکمه)
   const lastMessageRef = useRef<HTMLDivElement | null>(null);
-
-  // state برای نمایش خطاهای استریم
-  const [streamError, setStreamError] = useState<string | null>(null);
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const [backendError, setBackendError] = useState<string | null>(null);
 
   const streams = useRef<
     Record<
       string,
       {
         buffer: string;
-        timer: any;
+        timer: NodeJS.Timeout | null;
         active: boolean;
+        lastBufferSize: number;
       }
     >
   >({});
 
-  const isMobile = useMediaQuery("(max-width: 767px)");
+  const [currentChat, setCurrentChat] = useState<Chat | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [input, setInput] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [streamError, setStreamError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedModel) return;
+
+    // ساخت چت جدید موقت با مدل انتخابی
+    setCurrentChat({
+      id: 0,
+      title: "چت جدید",
+      messages: [],
+      created_at: new Date().toISOString(),
+      model_id: selectedModel.id,
+      model_name: selectedModel.name,
+    } as Chat);
+
+    setInput("");
+    setImageFile(null);
+    setStreamError(null);
+    setTimeout(() => {
+      scrollToBottomInstant();
+    }, 100);
+  }, [selectedModel]);
+
+  function formatBackendError(error: any): string {
+    if (!error) {
+      return "خطای ناشناخته‌ای رخ داد";
+    }
+
+    const message =
+      error?.message ||
+      error?.response?.message ||
+      error?.response?.data?.message ||
+      "";
+
+    if (message.includes("تعداد پیام روزانه")) {
+      return "🚦 سقف پیام روزانه شما تمام شده است.\n\nلطفاً پلن خود را ارتقا دهید یا فردا دوباره امتحان کنید.";
+    }
+
+    if (message.includes("اعتبار توکن")) {
+      return "💳 اعتبار توکن شما کافی نیست.\n\nلطفاً توکن خریداری کنید یا پلن خود را ارتقا دهید.";
+    }
+
+    if (message.includes("model") || message.includes("مدل")) {
+      return "🤖 مدل هوش مصنوعی در دسترس نیست.\n\nلطفاً یک مدل دیگر انتخاب کنید.";
+    }
+
+    if (message.includes("payload") || message.includes("Decrypt")) {
+      return "🔐 خطای امنیتی در ارتباط با سرور رخ داده است.";
+    }
+
+    if (message.includes("500") || message.includes("server")) {
+      return "🔥 خطای داخلی سرور رخ داده است.\n\nلطفاً دوباره تلاش کنید.";
+    }
+
+    return "⚠️ " + message;
+  }
+
+  const isMobile = useMediaQuery("(max-width:767px)");
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
+
     if (!token) {
       router.push("/login");
+
       return;
     }
+
     loadChats();
+
     fetchUserStatus();
   }, []);
 
-  const fetchUserStatus = async () => {
+  async function fetchUserStatus() {
     try {
       const status = await getUserStatus();
+
       setUserStatus(status);
-    } catch (error) {
-      console.error(error);
+    } catch (e) {
+      console.error(e);
     }
-  };
+  }
 
-  // اسکرول خودکار حذف شد (فقط با کلیک دکمه)
-
-  const loadChats = async () => {
+  async function loadChats() {
     try {
       const data = await getChats();
+
       setChats(data);
+
       if (data.length && !currentChat) {
         setCurrentChat(data[0]);
       }
-    } catch (error) {
-      console.error(error);
+    } catch (e) {
+      console.error(e);
     } finally {
       setIsLoadingChats(false);
     }
-  };
+  }
 
-  const handleSelectChat = async (chat: Chat) => {
+  async function handleSelectChat(chat: Chat) {
     try {
-      // پاک کردن خطا هنگام انتخاب چت جدید
       setStreamError(null);
+
       const full = await getChat(chat.id);
+
       setCurrentChat(full);
+
       if (isMobile) setSidebarOpen(false);
-    } catch (error) {
-      console.error(error);
+    } catch (e) {
+      console.error(e);
     }
-  };
-
-  const stopTyping = (chatId: string) => {
+  }
+  function startTyping(chatId: string, messageId: string) {
     const stream = streams.current[chatId];
-    if (!stream) return;
-    if (stream.timer) {
-      clearInterval(stream.timer);
-      stream.timer = null;
-    }
-    stream.buffer = "";
-  };
 
-  const startTyping = (chatId: string, messageId: string) => {
-    const stream = streams.current[chatId];
     if (!stream) return;
+
     if (stream.timer) return;
-    stream.timer = setInterval(() => {
-      if (!stream.buffer.length) {
-        clearInterval(stream.timer);
-        stream.timer = null;
+
+    const render = () => {
+      const currentStream = streams.current[chatId];
+
+      if (!currentStream) return;
+
+      const bufferLength = currentStream.buffer.length;
+
+      if (bufferLength === 0) {
+        currentStream.timer = null;
+
         return;
       }
-      const char = stream.buffer.substring(0, 1);
-      stream.buffer = stream.buffer.substring(1);
+
+      let chunkSize = 1;
+
+      let delay = 40;
+
+      if (bufferLength > 500) {
+        chunkSize = 25;
+        delay = 5;
+      } else if (bufferLength > 200) {
+        chunkSize = 15;
+        delay = 10;
+      } else if (bufferLength > 50) {
+        chunkSize = 5;
+        delay = 20;
+      }
+
+      const chars = currentStream.buffer.substring(0, chunkSize);
+
+      currentStream.buffer = currentStream.buffer.substring(chunkSize);
+
       setCurrentChat((prev) => {
-        if (!prev || String(prev.id) !== chatId) return prev;
+        if (!prev) return prev;
+
         return {
           ...prev,
+
           messages: prev.messages.map((m) => {
-            if (String(m.id) !== messageId) return m;
+            if (String(m.id) !== messageId) {
+              return m;
+            }
+
             return {
               ...m,
-              content: m.content + char,
+
+              content: m.content + chars,
             };
           }),
         };
       });
-    }, 15);
-  };
 
-  // تابع اسکرول به پایین (فقط با کلیک دکمه)
-  const handleScrollToBottom = useCallback(() => {
-    if (lastMessageRef.current) {
-      lastMessageRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "end",
+      // همیشه آخرین پیام را نشان بده
+      requestAnimationFrame(() => {
+        scrollToBottomInstant();
       });
+
+      currentStream.timer = setTimeout(render, delay);
+    };
+
+    render();
+  }
+
+  function stopTyping(chatId: string) {
+    const stream = streams.current[chatId];
+
+    if (!stream) return;
+
+    if (stream.timer) {
+      clearTimeout(stream.timer);
     }
+
+    delete streams.current[chatId];
+  }
+
+  const handleScrollToBottom = useCallback(() => {
+    const container = messagesContainerRef.current;
+
+    if (!container) return;
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: "smooth",
+    });
   }, []);
 
-  const handleSendMessage = async (e: FormEvent) => {
+  const scrollToBottomInstant = useCallback(() => {
+    const container = messagesContainerRef.current;
+
+    if (!container) return;
+
+    container.scrollTop = container.scrollHeight;
+  }, []);
+
+  async function handleSendMessage(e: FormEvent) {
     e.preventDefault();
+
     if (!input.trim() && !imageFile) return;
+
     if (loading) return;
 
-    // پاک کردن خطاهای قبلی
+    if (!selectedModel) {
+      alert("ابتدا مدل را انتخاب کنید");
+
+      return;
+    }
+
     setStreamError(null);
 
     const text = input.trim();
-    const file = imageFile;
+
     setInput("");
+
     setLoading(true);
-    cancelledRef.current = false;
 
     const controller = new AbortController();
+
     abortControllerRef.current = controller;
 
     const aiId = `ai-${Date.now()}`;
+
     const userId = `user-${Date.now()}`;
+
     const chatId = String(currentChat?.id || 0);
 
     const userMessage: any = {
       id: userId,
-      chat_id: Number(chatId),
+
       role: "user",
+
       content: text,
+
       created_at: new Date().toISOString(),
     };
 
     const aiMessage: any = {
       id: aiId,
-      chat_id: Number(chatId),
+
       role: "assistant",
+
       content: "",
+
       created_at: new Date().toISOString(),
     };
 
     setCurrentChat((prev) => {
       const base = prev || {
         id: 0,
+
         title: "چت جدید",
-        created_at: new Date().toISOString(),
+
         messages: [],
+
+        created_at: new Date().toISOString(),
       };
+
       return {
         ...base,
+
         messages: [...base.messages, userMessage, aiMessage],
       };
     });
+
+    setTimeout(() => {
+      scrollToBottomInstant();
+    }, 50);
 
     streams.current[chatId] = {
       buffer: "",
       timer: null,
       active: true,
+      lastBufferSize: 0,
     };
 
     try {
       await sendMessageStream(
         text,
+
         currentChat?.id,
-        file,
+
+        imageFile,
+
+        selectedModel.id,
+
         (chunk) => {
           const stream = streams.current[chatId];
-          if (!stream || !stream.active) return;
+
+          if (!stream) return;
+
           stream.buffer += chunk.normalize("NFC");
-          startTyping(chatId, aiId);
+
+          if (!stream.timer) {
+            startTyping(chatId, aiId);
+          }
         },
+
         controller.signal,
       );
 
-      while (streams.current[chatId]?.buffer.length) {
-        await new Promise((resolve) => setTimeout(resolve, 50));
-      }
       await loadChats();
     } catch (error: any) {
-      // اگر خطا مربوط به لغو شدن توسط کاربر باشد، پیام خاصی نشان نمی‌دهیم
-      if (error.name === "AbortError") {
-        cancelledRef.current = true;
-        setCurrentChat((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            messages: prev.messages.map((msg) => {
-              if (msg.id === aiId) {
-                return {
-                  ...msg,
-                  content: "⏹ پاسخ لغو شد",
-                };
-              }
-              return msg;
-            }),
-          };
-        });
-        return; // از ادامه کد خارج می‌شویم
-      }
+      const errorMessage = formatBackendError(error);
 
-      // نمایش خطای زیبا به کاربر
-      const errorMessage =
-        error?.message ||
-        error?.error ||
-        "خطا در برقراری ارتباط با سرور. لطفاً دوباره تلاش کنید.";
       setStreamError(errorMessage);
-
-      // حذف پیام دستیار ناقص
-      setCurrentChat((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          messages: prev.messages.filter((msg) => msg.id !== aiId),
-        };
-      });
     } finally {
+      // صبر کن تا تمام buffer رندر شود
       stopTyping(chatId);
-      if (streams.current[chatId]) {
-        streams.current[chatId].buffer = "";
-      }
-      delete streams.current[chatId];
+
+      abortControllerRef.current = null;
+
+      setLoading(false);
+
+      setImageFile(null);
+
+      inputRef.current?.focus();
+
+      scrollToBottomInstant();
+
+      stopTyping(chatId);
       abortControllerRef.current = null;
       setLoading(false);
       setImageFile(null);
       inputRef.current?.focus();
     }
-  };
+  }
 
-  const handleCancelStream = () => {
-    cancelledRef.current = true;
+  function handleCancelStream() {
     abortControllerRef.current?.abort();
-    const chatId = String(currentChat?.id || 0);
-    stopTyping(chatId);
-    if (streams.current[chatId]) {
-      streams.current[chatId].active = false;
-    }
-  };
 
-  const handleDeleteChat = async (chatId: number) => {
+    stopTyping(String(currentChat?.id || 0));
+  }
+
+  async function handleDeleteChat(id: number) {
     if (!confirm("حذف شود؟")) return;
-    await deleteChat(chatId);
-    setChats((prev) => prev.filter((c) => c.id !== chatId));
-    if (currentChat?.id === chatId) {
-      setCurrentChat(null);
-    }
-  };
 
-  const toggleSidebar = () => setSidebarOpen((prev) => !prev);
+    await deleteChat(id);
+
+    setChats((prev) => prev.filter((c) => c.id !== id));
+
+    if (currentChat?.id === id) setCurrentChat(null);
+  }
 
   return (
     <div className={styles.container}>
@@ -312,19 +456,22 @@ export default function ChatInterface() {
           {isMobile && (
             <button
               className={styles.hamburger}
-              onClick={toggleSidebar}
-              aria-label="Toggle sidebar"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
             >
-              <span className={styles.hamburgerLine} />
-              <span className={styles.hamburgerLine} />
-              <span className={styles.hamburgerLine} />
+              ☰
             </button>
           )}
+
           <span className={styles.logo}>✨ اکانتسرا</span>
+
+          {selectedModel && (
+            <div className={styles.modelBadge}>🤖 {selectedModel.name}</div>
+          )}
         </div>
 
         <div className={styles.headerRight}>
           <TokenUsageBadge />
+
           <UserMenu />
         </div>
       </header>
@@ -339,68 +486,53 @@ export default function ChatInterface() {
 
       <div className={styles.mainArea}>
         <div
-          className={`${styles.sidebarWrapper} ${
-            isMobile ? styles.sidebarMobile : ""
-          } ${sidebarOpen ? styles.sidebarOpen : ""}`}
+          className={`${styles.sidebarWrapper}
+${sidebarOpen ? styles.sidebarOpen : ""}`}
         >
           <Sidebar
             chats={chats}
             currentChatId={currentChat?.id}
             onSelectChat={handleSelectChat}
-            onNewChat={() => {
-              setCurrentChat(null);
-              setInput("");
-              setImageFile(null);
-              setStreamError(null); // پاک کردن خطا در چت جدید
-              if (isMobile) setSidebarOpen(false);
-            }}
+            onNewChat={onNewChat}
             onDeleteChat={handleDeleteChat}
             isLoading={isLoadingChats}
           />
         </div>
 
-        {isMobile && sidebarOpen && (
-          <div className={styles.backdrop} onClick={() => setSidebarOpen(false)} />
-        )}
-
         <main className={styles.main}>
-          <div className={styles.messagesContainer}>
-            {/* نمایش بنر خطا در بالای لیست پیام‌ها */}
+          <div ref={messagesContainerRef} className={styles.messagesContainer}>
             {streamError && (
-              <div className={styles.errorBanner}>
-                <span className={styles.errorIcon}>⚠️</span>
+              <div className={styles.aiErrorMessage}>
+                <div className={styles.errorIcon}>⚠️</div>
+
                 <div className={styles.errorContent}>
-                  <span className={styles.errorTitle}>خطا در ارسال پیام</span>
-                  <span className={styles.errorMessage}>{streamError}</span>
-                  <span className={styles.errorHint}>به زودی برطرف خواهد شد</span>
+                  <strong>مشکلی پیش آمد</strong>
+
+                  <p>{streamError}</p>
+
+                  <button onClick={() => setStreamError(null)}>بستن</button>
                 </div>
-                <button
-                  className={styles.errorDismiss}
-                  onClick={() => setStreamError(null)}
-                  aria-label="بستن"
-                >
-                  ✕
-                </button>
               </div>
             )}
 
             {!currentChat || currentChat.messages.length === 0 ? (
               <div className={styles.emptyState}>
-                <span>💬</span>
+                💬
                 <h2>چت جدید</h2>
               </div>
             ) : (
-              currentChat.messages.map((msg, index) => {
-                const isLast = index === currentChat.messages.length - 1;
-                return (
-                  <div
-                    key={`${msg.role}-${msg.id}`}
-                    ref={isLast ? lastMessageRef : null}
-                  >
-                    <ChatMessage message={msg} />
-                  </div>
-                );
-              })
+              currentChat.messages.map((msg, index) => (
+                <div
+                  key={`${msg.id}-${index}`}
+                  ref={
+                    index === currentChat.messages.length - 1
+                      ? lastMessageRef
+                      : null
+                  }
+                >
+                  <ChatMessage message={msg} />
+                </div>
+              ))
             )}
           </div>
 

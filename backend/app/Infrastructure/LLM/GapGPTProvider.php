@@ -2,152 +2,418 @@
 
 namespace App\Infrastructure\LLM;
 
+
+use App\Models\AiModel;
 use App\Models\LLMRequest;
 use OpenAI;
+
 use App\Domain\Contracts\LLMProvider;
 use App\Domain\LLM\ChatRequest;
 use App\Domain\LLM\ChatResponse;
 use App\Domain\LLM\Usage;
 
+
+
 class GapGPTProvider implements LLMProvider
 {
-    protected $client;
 
 
-    public function __construct()
+    /**
+     * ساخت Client بر اساس Provider دیتابیس
+     */
+    protected function client(AiModel $model)
     {
-        $this->client = OpenAI::factory()
+
+        return OpenAI::factory()
 
             ->withApiKey(
-                config('services.gapgpt.key')
+                $model->provider->api_key
             )
 
             ->withBaseUri(
-                config('services.gapgpt.base_url')
+                $model->provider->base_url
             )
 
             ->make();
+
     }
 
 
+
+
+
+
+    /**
+     * Stream Response
+     */
     public function stream(ChatRequest $request)
     {
 
-        return $this->client->chat()->createStreamed([
 
-            'model' => $request->model,
+        $aiModel = AiModel::with('provider')
 
-            'messages' => array_map(
+            ->where(
+                'key',
+                $request->model
+            )
 
-                fn($message) => $message->toArray(),
+            ->firstOrFail();
 
-                $request->messages
-
-            ),
-
-            'temperature' => $request->temperature,
-
-            'max_tokens' => $request->maxTokens,
-
-            'stream' => true,
-
-            // این خط مهم است
-
-            'stream_options' => [
-
-                'include_usage' => false,
-
-            ],
-
+        \Log::info('AI MODEL DEBUG', [
+            'requested_model' => $request->model,
         ]);
+
+
+        $client = $this->client($aiModel);
+
+
+
+
+        return $client
+            ->chat()
+            ->createStreamed([
+
+
+                // مدل واقعی API
+                'model' =>
+                    $aiModel->model_name,
+
+
+
+                'messages' => array_map(
+
+                    fn($message) =>
+                    $message->toArray(),
+
+                    $request->messages
+
+                ),
+
+
+
+                'temperature' =>
+                    $request->temperature,
+
+
+
+                'max_tokens' =>
+                    $request->maxTokens,
+
+
+
+                'stream' => true,
+
+
+
+                'stream_options' => [
+
+                    'include_usage' => false
+
+                ]
+
+
+            ]);
 
     }
 
 
+
+
+
+
+
+
+
+
+    /**
+     * Chat Request
+     */
     public function chat(
         ChatRequest $request
     ): ChatResponse {
 
+
+        /*
+        |--------------------------------------------------------------------------
+        | Load Model + Provider
+        |--------------------------------------------------------------------------
+        */
+
+
+        $aiModel = AiModel::with('provider')
+
+            ->where(
+                'key',
+                $request->model
+            )
+
+            ->firstOrFail();
+
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create API Client
+        |--------------------------------------------------------------------------
+        */
+
+
+        $client = $this->client($aiModel);
+
+
+
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Save Request Log
+        |--------------------------------------------------------------------------
+        */
+
+
         $log = LLMRequest::create([
-            'provider' => 'openai',
-            'model' => $request->model,
-            'messages' => $request->messages,
-            'request_options' => $request->toArray(),
+
+
+            'user_id' => auth()->id(),
+
+
+            'provider' =>
+                $aiModel->provider->key,
+
+
+
+            'model' =>
+                $aiModel->model_name,
+
+
+
+            'messages' => collect(
+                $request->messages
+            )
+
+                ->map(
+                    fn($message) =>
+                    $message->toArray()
+                )
+
+                ->toArray(),
+
+
+
+
+            'request_options' => [
+
+                'temperature' =>
+                    $request->temperature,
+
+
+                'max_tokens' =>
+                    $request->maxTokens,
+
+            ],
+
+
+
             'status' => 'processing'
+
+
         ]);
 
 
-        $response = $this->client
+
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Send Request
+        |--------------------------------------------------------------------------
+        */
+
+
+        $response = $client
+
             ->chat()
+
             ->create([
 
-                'model' => $request->model,
+
+                'model' =>
+                    $aiModel->model_name,
+
 
 
                 'messages' => array_map(
-                    fn($message) => $message->toArray(),
+
+                    fn($message) =>
+                    $message->toArray(),
+
                     $request->messages
+
                 ),
 
 
-                'temperature' => $request->temperature,
+
+                'temperature' =>
+                    $request->temperature,
 
 
-                'max_tokens' => $request->maxTokens,
+
+                'max_tokens' =>
+                    $request->maxTokens,
+
 
             ]);
 
 
 
 
-        $llmresponse = LLMRequest::create([
-            'user_id' => auth()->id() ?? null,
-            'provider' => 'gapgpt',
-            'model' => $request->model,
-            'conversation_id' => $context->conversationId ?? null,
 
-            'messages' => $request->messages,
 
-            'request_options' => [
-                'temperature' => $request->temperature,
-                'max_tokens' => $request->maxTokens,
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Update Log
+        |--------------------------------------------------------------------------
+        */
+
+
+        $log->update([
+
+
+            'status' => 'completed',
+
+
+
+            'response' => [
+
+                'content' =>
+
+                    $response
+                        ->choices[0]
+                        ->message
+                        ->content
+
             ],
 
-            'status' => 'processing',
+
+
+
+            'usage' => [
+
+
+                'input' =>
+
+                    $response
+                        ->usage
+                        ->promptTokens ?? 0,
+
+
+
+                'output' =>
+
+                    $response
+                        ->usage
+                        ->completionTokens ?? 0,
+
+
+
+                'total' =>
+
+                    $response
+                        ->usage
+                        ->totalTokens ?? 0,
+
+
+            ]
+
+
         ]);
 
 
 
 
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Return Domain Response
+        |--------------------------------------------------------------------------
+        */
+
+
         return new ChatResponse(
 
+
+
             content:
+
             $response
                 ->choices[0]
                 ->message
                 ->content,
 
 
+
+
+
             usage:
+
             new Usage(
 
+
                 inputTokens:
-                $response->usage->promptTokens ?? 0,
+
+                $response
+                    ->usage
+                    ->promptTokens ?? 0,
+
 
 
                 outputTokens:
-                $response->usage->completionTokens ?? 0,
+
+                $response
+                    ->usage
+                    ->completionTokens ?? 0,
+
 
 
                 totalTokens:
-                $response->usage->totalTokens ?? 0,
+
+                $response
+                    ->usage
+                    ->totalTokens ?? 0,
+
 
             ),
 
 
+
+
+
             model:
-            $request->model
+
+            $aiModel->model_name
+
 
         );
+
+
     }
+
+
+
 }

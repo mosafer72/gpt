@@ -13,14 +13,15 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
-    const publicPaths = ['/login', '/verify','/'];
+    const publicPaths = ['/login', '/verify'];
+    const publicPaths_wiht_auth = ['/login', '/verify'];
     const isPublicPath = publicPaths.includes(pathname);
 
-    if (!token && !isPublicPath) {
+    if (!token && !isPublicPath && !publicPaths_wiht_auth) {
       router.replace('/login');
       setIsAuthenticated(false);
     } else if (token && isPublicPath) {
-      // router.replace('/dashboard');
+      router.replace('/dashboard');
       setIsAuthenticated(true);
     } else if (token) {
       setIsAuthenticated(true);

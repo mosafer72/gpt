@@ -1,76 +1,94 @@
-import Footer from '@/components/Common/Footer.tsx/Footer';
-import styles from './page.module.css';
-import Link from 'next/link';
+'use client'
+import Footer from "@/components/Common/Footer.tsx/Footer";
+import styles from "./page.module.css";
+import Link from "next/link";
+import { useEffect,useState } from "react";
 
 const services = [
   {
-    id: 'chatgpt',
-    name: 'ChatGPT',
-    icon: '🤖',
-    description: 'گفتگو، تحلیل، تولید محتوا و کدنویسی حرفه‌ای',
-    status: 'active',
-    href: '/chat',
+    id: "chatgpt",
+    name: "ChatGPT",
+    icon: "🤖",
+    description: "گفتگو، تحلیل، تولید محتوا و کدنویسی حرفه‌ای",
+    status: "active",
+    href: "/chat",
   },
   {
-    id: 'grok',
-    name: 'Grok',
-    icon: '⚡',
-    description: 'تحلیل داده‌های لحظه‌ای و اخبار روز',
-    status: 'soon',
-    href: '#',
+    id: "grok",
+    name: "Grok",
+    icon: "⚡",
+    description: "تحلیل داده‌های لحظه‌ای و اخبار روز",
+    status: "soon",
+    href: "#",
   },
   {
-    id: 'claude',
-    name: 'Claude',
-    icon: '☁️',
-    description: 'پردازش متون طولانی و تحلیل عمیق',
-    status: 'soon',
-    href: '#',
+    id: "claude",
+    name: "Claude",
+    icon: "☁️",
+    description: "پردازش متون طولانی و تحلیل عمیق",
+    status: "soon",
+    href: "#",
   },
   {
-    id: 'codex',
-    name: 'Codex',
-    icon: '💻',
-    description: 'تولید کد حرفه‌ای و توسعه نرم‌افزار',
-    status: 'soon',
-    href: '#',
+    id: "codex",
+    name: "Codex",
+    icon: "💻",
+    description: "تولید کد حرفه‌ای و توسعه نرم‌افزار",
+    status: "soon",
+    href: "#",
   },
   // ===== سرویس‌های جدید =====
   {
-    id: 'speech-to-text',
-    name: 'تبدیل صدا به متن',
-    icon: '🎤',
-    description: 'رونویسی خودکار فایل‌های صوتی و جلسات',
-    status: 'soon',
-    href: '#',
+    id: "speech-to-text",
+    name: "تبدیل صدا به متن",
+    icon: "🎤",
+    description: "رونویسی خودکار فایل‌های صوتی و جلسات",
+    status: "soon",
+    href: "#",
   },
   {
-    id: 'pdf-to-word',
-    name: 'تبدیل PDF به Word',
-    icon: '📄',
-    description: 'تبدیل دقیق فایل‌های PDF به اسناد قابل ویرایش',
-    status: 'soon',
-    href: '#',
+    id: "pdf-to-word",
+    name: "تبدیل PDF به Word",
+    icon: "📄",
+    description: "تبدیل دقیق فایل‌های PDF به اسناد قابل ویرایش",
+    status: "soon",
+    href: "#",
   },
   {
-    id: 'ocr',
-    name: 'استخراج متن از تصویر',
-    icon: '🖼️',
-    description: 'تشخیص کاراکترهای نوری برای اسناد و اسکرین‌شات‌ها',
-    status: 'soon',
-    href: '#',
+    id: "ocr",
+    name: "استخراج متن از تصویر",
+    icon: "🖼️",
+    description: "تشخیص کاراکترهای نوری برای اسناد و اسکرین‌شات‌ها",
+    status: "soon",
+    href: "#",
   },
   {
-    id: 'ai-video',
-    name: 'تولید ویدیو با هوش مصنوعی',
-    icon: '🎬',
-    description: 'ساخت ویدیو از توضیحات متنی با کیفیت بالا',
-    status: 'soon',
-    href: '#',
+    id: "ai-video",
+    name: "تولید ویدیو با هوش مصنوعی",
+    icon: "🎬",
+    description: "ساخت ویدیو از توضیحات متنی با کیفیت بالا",
+    status: "soon",
+    href: "#",
   },
 ];
 
 export default function Home() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+
+  function checklogin(){
+    const token = localStorage.getItem("auth_token");
+
+      if(!token){          
+            return (<Link href="/login" className={styles.btnOutline}>
+              ورود / ثبت‌نام
+            </Link>);
+      }else{
+        return (<Link href="/dashboard" className={styles.btnOutline}>
+              داشبورد
+            </Link>);
+      }
+  }
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -79,9 +97,7 @@ export default function Home() {
           <span className={styles.logo}>اکانتسرا</span>
         </div>
         <nav className={styles.nav}>
-          <Link href="/login" className={styles.btnOutline}>
-            ورود
-          </Link>
+          {checklogin()}
           <Link href="/chat" className={styles.btnPrimary}>
             شروع گفتگو
           </Link>
@@ -96,8 +112,8 @@ export default function Home() {
           دسترسی داشته باش
         </h1>
         <p className={styles.sub}>
-          یک پنل واحد برای ChatGPT، Grok، Claude و Codex — بدون نیاز به
-          ساخت چند حساب کاربری.
+          یک پنل واحد برای ChatGPT، Grok، Claude و Codex — بدون نیاز به ساخت چند
+          حساب کاربری.
         </p>
         <div className={styles.actions}>
           <Link href="/chat" className={styles.cta}>
@@ -116,12 +132,12 @@ export default function Home() {
         </div>
         <div className={styles.servicesGrid}>
           {services.map((service) => {
-            const isActive = service.status === 'active';
+            const isActive = service.status === "active";
             return (
               <div
                 key={service.id}
                 className={`${styles.serviceCard} ${
-                  isActive ? styles.activeService : ''
+                  isActive ? styles.activeService : ""
                 }`}
               >
                 <div className={styles.serviceTop}>
@@ -131,7 +147,7 @@ export default function Home() {
                       isActive ? styles.statusActive : styles.statusSoon
                     }`}
                   >
-                    {isActive ? 'فعال' : 'به‌زودی'}
+                    {isActive ? "فعال" : "به‌زودی"}
                   </span>
                 </div>
                 <h3>{service.name}</h3>

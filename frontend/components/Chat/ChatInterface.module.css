@@ -5,7 +5,10 @@
   height: 100vh;
   background-color: #0b1020;
   overflow: hidden;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
   color: #ffffff;
 }
 
@@ -298,4 +301,138 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+.modelBadge {
+  background: rgba(37, 99, 235, 0.15);
+
+  border: 1px solid rgba(37, 99, 235, 0.3);
+
+  padding: 6px 14px;
+
+  border-radius: 20px;
+
+  font-size: 13px;
+
+  color: #93c5fd;
+}
+.aiErrorMessage {
+
+  display:flex;
+
+  gap:14px;
+
+  margin:20px auto;
+
+  max-width:650px;
+
+  padding:16px 18px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #fff5f5,
+      #fff
+    );
+
+  border:1px solid #fecaca;
+
+  border-radius:18px;
+
+  box-shadow:
+    0 8px 25px rgba(0,0,0,.08);
+
+  animation:
+    errorAppear .3s ease;
+
+}
+
+
+
+.errorIcon {
+
+  font-size:28px;
+
+}
+
+
+
+.errorContent {
+
+  flex:1;
+
+}
+
+
+
+.errorContent strong {
+
+  display:block;
+
+  font-size:16px;
+
+  margin-bottom:8px;
+
+}
+
+
+
+.errorContent p {
+
+  white-space:pre-line;
+
+  line-height:1.8;
+
+  color:#555;
+
+}
+
+
+
+.errorContent button {
+
+  margin-top:10px;
+
+  border:none;
+
+  background:#ef4444;
+
+  color:white;
+
+  padding:7px 18px;
+
+  border-radius:10px;
+
+  cursor:pointer;
+
+}
+
+
+
+.errorContent button:hover {
+
+  opacity:.85;
+
+}
+
+
+
+@keyframes errorAppear {
+
+ from {
+
+   opacity:0;
+
+   transform:translateY(15px);
+
+ }
+
+
+ to {
+
+   opacity:1;
+
+   transform:translateY(0);
+
+ }
+
 }

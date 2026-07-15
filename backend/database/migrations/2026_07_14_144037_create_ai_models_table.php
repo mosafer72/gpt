@@ -4,30 +4,44 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+
+return new class extends Migration {
 
     public function up(): void
     {
+
         Schema::create('ai_models', function (Blueprint $table) {
+
 
             $table->id();
 
 
-            // شناسه مدل برای API
-            // مثال: gpt-4.1-mini
+
+            // کلید داخلی سیستم
+            // gpt-mini
+            // deepseek-chat
             $table->string('key')
                 ->unique();
 
 
+
             // نام نمایشی
-            // مثال: GPT 4.1 Mini
+            // GPT 4.1 Mini
             $table->string('name');
 
 
-            // سرویس دهنده
-            // openai, anthropic, deepseek
-            $table->string('provider');
+
+            // نام واقعی API
+            // gpt-4.1-mini
+            $table->string('model_name');
+
+
+
+            // Provider مربوطه
+            $table->foreignId('provider_id')
+                ->constrained('llm_providers')
+                ->cascadeOnDelete();
+
 
 
             // هزینه ورودی هر میلیون توکن
@@ -36,7 +50,8 @@ return new class extends Migration
                 10,
                 4
             )
-            ->default(0);
+                ->default(0);
+
 
 
             // هزینه خروجی هر میلیون توکن
@@ -45,24 +60,26 @@ return new class extends Migration
                 10,
                 4
             )
-            ->default(0);
+                ->default(0);
 
 
-            // فعال یا غیرفعال
+
+            // فعال بودن مدل
             $table->boolean('is_active')
                 ->default(true);
 
 
+
             $table->timestamps();
+
 
         });
 
-
-
-              Schema::create('plan_model', function (Blueprint $table) {
+        Schema::create('plan_model', function (Blueprint $table) {
 
 
             $table->id();
+
 
 
             $table->foreignId('plan_id')
@@ -70,17 +87,31 @@ return new class extends Migration
                 ->cascadeOnDelete();
 
 
+
             $table->foreignId('ai_model_id')
-                ->constrained('ai_models')
+                ->constrained()
                 ->cascadeOnDelete();
 
 
-            // مدل پیش فرض این پلن
+
+            // مدل پیش فرض پلن
             $table->boolean('is_default')
                 ->default(false);
 
 
+
+            // محدودیت اختصاصی مدل در این پلن
+            // مثلا:
+            // max_tokens:2000
+            // daily_limit:50
+
+            $table->json('settings')
+                ->nullable();
+
+
+
             $table->timestamps();
+
 
 
             $table->unique([
@@ -88,17 +119,17 @@ return new class extends Migration
                 'ai_model_id'
             ]);
 
-
         });
-
 
     }
 
 
+
     public function down(): void
     {
-        Schema::dropIfExists('ai_models');
+
         Schema::dropIfExists('plan_model');
+        Schema::dropIfExists('ai_models');
 
     }
 
