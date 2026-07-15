@@ -287,7 +287,7 @@ class PlanSeeder extends Seeder
 
         $free->models()->sync([
 
-            $models['oss-120b'] => [
+            $models['gapgpt-qwen-3.6'] => [
 
                 'is_default'=>true
 
@@ -303,7 +303,7 @@ class PlanSeeder extends Seeder
 
         $basic->models()->sync([
 
-            $models['oss-120b']=>[
+            $models['gapgpt-qwen-3.6']=>[
 
                 'is_default'=>true
 
