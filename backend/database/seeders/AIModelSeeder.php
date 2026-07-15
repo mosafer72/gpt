@@ -60,7 +60,7 @@ class AiModelSeeder extends Seeder
 
                 'name'=>'GPT 4.1 Mini',
 
-                'model_name'=>'gpt-4.1-mini',
+                'model_name'=>'gapgpt-qwen-3.6',
 
                 'provider_id'=>$openai->id,
 
@@ -90,7 +90,7 @@ class AiModelSeeder extends Seeder
 
                 'name'=>'GPT 5',
 
-                'model_name'=>'gpt-5',
+                'model_name'=>'gapgpt-qwen-3.6',
 
                 'provider_id'=>$openai->id,
 
@@ -121,7 +121,7 @@ class AiModelSeeder extends Seeder
 
                 'name'=>'GPT OSS 120B Free',
 
-                'model_name'=>'openai/gpt-oss-120b:free',
+                'model_name'=>'gapgpt-qwen-3.6',
 
                 'provider_id'=>$openrouter->id,
 
