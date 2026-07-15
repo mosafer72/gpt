@@ -18,8 +18,8 @@ class DatabaseSeeder extends Seeder
         $this->call([
             ChatSeeder::class,              // ۱۰ چت با پیام‌های محدود
             ChatWithMessagesSeeder::class,  // چت طولانی + ۵ چت متوسط
-            LLMProviderSeeder::class,
-            AIModelSeeder::class,
+            LlmProviderSeeder::class,
+            AiModelSeeder::class,
             PlanSeeder::class,  // چت طولانی + ۵ چت متوسط
             UserSeeder::class,  // چت طولانی + ۵ چت متوسط
         ]);
