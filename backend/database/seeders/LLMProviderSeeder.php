@@ -25,7 +25,7 @@ class LlmProviderSeeder extends Seeder
 
                 'api_key'=>env('OPENAI_API_KEY'),
 
-                'base_url'=>'https://api.openai.com/v1',
+                'base_url'=>'https://api.gapgpt.app/v1',
 
                 'is_active'=>true,
 
@@ -49,7 +49,7 @@ class LlmProviderSeeder extends Seeder
 
                 'api_key'=>env('OPENROUTER_API_KEY'),
 
-                'base_url'=>'https://openrouter.ai/api/v1',
+                'base_url'=>'https://api.gapgpt.app/v1',
 
                 'is_active'=>true,
 
@@ -74,7 +74,7 @@ class LlmProviderSeeder extends Seeder
 
                 'api_key'=>env('DEEPSEEK_API_KEY'),
 
-                'base_url'=>'https://api.deepseek.com/v1',
+                'base_url'=>'https://api.gapgpt.app/v1',
 
                 'is_active'=>true,
 
@@ -99,7 +99,7 @@ class LlmProviderSeeder extends Seeder
 
                 'api_key'=>env('ANTHROPIC_API_KEY'),
 
-                'base_url'=>'https://api.anthropic.com/v1',
+                'base_url'=>'https://api.gapgpt.app/v1',
 
                 'is_active'=>true,
 
@@ -124,7 +124,7 @@ class LlmProviderSeeder extends Seeder
 
                 'api_key'=>env('QWEN_API_KEY'),
 
-                'base_url'=>'https://dashscope.aliyuncs.com/compatible-mode/v1',
+                'base_url'=>'https://api.gapgpt.app/v1',
 
                 'is_active'=>true,
 

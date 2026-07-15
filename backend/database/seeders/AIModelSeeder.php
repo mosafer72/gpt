@@ -114,7 +114,7 @@ class AiModelSeeder extends Seeder
         AiModel::updateOrCreate(
 
             [
-                'key'=>'oss-120b'
+                'key'=>'gapgpt-qwen-3.6'
             ],
 
             [
