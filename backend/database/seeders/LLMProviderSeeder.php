@@ -3,17 +3,17 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\LLMProvider;
+use App\Models\LlmProvider;
 
 
-class LLMProviderSeeder extends Seeder
+class LlmProviderSeeder extends Seeder
 {
 
     public function run(): void
     {
 
 
-        LLMProvider::updateOrCreate(
+        LlmProvider::updateOrCreate(
 
             [
                 'key'=>'openai'
@@ -37,7 +37,7 @@ class LLMProviderSeeder extends Seeder
 
 
 
-        LLMProvider::updateOrCreate(
+        LlmProvider::updateOrCreate(
 
             [
                 'key'=>'openrouter'
@@ -62,7 +62,7 @@ class LLMProviderSeeder extends Seeder
 
 
 
-        LLMProvider::updateOrCreate(
+        LlmProvider::updateOrCreate(
 
             [
                 'key'=>'deepseek'
@@ -87,7 +87,7 @@ class LLMProviderSeeder extends Seeder
 
 
 
-        LLMProvider::updateOrCreate(
+        LlmProvider::updateOrCreate(
 
             [
                 'key'=>'anthropic'
@@ -112,7 +112,7 @@ class LLMProviderSeeder extends Seeder
 
 
 
-        LLMProvider::updateOrCreate(
+        LlmProvider::updateOrCreate(
 
             [
                 'key'=>'qwen'

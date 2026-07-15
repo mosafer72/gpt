@@ -6,7 +6,7 @@ use App\Domain\LLM\ChatRequest;
 
 use App\Domain\LLM\ChatResponse;
 
-interface LLMProvider
+interface LlmProvider
 
 {
 

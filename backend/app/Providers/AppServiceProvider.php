@@ -18,7 +18,7 @@ use App\Infrastructure\Memory\DatabaseMemoryStore;
 use App\Domain\Contracts\ConversationLoader;
 use App\Domain\Contracts\MemoryRetriever;
 use App\Domain\Contracts\MemoryStore;
-use App\Domain\Contracts\LLMProvider;
+use App\Domain\Contracts\LlmProvider;
 
 
 class AppServiceProvider extends ServiceProvider
@@ -44,7 +44,7 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(
-            LLMProvider::class,
+            LlmProvider::class,
             GapGPTProvider::class
         );
 

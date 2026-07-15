@@ -38,7 +38,7 @@ class AiModel extends Model
     {
 
         return $this->belongsTo(
-            LLMProvider::class
+            LlmProvider::class
         );
 
     }

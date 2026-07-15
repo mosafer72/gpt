@@ -5,7 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 
 use App\Models\AiModel;
-use App\Models\LLMProvider;
+use App\Models\LlmProvider;
 
 
 
@@ -17,31 +17,31 @@ class AiModelSeeder extends Seeder
 
 
         $openai =
-            LLMProvider::where('key','openai')
+            LlmProvider::where('key','openai')
             ->first();
 
 
 
         $openrouter =
-            LLMProvider::where('key','openrouter')
+            LlmProvider::where('key','openrouter')
             ->first();
 
 
 
         $deepseek =
-            LLMProvider::where('key','deepseek')
+            LlmProvider::where('key','deepseek')
             ->first();
 
 
 
         $anthropic =
-            LLMProvider::where('key','anthropic')
+            LlmProvider::where('key','anthropic')
             ->first();
 
 
 
         $qwen =
-            LLMProvider::where('key','qwen')
+            LlmProvider::where('key','qwen')
             ->first();
 
 

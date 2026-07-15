@@ -7,14 +7,14 @@ use App\Models\AiModel;
 use App\Models\LLMRequest;
 use OpenAI;
 
-use App\Domain\Contracts\LLMProvider;
+use App\Domain\Contracts\LlmProvider;
 use App\Domain\LLM\ChatRequest;
 use App\Domain\LLM\ChatResponse;
 use App\Domain\LLM\Usage;
 
 
 
-class GapGPTProvider implements LLMProvider
+class GapGPTProvider implements LlmProvider
 {
 
 

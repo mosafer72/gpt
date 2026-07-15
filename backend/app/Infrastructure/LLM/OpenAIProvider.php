@@ -4,12 +4,12 @@
 
     use App\Models\LLMRequest;
     use OpenAI;
-    use App\Domain\Contracts\LLMProvider;
+    use App\Domain\Contracts\LlmProvider;
     use App\Domain\LLM\ChatRequest;
     use App\Domain\LLM\ChatResponse;
     use App\Domain\LLM\Usage;
 
-    class OpenAIProvider implements LLMProvider
+    class OpenAIProvider implements LlmProvider
     {
         protected $client;
 

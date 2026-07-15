@@ -2,12 +2,12 @@
 
 namespace App\Infrastructure\Testing;
 
-use App\Domain\Contracts\LLMProvider;
+use App\Domain\Contracts\LlmProvider;
 use App\Domain\LLM\ChatRequest;
 use App\Domain\LLM\ChatResponse;
 use App\Domain\LLM\Usage;
 
-class FakeLLMProvider implements LLMProvider
+class FakeLlmProvider implements LlmProvider
 {
     public function chat(
         ChatRequest $request

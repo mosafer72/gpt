@@ -5,7 +5,7 @@ namespace App\Application\Pipelines;
 
 use App\Application\Context\ChatContext;
 use App\Domain\Contracts\ConversationRepository;
-use App\Domain\Contracts\LLMProvider;
+use App\Domain\Contracts\LlmProvider;
 use App\Domain\Contracts\ConversationLoader;
 use App\Domain\Contracts\MessageStore;
 use App\Domain\LLM\ChatMessage;
@@ -32,7 +32,7 @@ class ChatPipeline
 
         protected PromptPipeline $promptPipeline,
 
-        protected LLMProvider $llmProvider,
+        protected LlmProvider $LlmProvider,
 
         protected CapabilityResolver $capability,
 
@@ -134,7 +134,7 @@ class ChatPipeline
             $model
         );
 
-        return $this->llmProvider->stream($request);
+        return $this->LlmProvider->stream($request);
 
     }
 
@@ -379,7 +379,7 @@ class ChatPipeline
 
 
         $response =
-            $this->llmProvider
+            $this->LlmProvider
                 ->chat(
                     $request
                 );
