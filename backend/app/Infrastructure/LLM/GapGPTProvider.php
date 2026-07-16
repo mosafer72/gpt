@@ -107,7 +107,7 @@ class GapGPTProvider implements LlmProvider
 
                 'stream_options' => [
 
-                    'include_usage' => false
+                    'include_usage' => true
 
                 ]
 

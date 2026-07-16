@@ -166,7 +166,7 @@ class ChatContext
      */
     public function setAssistantResponse(
         string $response,
-        int $tokenUsage = 0
+        array $tokenUsage = []
     ): self {
         $this->assistantResponse = $response;
         $this->tokenUsage = $tokenUsage;
@@ -217,6 +217,23 @@ class ChatContext
             'token_usage' => $this->tokenUsage,
             'metadata' => $this->metadata,
         ];
+    }
+
+    public static function fromArray(array $data): self
+    {
+        $context = new self();
+
+        $context->userId = $data['userId'];
+        $context->conversationId = $data['conversationId'];
+        $context->currentMessage = $data['currentMessage'];
+        $context->model = $data['model'];
+        $context->assistantResponse = $data['assistantResponse'] ?? null;
+        $context->tokenUsage = $data['tokenUsage'] ?? 0;
+        $context->prompt = $data['prompt'] ?? [];
+        $context->messages = $data['messages'] ?? [];
+        $context->memories = $data['memories'] ?? [];
+
+        return $context;
     }
 
 }

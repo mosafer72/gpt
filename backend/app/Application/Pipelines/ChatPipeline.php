@@ -12,8 +12,10 @@ use App\Domain\LLM\ChatMessage;
 use App\Domain\LLM\ChatRequest;
 use App\Domain\Message\DTOs\MessageDTO;
 use App\Application\Capabilities\CapabilityResolver;
+use App\Jobs\StoreMemoryJob;
 use App\Models\User;
 use App\Http\Services\TokenService;
+use App\Jobs\StoreAssistantMessageJob;
 
 
 class ChatPipeline
@@ -147,9 +149,6 @@ class ChatPipeline
     ): ChatContext {
 
 
-
-
-
         /**
          * Step 1
          *
@@ -278,8 +277,7 @@ class ChatPipeline
             )
         ) {
 
-            $this->memoryPipeline
-                ->store($context);
+            StoreMemoryJob::dispatch($context->toArray());
 
         }
 
@@ -323,7 +321,17 @@ class ChatPipeline
 
                     id: (string) ($message->id ?? uniqid()),
 
-                    conversation: (string) ($message->chat_id ?? ''),
+                    conversation: (string) (
+                        $message->chat_id
+                        ??
+                        $message->conversation_id
+                        ??
+                        ''
+                    ),
+
+                    user_id: isset($message->user_id)
+                    ? (string) $message->user_id
+                    : null,
 
                     role: $message->role,
 
@@ -331,9 +339,15 @@ class ChatPipeline
 
                     token_count: (int) ($message->token_count ?? 0),
 
-                    metadata: is_string($message->metadata ?? null) ? json_decode($message->metadata, true) : ($message->metadata ?? null),
+                    metadata:
+                    is_string($message->metadata ?? null)
+                    ? json_decode($message->metadata, true)
+                    : ($message->metadata ?? null),
 
-                    created_at: (string) ($message->created_at ?? now())
+                    created_at: (string) (
+                        $message->created_at
+                        ?? now()
+                    )
 
                 );
 
@@ -387,13 +401,12 @@ class ChatPipeline
 
 
         $context->setAssistantResponse(
-
-            response:
-            $response->content,
-
-            tokenUsage:
-            $response->usage->totalTokens
-
+            response: $response->content,
+            tokenUsage: [
+                'prompt_tokens' => $response->usage->inputTokens,
+                'completion_tokens' => $response->usage->outputTokens,
+                'total_tokens' => $response->usage->totalTokens,
+            ]
         );
 
 
@@ -417,49 +430,34 @@ class ChatPipeline
         }
 
 
+        \Log::info('DISPATCH ASSISTANT JOB', [
+                'conversation' => $context->conversationId,
+                'user_id' => $context->userId,
+        ]);
+        StoreAssistantMessageJob::dispatch([
+            'id' => uniqid(),
 
+            'conversation' => $context->conversationId,
 
-        $this->messageStore->store(
+            'user_id' => $context->userId,
 
-            new MessageDTO(
+            'role' => 'assistant',
 
-                id: uniqid(),
+            'content' => $response->content,
 
+            'token_count' => $response->usage->totalTokens,
 
-                conversation:
-                $context->conversationId,
-
-
-                role:
-                'assistant',
-
-
-                content:
-                $response->content,
-
-
-                token_count:
-                $response->usage->totalTokens,
-
-
-                metadata: [
-
-                    'user_id' =>
-                        $context->userId,
-
-
-                    'model' =>
-                        $model
-
+            'metadata' => [
+                'model' => $model,
+                'token_usage' => [
+                    'prompt_tokens' => $response->usage->inputTokens,
+                    'completion_tokens' => $response->usage->outputTokens,
+                    'total_tokens' => $response->usage->totalTokens,
                 ],
+            ],
 
-
-                created_at:
-                now()->toDateTimeString()
-
-            )
-
-        );
+            'created_at' => now()->toDateTimeString(),
+        ]);
 
     }
 

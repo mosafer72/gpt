@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\StoreAssistantMessageJob;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Models\Usage;
@@ -14,6 +16,7 @@ use App\Application\Pipelines\ChatPipeline;
 use App\Domain\Contracts\MessageStore;
 use App\Domain\Message\DTOs\MessageDTO;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Jobs\StoreMessageJob;
 
 
 class ChatController extends Controller
@@ -39,17 +42,41 @@ class ChatController extends Controller
     public function index(): JsonResponse
     {
 
-        $chats =
-            Chat::where(
-                'user_id',
-                auth()->id()
-            )
-                ->with('messages')
-                ->orderBy(
-                    'updated_at',
-                    'desc'
+        $userId = auth()->id();
+
+
+        $cacheKey =
+            "user:{$userId}:chats:last20";
+
+
+        $chats = Cache::remember(
+            $cacheKey,
+            now()->addMinutes(10),
+            function () use ($userId) {
+
+
+                return Chat::where(
+                    'user_id',
+                    $userId
                 )
-                ->get();
+                    ->with([
+                        'messages' => function ($query) {
+
+                            $query
+                                ->latest()
+                                ->limit(20);
+
+                        }
+                    ])
+                    ->orderBy(
+                        'updated_at',
+                        'desc'
+                    )
+                    ->limit(20)
+                    ->get();
+
+            }
+        );
 
 
         return response()->json(
@@ -59,32 +86,99 @@ class ChatController extends Controller
     }
 
 
-    public function messages(Chat $chat, Request $request): JsonResponse
-    {
-        if ($chat->user_id !== auth()->id()) {
-            return response()->json(['error' => 'Forbidden'], 403);
+    public function messages(
+        Chat $chat,
+        Request $request
+    ): JsonResponse {
+
+
+        if (
+            $chat->user_id !== auth()->id()
+        ) {
+
+            return response()->json([
+                'error' => 'Forbidden'
+            ], 403);
+
         }
 
-        $perPage = (int) $request->input('per_page', 10);
-        $page = (int) $request->input('page', 1);
 
-        // دریافت پیام‌ها با ترتیب نزولی (جدیدترین اول) برای صفحه‌بندی
-        $paginator = $chat->messages()
-            ->orderBy('created_at', 'desc')
-            ->paginate($perPage, ['*'], 'page', $page);
 
-        // معکوس کردن آیتم‌ها تا ترتیب قدیم به جدید شود (برای نمایش درست)
-        $items = array_reverse($paginator->items());
+        $perPage = (int) $request->input(
+            'per_page',
+            10
+        );
 
-        return response()->json([
-            'data' => $items,
-            'current_page' => $paginator->currentPage(),
-            'last_page' => $paginator->lastPage(),
-            'per_page' => $paginator->perPage(),
-            'total' => $paginator->total(),
-        ]);
+
+        $page = (int) $request->input(
+            'page',
+            1
+        );
+
+
+
+        $cacheKey =
+            "chat:{$chat->id}:messages:page:{$page}:limit:{$perPage}";
+
+
+
+        $messages = Cache::remember(
+            $cacheKey,
+            now()->addMinutes(30),
+
+            function () use ($chat, $perPage, $page) {
+
+
+                $paginator =
+                    $chat->messages()
+                        ->orderBy(
+                            'created_at',
+                            'desc'
+                        )
+                        ->paginate(
+                            $perPage,
+                            ['*'],
+                            'page',
+                            $page
+                        );
+
+
+                return [
+
+                    'data' =>
+                        array_reverse(
+                            $paginator->items()
+                        ),
+
+
+                    'current_page' =>
+                        $paginator->currentPage(),
+
+
+                    'last_page' =>
+                        $paginator->lastPage(),
+
+
+                    'per_page' =>
+                        $paginator->perPage(),
+
+
+                    'total' =>
+                        $paginator->total(),
+
+                ];
+
+
+            }
+        );
+
+
+
+        return response()->json(
+            $messages
+        );
+
     }
-
 
     /**
      * ارسال پیام و دریافت پاسخ
@@ -174,7 +268,9 @@ class ChatController extends Controller
 
             ]);
 
-
+        Cache::forget(
+            "user:{$user->id}:chats:last20"
+        );
 
 
 
@@ -193,45 +289,92 @@ class ChatController extends Controller
             $plannerMessage = '[Image attached]';
         }
 
-        $this->messageStore->store(
+        StoreMessageJob::dispatch([
 
-            new MessageDTO(
+            'id' => uniqid(),
 
-                id: uniqid(),
-
-                conversation:
+            'conversation' =>
                 (string) $chat->id,
 
-                role: 'user',
+            'user_id' =>
+                (string) $user->id,
 
-                content:
+            'role' =>
+                'user',
+
+            'content' =>
                 $content,
 
-                token_count: 0,
+            'token_count' =>
+                0,
 
-                metadata: [
+            'metadata' => [
 
-                    'user_id' => $user->id,
-
-                    'attachments' => $imagePath
-                        ?
+                'attachments' =>
+                    $imagePath
+                    ?
+                    [
                         [
-                            [
-                                'type' => 'image',
-                                'url' => $imageUrl
-                            ]
+                            'type' => 'image',
+                            'url' => $imageUrl
                         ]
-                        :
-                        []
+                    ]
+                    :
+                    []
 
-                ],
+            ],
 
-                created_at:
-                now()->toDateTimeString()
+            'created_at' =>
+                now()->toDateTimeString(),
 
-            )
+        ]);
+        // $this->messageStore->store(
 
-        );
+        //     new MessageDTO(
+
+        //         id: uniqid(),
+
+
+        //         conversation:
+        //         (string) $chat->id,
+
+
+        //         user_id:
+        //         (string) $user->id,
+
+
+        //         role: 'user',
+
+
+        //         content:
+        //         $content,
+
+
+        //         token_count: 0,
+
+
+        //         metadata: [
+
+        //             'attachments' => $imagePath
+        //                 ?
+        //                 [
+        //                     [
+        //                         'type' => 'image',
+        //                         'url' => $imageUrl
+        //                     ]
+        //                 ]
+        //                 :
+        //                 []
+
+        //         ],
+
+
+        //         created_at:
+        //         now()->toDateTimeString()
+
+        //     )
+
+        // );
 
         // ذخیره Usage
 
@@ -314,7 +457,18 @@ class ChatController extends Controller
                     ];
 
                 }
-                $text = $response->choices[0]->delta->content ?? '';
+                $text = '';
+
+                if (
+                    isset($response->choices[0]->delta->content)
+                ) {
+
+                    $text =
+                        $response->choices[0]
+                            ->delta
+                            ->content;
+
+                }
 
                 if ($text === '') {
 
@@ -341,50 +495,140 @@ class ChatController extends Controller
                 flush();
 
             }
-
-            // ذخیره پاسخ کامل
             if (!connection_aborted()) {
-                $this->messageStore->store(
 
-                    new MessageDTO(
+                StoreMessageJob::dispatch([
 
-                        id: uniqid(),
+                    'id' => uniqid(),
 
-                        conversation: $context->conversationId,
+                    'conversation' =>
+                        (string) $context->conversationId,
 
-                        role: 'assistant',
+                    'user_id' =>
+                        (string) $context->userId,
 
-                        content: $full,
+                    'role' =>
+                        'assistant',
 
-                        token_count: 0,
+                    'content' =>
+                        $full,
 
-                        metadata: [],
+                    'token_count' =>
+                        $context->tokenUsage['total_tokens'] ?? 0,
 
-                        created_at: now()->toDateTimeString()
+                    'metadata' => [
 
-                    )
+                        'model' =>
+                            $context->model,
 
-                );
+                        'token_usage' =>
+                            $context->tokenUsage,
 
-                Usage::create([
+                    ],
 
-                    'user_id' => (int) $context->userId,
-
-                    'conversation_id' => (int) $context->conversationId,
-
-                    'type' => 'chat',
-
-                    'model' => $context->model,
-
-                    'prompt_tokens' => $context->tokenUsage['prompt_tokens'] ?? 0,
-
-                    'completion_tokens' => $context->tokenUsage['completion_tokens'] ?? 0,
-
-                    'total_tokens' => $context->tokenUsage['total_tokens'] ?? 0,
+                    'created_at' =>
+                        now()->toDateTimeString(),
 
                 ]);
-                echo "data: [DONE]\n\n";
+
             }
+            // ذخیره پاسخ کامل
+            // if (!connection_aborted()) {
+
+            //     $this->messageStore->store(
+
+            //         new MessageDTO(
+
+            //             id: uniqid(),
+
+            //             conversation:
+            //             (string) $context->conversationId,
+
+
+            //             user_id:
+            //             (string) $context->userId,
+
+
+            //             role:
+            //             'assistant',
+
+
+            //             content:
+            //             $full,
+
+
+            //             token_count:
+            //             $context->tokenUsage['total_tokens'] ?? 0,
+
+
+            //             metadata: [
+
+            //                 'model' => $context->model,
+
+            //                 'token_usage' => [
+
+            //                     'prompt_tokens' =>
+            //                         $context->tokenUsage['prompt_tokens'] ?? 0,
+
+
+            //                     'completion_tokens' =>
+            //                         $context->tokenUsage['completion_tokens'] ?? 0,
+
+
+            //                     'total_tokens' =>
+            //                         $context->tokenUsage['total_tokens'] ?? 0,
+
+            //                 ],
+
+            //             ],
+
+
+            //             created_at:
+            //             now()->toDateTimeString()
+
+            //         )
+
+            //     );
+
+            //     \Log::info('TOKEN DEBUG', [
+            //         'context_usage' => $context->tokenUsage,
+            //     ]);
+
+
+            //     Usage::create([
+
+            //         'user_id' =>
+            //             (int) $context->userId,
+
+
+            //         'conversation_id' =>
+            //             (int) $context->conversationId,
+
+
+            //         'type' =>
+            //             'chat',
+
+
+            //         'model' =>
+            //             $context->model,
+
+
+            //         'prompt_tokens' =>
+            //             $context->tokenUsage['prompt_tokens'] ?? 0,
+
+
+            //         'completion_tokens' =>
+            //             $context->tokenUsage['completion_tokens'] ?? 0,
+
+
+            //         'total_tokens' =>
+            //             $context->tokenUsage['total_tokens'] ?? 0,
+
+            //     ]);
+
+
+            //     echo "data: [DONE]\n\n";
+            // }
 
 
         }, 200, [
@@ -427,14 +671,64 @@ class ChatController extends Controller
 
 
 
-        return response()->json(
+        $cacheKey =
+            "chat:{$chat->id}:messages:page:1:limit:50";
 
-            $chat->load('messages')
+
+
+        $messages = Cache::remember(
+            $cacheKey,
+            now()->addMinutes(30),
+
+            function () use ($chat) {
+
+
+                return $chat
+                    ->messages()
+                    ->orderBy(
+                        'created_at',
+                        'asc'
+                    )
+                    ->limit(50)
+                    ->get();
+
+
+            }
 
         );
 
-    }
 
+
+
+        return response()->json([
+
+            'id' =>
+                $chat->id,
+
+
+            'title' =>
+                $chat->title,
+
+
+            'summary' =>
+                $chat->summary,
+
+
+            'created_at' =>
+                $chat->created_at,
+
+
+            'updated_at' =>
+                $chat->updated_at,
+
+
+            'messages' =>
+                $messages
+
+
+        ]);
+
+    }
 
 
 

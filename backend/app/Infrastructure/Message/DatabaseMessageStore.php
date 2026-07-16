@@ -19,13 +19,15 @@ class DatabaseMessageStore implements MessageStore
 
             'chat_id' => $message->conversation,
 
-            'user_id' => $message->metadata['user_id'] ?? null,
+            'user_id' => $message->user_id,
 
             'role' => $message->role,
 
             'content' => $message->content,
 
-            'metadata' => json_encode($message->metadata),
+            'metadata' => json_encode(
+                $message->metadata ?? []
+            ),
 
             'created_at' => now(),
 

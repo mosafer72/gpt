@@ -108,39 +108,26 @@ export default function ChatInterface({
       scrollToBottomInstant();
     }, 100);
   }, [selectedModel]);
-
   function formatBackendError(error: any): string {
-    if (!error) {
-      return "خطای ناشناخته‌ای رخ داد";
-    }
-
-    const message =
-      error?.message ||
-      error?.response?.message ||
-      error?.response?.data?.message ||
-      "";
+    const message = error?.message || error?.response?.data?.message || "";
 
     if (message.includes("تعداد پیام روزانه")) {
       return "🚦 سقف پیام روزانه شما تمام شده است.\n\nلطفاً پلن خود را ارتقا دهید یا فردا دوباره امتحان کنید.";
     }
 
     if (message.includes("اعتبار توکن")) {
-      return "💳 اعتبار توکن شما کافی نیست.\n\nلطفاً توکن خریداری کنید یا پلن خود را ارتقا دهید.";
+      return "💳 اعتبار توکن شما کافی نیست.\n\nلطفاً کیف پول خود را شارژ کنید یا پلن خود را ارتقا دهید.";
     }
 
-    if (message.includes("model") || message.includes("مدل")) {
-      return "🤖 مدل هوش مصنوعی در دسترس نیست.\n\nلطفاً یک مدل دیگر انتخاب کنید.";
+    if (message.includes("Unauthorized")) {
+      return "🔐 نشست شما منقضی شده است.\n\nلطفاً دوباره وارد شوید.";
     }
 
-    if (message.includes("payload") || message.includes("Decrypt")) {
-      return "🔐 خطای امنیتی در ارتباط با سرور رخ داده است.";
+    if (message.includes("مدل") || message.includes("model")) {
+      return "🤖 مدل انتخاب شده در دسترس نیست.\n\nلطفاً مدل دیگری انتخاب کنید.";
     }
 
-    if (message.includes("500") || message.includes("server")) {
-      return "🔥 خطای داخلی سرور رخ داده است.\n\nلطفاً دوباره تلاش کنید.";
-    }
-
-    return "⚠️ " + message;
+    return message ? `⚠️ ${message}` : "⚠️ خطای ناشناخته‌ای رخ داد";
   }
 
   const isMobile = useMediaQuery("(max-width:767px)");
@@ -210,7 +197,9 @@ export default function ChatInterface({
     const render = () => {
       const currentStream = streams.current[chatId];
 
-      if (!currentStream) return;
+      if (!currentStream) {
+        return;
+      }
 
       const bufferLength = currentStream.buffer.length;
 
@@ -224,15 +213,30 @@ export default function ChatInterface({
 
       let delay = 40;
 
-      if (bufferLength > 500) {
-        chunkSize = 25;
+      /**
+       * سرعت هوشمند بر اساس حجم buffer
+       */
+
+      if (bufferLength > 2000) {
+        chunkSize = 80;
+
+        delay = 1;
+      } else if (bufferLength > 1000) {
+        chunkSize = 50;
+
         delay = 5;
-      } else if (bufferLength > 200) {
+      } else if (bufferLength > 300) {
         chunkSize = 15;
-        delay = 10;
-      } else if (bufferLength > 50) {
+
+        delay = 15;
+      } else if (bufferLength > 100) {
         chunkSize = 5;
-        delay = 20;
+
+        delay = 25;
+      } else {
+        chunkSize = 1;
+
+        delay = 40;
       }
 
       const chars = currentStream.buffer.substring(0, chunkSize);
@@ -259,7 +263,6 @@ export default function ChatInterface({
         };
       });
 
-      // همیشه آخرین پیام را نشان بده
       requestAnimationFrame(() => {
         scrollToBottomInstant();
       });
@@ -330,7 +333,9 @@ export default function ChatInterface({
 
     const userId = `user-${Date.now()}`;
 
-    const chatId = String(currentChat?.id || 0);
+    const chatId = currentChat?.id
+      ? String(currentChat.id)
+      : `temp-${Date.now()}`;
 
     const userMessage: any = {
       id: userId,
@@ -380,6 +385,29 @@ export default function ChatInterface({
       active: true,
       lastBufferSize: 0,
     };
+    function waitForTyping(chatId: string): Promise<void> {
+      return new Promise((resolve) => {
+        const check = () => {
+          const stream = streams.current[chatId];
+
+          if (!stream) {
+            resolve();
+
+            return;
+          }
+
+          if (stream.buffer.length === 0 && !stream.timer) {
+            resolve();
+
+            return;
+          }
+
+          setTimeout(check, 100);
+        };
+
+        check();
+      });
+    }
 
     try {
       await sendMessageStream(
@@ -405,16 +433,23 @@ export default function ChatInterface({
 
         controller.signal,
       );
-
+      await waitForTyping(chatId);
       await loadChats();
     } catch (error: any) {
-      const errorMessage = formatBackendError(error);
+  // حذف پیام خالی دستیار
+  setCurrentChat(prev => {
+    if (!prev) return prev;
 
-      setStreamError(errorMessage);
-    } finally {
-      // صبر کن تا تمام buffer رندر شود
-      stopTyping(chatId);
+    return {
+      ...prev,
+      messages: prev.messages.filter(m => m.id !== aiId),
+    };
+  });
 
+  const errorMessage = formatBackendError(error);
+
+  setStreamError(errorMessage);
+} finally {
       abortControllerRef.current = null;
 
       setLoading(false);
@@ -424,12 +459,6 @@ export default function ChatInterface({
       inputRef.current?.focus();
 
       scrollToBottomInstant();
-
-      stopTyping(chatId);
-      abortControllerRef.current = null;
-      setLoading(false);
-      setImageFile(null);
-      inputRef.current?.focus();
     }
   }
 

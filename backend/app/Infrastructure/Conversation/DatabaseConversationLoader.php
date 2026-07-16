@@ -3,6 +3,8 @@
 namespace App\Infrastructure\Conversation;
 
 use App\Domain\Contracts\ConversationLoader;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class DatabaseConversationLoader implements ConversationLoader
 {
@@ -11,19 +13,46 @@ class DatabaseConversationLoader implements ConversationLoader
         int $limit = 20
     ): array {
 
-        return \DB::table('messages')
-            ->where(
-                'chat_id',
-                $conversationId
-            )
-            ->orderBy(
-                'created_at',
-                'desc'
-            )
-            ->limit($limit)
-            ->get()
-            ->reverse()
-            ->values()
-            ->toArray();
+
+        $cacheKey =
+            "conversation:{$conversationId}:history:{$limit}";
+
+
+        return Cache::remember(
+            $cacheKey,
+            now()->addHours(1),
+            function () use (
+                $conversationId,
+                $limit
+            ) {
+
+
+                return DB::table('messages')
+
+                    ->where(
+                        'chat_id',
+                        $conversationId
+                    )
+
+                    ->orderBy(
+                        'created_at',
+                        'desc'
+                    )
+
+                    ->limit($limit)
+
+                    ->get()
+
+                    ->reverse()
+
+                    ->values()
+
+                    ->toArray();
+
+
+            }
+        );
+
     }
+
 }

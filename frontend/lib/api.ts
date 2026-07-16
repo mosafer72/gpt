@@ -154,28 +154,17 @@ export function getUserStatus() {
   return request<UserStatus>("/user/status");
 }
 
-// ============================
-// Chat Stream
-// ============================
-
 export async function sendMessageStream(
   message: string,
-
   chatId?: number,
-
-
   image?: File | null,
-  
   modelId?: number,
-
   onChunk?: (text: string) => void,
-
   signal?: AbortSignal,
 ) {
   const formData = new FormData();
 
   formData.append("model_id", String(modelId));
-
   formData.append("message", message);
 
   if (chatId) {
@@ -186,24 +175,34 @@ export async function sendMessageStream(
     formData.append("image", image);
   }
 
-  const response = await fetch(
-    `${API_BASE}/chats/stream`,
+  const response = await fetch(`${API_BASE}/chats/stream`, {
+    method: "POST",
+    headers: headers(false),
+    body: formData,
+    signal,
+  });
 
-    {
-      method: "POST",
-
-      headers: headers(false),
-
-      body: formData,
-
-      signal,
-    },
-  );
-
+  // عدم احراز هویت
   if (response.status === 401) {
     logout();
-
     throw new Error("Unauthorized");
+  }
+
+  // خطاهای بک‌اند قبل از شروع استریم
+  if (!response.ok) {
+    let errorData: any = null;
+
+    try {
+      errorData = await response.json();
+    } catch {
+      errorData = null;
+    }
+
+    throw {
+      type: "backend",
+      status: response.status,
+      message: errorData?.message || "خطایی رخ داده است",
+    };
   }
 
   if (!response.body) {
@@ -211,7 +210,6 @@ export async function sendMessageStream(
   }
 
   const reader = response.body.getReader();
-
   const decoder = new TextDecoder();
 
   let buffer = "";
@@ -221,32 +219,46 @@ export async function sendMessageStream(
 
     if (done) break;
 
-    buffer += decoder.decode(value, {
-      stream: true,
-    });
+    buffer += decoder.decode(value, { stream: true });
 
     const events = buffer.split("\n\n");
-
     buffer = events.pop() || "";
 
     for (const event of events) {
-      if (!event.startsWith("data:")) continue;
+      if (!event.startsWith("data:")) {
+        continue;
+      }
 
       const payload = event.replace("data:", "").trim();
 
-      if (payload === "[DONE]") continue;
+      if (payload === "[DONE]") {
+        continue;
+      }
 
       try {
         const json = JSON.parse(payload);
 
-        if (json.content) {
+        // اگر سرور داخل استریم خطا فرستاد
+        if (json.error) {
+          throw new Error(json.error);
+        }
+
+        if (typeof json.content === "string" && json.content.length > 0) {
           onChunk?.(json.content);
         }
-      } catch {}
+      } catch (err: any) {
+        // اگر payload اصلاً JSON نبود، نادیده بگیر
+        if (err instanceof SyntaxError) {
+          console.log("Invalid stream chunk", payload);
+          continue;
+        }
+
+        // خطای واقعی را به UI پاس بده
+        throw err;
+      }
     }
   }
 }
-
 // ============================
 // Chats
 // ============================
