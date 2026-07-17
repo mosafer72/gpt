@@ -67,8 +67,6 @@ export default function ChatInterface({
     } as Chat);
     setInput("");
     setImageFile(null);
-
-    // ✅ برگشت به صفحه چت خالی (بدون ریدایرکت سنگین)
     router.push("/chat");
   }, [newChatTrigger]);
 
@@ -102,7 +100,7 @@ export default function ChatInterface({
     }
   }
 
-  // ✅ انتخاب چت از سایدبار + تغییر URL
+  // انتخاب چت از سایدبار + تغییر URL
   async function handleSelectChat(chat: Chat) {
     if (!chat.id) return;
     if (currentChat?.id === chat.id) return;
@@ -114,15 +112,14 @@ export default function ChatInterface({
         ...full,
         messages: [...full.messages].sort(
           (a, b) =>
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+            new Date(a.created_at).getTime() -
+            new Date(b.created_at).getTime(),
         ),
       };
 
       setCurrentChat(sorted);
       setShowEmptyState(sorted.messages.length === 0);
-
-      // ✅ تغییر URL به /chat/123
-      window.history.pushState(null, "", `/chat/${chat.id}`);
+      router.push(`/chat/${chat.id}`);
     } catch (error) {
       console.error("load chat failed:", error);
     }
@@ -136,10 +133,7 @@ export default function ChatInterface({
 
   useEffect(() => {
     if (lastMessageRef.current) {
-      lastMessageRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "end",
-      });
+      lastMessageRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
     }
   }, [currentChat?.messages]);
 
@@ -168,17 +162,21 @@ export default function ChatInterface({
     const userMsgId = `user-${Date.now()}`;
     const aiMsgId = `ai-${Date.now()}`;
 
+    const chatId = currentChat?.id || 0;
+
     const userMessage: any = {
       id: userMsgId,
       role: "user",
       content: text,
       created_at: new Date().toISOString(),
+      chat_id: chatId,
     };
     const aiMessage: any = {
       id: aiMsgId,
       role: "assistant",
       content: "",
       created_at: new Date().toISOString(),
+      chat_id: chatId,
     };
 
     setCurrentChat((prev) => {
@@ -221,11 +219,9 @@ export default function ChatInterface({
         controller.signal,
       );
 
-      // ✅ فقط سایدبار را به‌روز کن (بدون تغییر URL)
       const updatedChats = await getChats();
       setChats(updatedChats);
 
-      // اگر چت جدید بود، id واقعی را بگیر (بدون جایگزینی پیام‌ها)
       if (isNewChat) {
         const newChat = updatedChats[0];
         if (newChat) {
@@ -249,6 +245,7 @@ export default function ChatInterface({
               role: "assistant",
               content: `⚠️ خطا: ${error.message || "مشکل در ارتباط با سرور"}`,
               created_at: new Date().toISOString(),
+              chat_id: prev.id || 0,
             },
           ],
         };
@@ -313,16 +310,14 @@ export default function ChatInterface({
 
         <main className={styles.main}>
           <div ref={messagesContainerRef} className={styles.messagesContainer}>
-          {showEmptyState && (!currentChat || currentChat.messages.length === 0) ? (
+            {showEmptyState && (!currentChat || currentChat.messages.length === 0) ? (
               <div className={styles.emptyState}>
                 <div className={styles.emptyGlow} />
                 <div className={styles.emptyIcon}>💬</div>
                 <h1>شروع یک گفتگوی جدید</h1>
                 <p>هر سوالی دارید بنویسید</p>
                 {selectedModel && (
-                  <div className={styles.modelHint}>
-                    🤖 {selectedModel.name}
-                  </div>
+                  <div className={styles.modelHint}>🤖 {selectedModel.name}</div>
                 )}
                 <div className={styles.suggestions}>
                   <div>✨ خلاصه سازی متن</div>
@@ -367,6 +362,7 @@ export default function ChatInterface({
             onImageUpload={setImageFile}
             onImageRemove={() => setImageFile(null)}
             inputRef={inputRef}
+            onScrollToBottom={scrollToBottom} // ✅ اضافه شد
           />
         </main>
       </div>
