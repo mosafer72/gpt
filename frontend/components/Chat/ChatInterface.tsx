@@ -112,8 +112,7 @@ export default function ChatInterface({
         ...full,
         messages: [...full.messages].sort(
           (a, b) =>
-            new Date(a.created_at).getTime() -
-            new Date(b.created_at).getTime(),
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
         ),
       };
 
@@ -133,7 +132,10 @@ export default function ChatInterface({
 
   useEffect(() => {
     if (lastMessageRef.current) {
-      lastMessageRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+      lastMessageRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+      });
     }
   }, [currentChat?.messages]);
 
@@ -164,13 +166,19 @@ export default function ChatInterface({
 
     const chatId = currentChat?.id || 0;
 
+    // ✅ ساخت preview برای تصویر
+    const imagePreview = imageFile ? URL.createObjectURL(imageFile) : null;
+
+    // ✅ اضافه کردن image به پیام کاربر
     const userMessage: any = {
       id: userMsgId,
       role: "user",
       content: text,
+      image: imagePreview, // <-- اضافه شد
       created_at: new Date().toISOString(),
       chat_id: chatId,
     };
+
     const aiMessage: any = {
       id: aiMsgId,
       role: "assistant",
@@ -252,13 +260,12 @@ export default function ChatInterface({
       });
     } finally {
       setLoading(false);
-      setImageFile(null);
+      setImageFile(null); // ✅ پاک کردن تصویر پس از ارسال
       abortControllerRef.current = null;
       inputRef.current?.focus();
       scrollToBottom();
     }
   }
-
   function cancelStream() {
     abortControllerRef.current?.abort();
     setLoading(false);
@@ -310,14 +317,17 @@ export default function ChatInterface({
 
         <main className={styles.main}>
           <div ref={messagesContainerRef} className={styles.messagesContainer}>
-            {showEmptyState && (!currentChat || currentChat.messages.length === 0) ? (
+            {showEmptyState &&
+            (!currentChat || currentChat.messages.length === 0) ? (
               <div className={styles.emptyState}>
                 <div className={styles.emptyGlow} />
                 <div className={styles.emptyIcon}>💬</div>
                 <h1>شروع یک گفتگوی جدید</h1>
                 <p>هر سوالی دارید بنویسید</p>
                 {selectedModel && (
-                  <div className={styles.modelHint}>🤖 {selectedModel.name}</div>
+                  <div className={styles.modelHint}>
+                    🤖 {selectedModel.name}
+                  </div>
                 )}
                 <div className={styles.suggestions}>
                   <div>✨ خلاصه سازی متن</div>

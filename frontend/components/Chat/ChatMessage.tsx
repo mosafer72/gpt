@@ -22,7 +22,9 @@ function ChatMessage({
 }) {
   const isUser = message.role === "user";
 
+  // ✅ پشتیبانی از چندین منبع تصویر
   const imageUrl =
+    (message as any).image ||
     (message as any).image_url ||
     (message as any).metadata?.attachments?.[0]?.url;
 
@@ -35,8 +37,10 @@ function ChatMessage({
       <div className={styles.avatar}>{isUser ? "👤" : "✨"}</div>
 
       <div className={styles.bubble}>
+        {/* ✅ نمایش تصویر اگر وجود داشته باشد */}
         {imageUrl && <ChatImage src={imageUrl} />}
 
+        {/* ✅ نمایش متن */}
         {message.content && (
           <div className={styles.text}>
             <ReactMarkdown
