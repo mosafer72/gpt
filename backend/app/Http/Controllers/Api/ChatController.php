@@ -389,6 +389,10 @@ class ChatController extends Controller
          * ساخت Context
          */
 
+        $currentPlan = $user->currentPlan();
+
+        $model = $currentPlan?->models()->first()?->key
+            ?? 'gpt-4o-mini';
 
         $context =
             new ChatContext(
@@ -405,12 +409,10 @@ class ChatController extends Controller
                 $plannerMessage,
 
 
-                model:
-                $user->currentPlan()->model
-                ??
-                'gpt-4o-mini'
-
+                model: $model
             );
+
+            \Log::info('TOKEN DEBUG'. $user->currentPlan());
 
         $context->setMetadata([
 
@@ -429,8 +431,31 @@ class ChatController extends Controller
 
         return response()->stream(function () use ($context) {
 
-            $stream = $this->chatPipeline->stream($context);
 
+            $result = $this->chatPipeline->stream($context);
+
+
+            if ($result instanceof \App\Application\Context\ChatContext) {
+
+
+                echo "data: " . json_encode([
+
+                    'type' => 'image',
+
+                    'image_url' => $result->metadata['image_url'] ?? null
+
+                ]) . "\n\n";
+
+
+                echo "data: [DONE]\n\n";
+
+
+                return;
+
+            }
+
+
+            $stream = $result;
             $full = '';
 
             foreach ($stream as $response) {
@@ -456,7 +481,29 @@ class ChatController extends Controller
 
                 }
                 $text = '';
+                if (
+                    is_array($response)
+                    &&
+                    ($response['type'] ?? null) === 'image'
+                ) {
 
+
+                    echo "data: " . json_encode([
+
+                        'type' =>
+                            'image',
+
+                        'image_url' =>
+                            $response['image_url']
+
+                    ]) . "\n\n";
+
+
+                    flush();
+
+                    continue;
+
+                }
                 if (
                     isset($response->choices[0]->delta->content)
                 ) {
@@ -492,6 +539,9 @@ class ChatController extends Controller
 
                 flush();
 
+            }
+            if ($full === '') {
+                return;
             }
             if (!connection_aborted()) {
 

@@ -13,9 +13,12 @@ use App\Domain\LLM\ChatRequest;
 use App\Domain\Message\DTOs\MessageDTO;
 use App\Application\Capabilities\CapabilityResolver;
 use App\Jobs\StoreMemoryJob;
+use App\Models\AiModel;
 use App\Models\User;
 use App\Http\Services\TokenService;
 use App\Jobs\StoreAssistantMessageJob;
+use App\Application\AI\ImageIntentDetector;
+use App\Application\AI\ImageGenerationService;
 
 
 class ChatPipeline
@@ -40,7 +43,12 @@ class ChatPipeline
 
         protected MessageStore $messageStore,
 
-        protected TokenService $tokenService
+        protected TokenService $tokenService,
+
+
+        protected ImageIntentDetector $imageIntentDetector,
+
+        protected ImageGenerationService $imageGenerationService,
 
     ) {
     }
@@ -91,12 +99,14 @@ class ChatPipeline
 
         }
 
+
         if (
             $this->capability->enabled(
                 $user,
                 'planner'
             )
         ) {
+
 
             $this->intentPipeline
                 ->process($context, true);
@@ -118,6 +128,26 @@ class ChatPipeline
 
         }
 
+        $imageRequest = $this->imageIntentDetector->detect(
+            $context->currentMessage
+        );
+
+        if ($imageRequest) {
+
+            $result = $this->generateImageResponse(
+                $context,
+                $imageRequest
+            );
+
+
+            return collect([
+                [
+                    'type' => 'image',
+                    'image_url' => $result->metadata['image_url']
+                ]
+            ]);
+
+        }
 
         $this->promptPipeline
             ->build($context);
@@ -236,11 +266,36 @@ class ChatPipeline
          *
          */
 
+        $imageRequest = $this->imageIntentDetector->detect(
+            $context->currentMessage
+        );
+
+        if ($imageRequest) {
+
+            $result = $this->generateImageResponse(
+                $context,
+                $imageRequest
+            );
+
+
+            return collect([
+                [
+                    'type' => 'image',
+                    'image_url' => $result->metadata['image_url']
+                ]
+            ]);
+
+        }
+
 
         $this->promptPipeline
             ->build(
                 $context
             );
+
+        // =============================
+// Image Generation Detection
+// =============================
 
 
 
@@ -293,8 +348,115 @@ class ChatPipeline
 
 
 
+    protected function generateImageResponse(
+        ChatContext $context,
+        array $request
+    ): ChatContext {
 
 
+        $imageModel = $this->resolveImageModel();
+
+
+        $result =
+            $this->imageGenerationService->generate(
+                prompt: $request['prompt'],
+                size: $request['size'],
+                model: $imageModel
+            );
+
+
+
+        $messageDTO = new MessageDTO(
+
+            id: uniqid(),
+
+            conversation:
+            (string) $context->conversationId,
+
+            user_id:
+            $context->userId,
+
+            role:
+            'assistant',
+
+            type:
+            'image',
+
+            content:
+            'عکس ایجاد شد',
+
+            image_url:
+            $result['url'],
+
+            token_count:
+            0,
+
+            metadata: [
+
+                'type' => 'image',
+
+                'size' =>
+                    $result['size'],
+
+                'model' =>
+                    $result['model'],
+            ],
+
+            created_at:
+            now()->toDateTimeString(),
+        );
+
+
+        $this->messageStore->store(
+            $messageDTO
+        );
+
+
+        $context->setAssistantResponse(
+
+            response:
+            'عکس ایجاد شد',
+
+            tokenUsage: [
+
+                'prompt_tokens' => 0,
+
+                'completion_tokens' => 0,
+
+                'total_tokens' => 0,
+            ]
+        );
+
+
+        $context->metadata = [
+
+            'type' =>
+                'image',
+
+            'image_url' =>
+                $result['url'],
+
+            'model' =>
+                $result['model'],
+        ];
+
+
+        return $context;
+
+    }
+
+    protected function resolveImageModel()
+    {
+        return AiModel::where(
+            'type',
+            'image'
+        )
+            ->where(
+                'is_active',
+                true
+            )
+            ->firstOrFail();
+    }
     /**
      * گرفتن تاریخچه گفتگو
      */
@@ -337,6 +499,7 @@ class ChatPipeline
 
                     content: $message->content,
 
+                    type: $message->type ?? 'text',
                     token_count: (int) ($message->token_count ?? 0),
 
                     metadata:
@@ -430,10 +593,6 @@ class ChatPipeline
         }
 
 
-        \Log::info('DISPATCH ASSISTANT JOB', [
-                'conversation' => $context->conversationId,
-                'user_id' => $context->userId,
-        ]);
         StoreAssistantMessageJob::dispatch([
             'id' => uniqid(),
 
@@ -594,9 +753,6 @@ class ChatPipeline
         User $user,
         string $model
     ): ChatRequest {
-
-        $model = 'gapgpt-qwen-3.6';
-
 
         return new ChatRequest(
 

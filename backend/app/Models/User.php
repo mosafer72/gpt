@@ -68,6 +68,7 @@ class User extends Authenticatable
     // متد currentPlan را به‌روز کنید
     public function currentPlan()
     {
+
         // اگر اشتراک فعال وجود دارد، پلن آن را برگردان
         $subscription = $this->activeSubscription()->with('plan')->first();
         if ($subscription && $subscription->isValid()) {

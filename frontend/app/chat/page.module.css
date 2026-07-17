@@ -207,10 +207,10 @@
   }
 }
 .modelModalWrapper {
-  position: fixed;
+  position: absolute;
   top: 0;
-  left: 260px; /* عرض سایدبار */
   right: 0;
+  left: 0;
   bottom: 0;
   z-index: 14;
   pointer-events: none; /* اجازه کلیک روی سایدبار را می‌دهد */

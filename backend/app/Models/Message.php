@@ -10,8 +10,14 @@ class Message extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['chat_id', 'role', 'content','metadata'];
-
+    protected $fillable = [
+        'chat_id',
+        'role',
+        'type',
+        'content',
+        'image_url',
+        'metadata',
+    ];
     public function chat(): BelongsTo
     {
         return $this->belongsTo(Chat::class);
@@ -24,4 +30,7 @@ class Message extends Model
     protected $casts = [
         'metadata' => 'array',
     ];
+
+
+
 }

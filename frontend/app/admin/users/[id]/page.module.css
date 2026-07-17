@@ -1,0 +1,106 @@
+.page {
+  padding: 8px 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.backBtn {
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  background: var(--gray-100);
+  color: var(--gray-700);
+  font-size: 0.875rem;
+  transition: background 0.2s;
+}
+
+.backBtn:hover {
+  background: var(--gray-200);
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.card {
+  background: white;
+  padding: 16px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.card .label {
+  font-size: 0.75rem;
+  color: var(--gray-500);
+}
+
+.card .value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gray-900);
+}
+
+.section {
+  background: white;
+  padding: 20px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom: 20px;
+}
+
+.section h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin-bottom: 12px;
+}
+
+.subscription p {
+  margin: 4px 0;
+  font-size: 0.9rem;
+}
+
+.statsRow {
+  display: flex;
+  gap: 24px;
+  font-size: 0.9rem;
+}
+
+.empty {
+  color: var(--gray-500);
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.actionBtn {
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: white;
+  font-size: 0.875rem;
+  transition: background 0.2s;
+}
+
+.actionBtn:hover {
+  background: var(--primary-dark);
+}

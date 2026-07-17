@@ -1,0 +1,53 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.inactive {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.paid {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.failed {
+  background: #fecaca;
+  color: #991b1b;
+}
+
+.verified {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.unverified {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.completed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.cancelled {
+  background: #f3f4f6;
+  color: #6b7280;
+}

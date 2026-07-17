@@ -29,6 +29,8 @@ class AiModel extends Model
 
         'is_active',
 
+        'type'
+
     ];
 
 

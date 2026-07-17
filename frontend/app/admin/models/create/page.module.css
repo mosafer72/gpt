@@ -1,0 +1,615 @@
+/* ========================================
+   صفحات فرم (ایجاد/ویرایش پلن‌ها، مدل‌ها، ارائه‌دهندگان)
+   نسخه نهایی با رنگ‌بندی مدرن و هماهنگ
+   ======================================== */
+
+.page {
+  padding: 12px 0;
+  max-width: 900px;
+  animation: fadeIn 0.4s ease;
+}
+
+/* ========================================
+   عنوان صفحه
+   ======================================== */
+
+.title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 28px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* نوار کناری گرادیان */
+.title::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 28px;
+  background: linear-gradient(180deg, #6366f1 0%, #8b5cf6 100%);
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+/* ========================================
+   پیام خطا
+   ======================================== */
+
+.error {
+  padding: 14px 18px;
+  background: #fef2f2;
+  color: #dc2626;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  border: 1px solid #fecaca;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.error::before {
+  content: '⚠️';
+  font-size: 1.1rem;
+}
+
+/* ========================================
+   فرم
+   ======================================== */
+
+.form {
+  background: white;
+  padding: 28px;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
+  border: 1px solid #eef2f6;
+}
+
+/* ========================================
+   ردیف‌های فرم
+   ======================================== */
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+/* ========================================
+   فیلدها
+   ======================================== */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* نشانگر اجباری */
+.required {
+  color: #dc2626;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+/* ورودی‌ها */
+.field input,
+.field select,
+.field textarea {
+  padding: 10px 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  transition: all 0.25s ease;
+  background: #fafbfc;
+  color: #1e293b;
+  width: 100%;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: #94a3b8;
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: #6366f1;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+}
+
+.field input:disabled,
+.field select:disabled,
+.field textarea:disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
+  cursor: not-allowed;
+  border-color: #e2e8f0;
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.6;
+}
+
+/* ========================================
+   متن راهنما
+   ======================================== */
+
+.field small {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+/* ========================================
+   چک‌باکس
+   ======================================== */
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #334155;
+  padding: 4px 0;
+}
+
+.checkboxLabel input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 2px solid #d1d5db;
+  accent-color: #6366f1;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.checkboxLabel input[type="checkbox"]:checked {
+  border-color: #6366f1;
+}
+
+/* ========================================
+   دکمه‌ها
+   ======================================== */
+
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid #eef2f6;
+}
+
+.submitBtn {
+  padding: 11px 32px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+}
+
+.submitBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(99, 102, 241, 0.4);
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+}
+
+.submitBtn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+}
+
+.submitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.cancelBtn {
+  padding: 11px 32px;
+  background: #f1f5f9;
+  color: #64748b;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.25s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.cancelBtn:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+  transform: translateY(-1px);
+}
+
+/* ========================================
+   اسپینر لودینگ
+   ======================================== */
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 60px 20px;
+  color: #94a3b8;
+  font-size: 0.95rem;
+}
+
+.loading::before {
+  content: '';
+  width: 28px;
+  height: 28px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ========================================
+   گرید انتخاب مدل‌ها (برای ویرایش پلن)
+   ======================================== */
+
+.modelsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px;
+  max-height: 300px;
+  overflow-y: auto;
+  background: #fafbfc;
+}
+
+.modelsGrid::-webkit-scrollbar {
+  width: 4px;
+}
+
+.modelsGrid::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modelsGrid::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 8px;
+}
+
+.modelsGrid::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+.modelCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.85rem;
+  background: white;
+  border: 1px solid transparent;
+}
+
+.modelCheckbox:hover {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+.modelCheckbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #6366f1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.modelName {
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.modelKey {
+  font-size: 0.7rem;
+  color: #94a3b8;
+}
+
+.emptyModels {
+  color: #94a3b8;
+  padding: 20px;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+/* ========================================
+   انیمیشن fadeIn
+   ======================================== */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========================================
+   واکنش‌گرایی (Responsive)
+   ======================================== */
+
+@media (max-width: 768px) {
+  .page {
+    padding: 8px 0;
+    max-width: 100%;
+  }
+
+  .title {
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+  }
+
+  .title::before {
+    height: 20px;
+  }
+
+  .form {
+    padding: 20px 16px;
+  }
+
+  .row {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+
+  .field input,
+  .field select,
+  .field textarea {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
+
+  .actions {
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .submitBtn,
+  .cancelBtn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 16px;
+  }
+
+  .modelsGrid {
+    grid-template-columns: 1fr 1fr;
+    padding: 10px;
+    max-height: 200px;
+  }
+}
+
+@media (max-width: 480px) {
+  .title {
+    font-size: 1rem;
+  }
+
+  .title::before {
+    height: 18px;
+    width: 3px;
+  }
+
+  .form {
+    padding: 16px 12px;
+    border-radius: 12px;
+  }
+
+  .field label {
+    font-size: 0.8rem;
+  }
+
+  .modelsGrid {
+    grid-template-columns: 1fr;
+    max-height: 160px;
+  }
+
+  .modelCheckbox {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+  }
+}
+
+/* ========================================
+   حالت دارک (با کلاس dark-mode)
+   ======================================== */
+
+.dark-mode .page {
+  color: #e2e8f0;
+}
+
+.dark-mode .title {
+  color: #f1f5f9;
+}
+
+.dark-mode .title::before {
+  background: linear-gradient(180deg, #818cf8, #a78bfa);
+}
+
+.dark-mode .error {
+  background: #7f1d1d;
+  border-color: #991b1b;
+  color: #fca5a5;
+}
+
+.dark-mode .form {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.dark-mode .field label {
+  color: #cbd5e1;
+}
+
+.dark-mode .field input,
+.dark-mode .field select,
+.dark-mode .field textarea {
+  background: #0f172a;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+.dark-mode .field input::placeholder,
+.dark-mode .field textarea::placeholder {
+  color: #64748b;
+}
+
+.dark-mode .field input:focus,
+.dark-mode .field select:focus,
+.dark-mode .field textarea:focus {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+  background: #0f172a;
+}
+
+.dark-mode .field input:disabled,
+.dark-mode .field select:disabled,
+.dark-mode .field textarea:disabled {
+  background: #1e293b;
+  color: #64748b;
+  border-color: #334155;
+}
+
+.dark-mode .field small {
+  color: #64748b;
+}
+
+.dark-mode .checkboxLabel {
+  color: #cbd5e1;
+}
+
+.dark-mode .checkboxLabel input[type="checkbox"] {
+  border-color: #475569;
+  background: #0f172a;
+}
+
+.dark-mode .checkboxLabel input[type="checkbox"]:checked {
+  border-color: #818cf8;
+}
+
+.dark-mode .actions {
+  border-top-color: #334155;
+}
+
+.dark-mode .cancelBtn {
+  background: #334155;
+  color: #94a3b8;
+}
+
+.dark-mode .cancelBtn:hover {
+  background: #475569;
+  color: #f1f5f9;
+}
+
+.dark-mode .submitBtn {
+  background: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.25);
+}
+
+.dark-mode .submitBtn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  box-shadow: 0 6px 24px rgba(99, 102, 241, 0.35);
+}
+
+.dark-mode .loading {
+  color: #64748b;
+}
+
+.dark-mode .loading::before {
+  border-color: #334155;
+  border-top-color: #818cf8;
+}
+
+.dark-mode .modelsGrid {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+.dark-mode .modelCheckbox {
+  background: #1e293b;
+}
+
+.dark-mode .modelCheckbox:hover {
+  background: #334155;
+  border-color: #475569;
+}
+
+.dark-mode .modelCheckbox input[type="checkbox"] {
+  accent-color: #818cf8;
+}
+
+.dark-mode .modelName {
+  color: #f1f5f9;
+}
+
+.dark-mode .modelKey {
+  color: #64748b;
+}
+
+.dark-mode .emptyModels {
+  color: #64748b;
+}
+
+.dark-mode .modelsGrid::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+.dark-mode .modelsGrid::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* ========================================
+   پشتیبانی از RTL
+   ======================================== */
+
+[dir="rtl"] .title::before {
+  margin-left: 0;
+  margin-right: 0;
+}

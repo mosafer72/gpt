@@ -23,7 +23,11 @@ class DatabaseMessageStore implements MessageStore
 
             'role' => $message->role,
 
+            'type' => $message->type,
+
             'content' => $message->content,
+
+            'image_url' => $message->image_url,
 
             'metadata' => json_encode(
                 $message->metadata ?? []

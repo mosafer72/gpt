@@ -46,7 +46,6 @@ export default function ChatInterface({
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastMessageRef = useRef<HTMLDivElement | null>(null);
 
-  // اگر با initialChat وارد شدیم (از صفحه /chat/[id])
   useEffect(() => {
     if (initialChat) {
       setCurrentChat(initialChat);
@@ -54,7 +53,6 @@ export default function ChatInterface({
     }
   }, [initialChat]);
 
-  // وقتی کاربر روی «چت جدید» می‌زند
   useEffect(() => {
     if (!newChatTrigger) return;
 
@@ -70,7 +68,6 @@ export default function ChatInterface({
     router.push("/chat");
   }, [newChatTrigger]);
 
-  // بارگذاری اولیه
   useEffect(() => {
     async function init() {
       const token = localStorage.getItem("auth_token");
@@ -100,7 +97,6 @@ export default function ChatInterface({
     }
   }
 
-  // انتخاب چت از سایدبار + تغییر URL
   async function handleSelectChat(chat: Chat) {
     if (!chat.id) return;
     if (currentChat?.id === chat.id) return;
@@ -166,15 +162,13 @@ export default function ChatInterface({
 
     const chatId = currentChat?.id || 0;
 
-    // ✅ ساخت preview برای تصویر
     const imagePreview = imageFile ? URL.createObjectURL(imageFile) : null;
 
-    // ✅ اضافه کردن image به پیام کاربر
     const userMessage: any = {
       id: userMsgId,
       role: "user",
       content: text,
-      image: imagePreview, // <-- اضافه شد
+      image: imagePreview,
       created_at: new Date().toISOString(),
       chat_id: chatId,
     };
@@ -210,18 +204,59 @@ export default function ChatInterface({
         imageFile,
         selectedModel.id,
         (chunk) => {
+          let data: any = chunk; // صریحاً any بدهیم
+
+          try {
+            data = JSON.parse(chunk);
+          } catch {
+            // متن عادی LLM است
+          }
+
           setCurrentChat((prev) => {
             if (!prev) return prev;
+
             return {
               ...prev,
+
               messages: prev.messages.map((msg) => {
-                if (msg.id === aiMsgId) {
-                  return { ...msg, content: msg.content + chunk };
+                if (msg.id !== aiMsgId) {
+                  return msg;
                 }
-                return msg;
+
+                // =========================
+                // Image Response
+                // =========================
+                if (typeof data === "object" && data !== null && data.type === "image") {
+                  // اصلاح: استفاده از as any برای تطابق با تایپ Message
+                  return {
+                    ...msg,
+                    content: "عکس ایجاد شد",
+                    image_url: data.image_url,
+                    metadata: {
+                      type: "image",
+                      image_url: data.image_url,
+                    },
+                  } as any;
+                }
+
+                // =========================
+                // Text Stream
+                // =========================
+                if (typeof data === "object" && data !== null && data.content) {
+                  return {
+                    ...msg,
+                    content: msg.content + data.content,
+                  };
+                }
+
+                return {
+                  ...msg,
+                  content: msg.content + chunk,
+                };
               }),
             };
           });
+
           setTimeout(scrollToBottom, 20);
         },
         controller.signal,
@@ -260,12 +295,13 @@ export default function ChatInterface({
       });
     } finally {
       setLoading(false);
-      setImageFile(null); // ✅ پاک کردن تصویر پس از ارسال
+      setImageFile(null);
       abortControllerRef.current = null;
       inputRef.current?.focus();
       scrollToBottom();
     }
   }
+
   function cancelStream() {
     abortControllerRef.current?.abort();
     setLoading(false);
@@ -298,8 +334,8 @@ export default function ChatInterface({
           )}
         </div>
         <div>
-          <TokenUsageBadge />
           <UserMenu />
+          <TokenUsageBadge />
         </div>
       </header>
 
@@ -372,7 +408,7 @@ export default function ChatInterface({
             onImageUpload={setImageFile}
             onImageRemove={() => setImageFile(null)}
             inputRef={inputRef}
-            onScrollToBottom={scrollToBottom} // ✅ اضافه شد
+            onScrollToBottom={scrollToBottom}
           />
         </main>
       </div>

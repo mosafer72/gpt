@@ -24,9 +24,10 @@ function ChatMessage({
 
   // ✅ پشتیبانی از چندین منبع تصویر
   const imageUrl =
-    (message as any).image ||
-    (message as any).image_url ||
-    (message as any).metadata?.attachments?.[0]?.url;
+    message.image_url ||
+    (message as any).metadata?.image_url ||
+    (message as any).metadata?.attachments?.[0]?.url ||
+    (message as any).image;
 
   return (
     <div

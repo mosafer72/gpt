@@ -6,270 +6,98 @@ class MessageDTO
 {
     public function __construct(
 
-        /**
-         * شناسه پیام
-         */
         public readonly string $id,
 
-
-        /**
-         * شناسه مکالمه
-         */
         public readonly string $conversation,
 
-
-        /**
-         * شناسه کاربر
-         */
         public readonly ?string $user_id,
 
-
         /**
-         * نقش پیام
          * user | assistant | system
          */
         public readonly string $role,
 
+        /**
+         * text | image | image_generating
+         */
+        public readonly string $type = 'text',
 
         /**
-         * محتوای پیام
+         * متن پیام یا prompt تصویر
          */
-        public readonly string $content,
-
+        public readonly string $content = '',
 
         /**
-         * تعداد توکن مصرفی
+         * آدرس تصویر (در صورت وجود)
          */
-        public readonly int $token_count,
+        public readonly ?string $image_url = null,
 
+        public readonly int $token_count = 0,
 
-        /**
-         * اطلاعات اضافی پیام
-         */
-        public readonly ?array $metadata,
+        public readonly ?array $metadata = null,
 
-
-        /**
-         * زمان ایجاد
-         */
-        public readonly string $created_at,
+        public readonly string $created_at = '',
 
     ) {
     }
 
 
-    /**
-     * ساخت DTO از آرایه
-     */
     public static function fromArray(array $data): self
     {
-
-        // اگر داده به صورت [[...]] است
-        if (
-            isset($data[0]) &&
-            is_array($data[0]) &&
-            isset($data[0]['id'])
-        ) {
-
-            $data = $data[0];
-
-        }
-
-
-        // اگر داده داخل result باشد
-        if (
-            isset($data['result']) &&
-            is_array($data['result'])
-        ) {
-
-            $data = $data['result'];
-
-
-            if (
-                isset($data[0]) &&
-                is_array($data[0])
-            ) {
-
-                $data = $data[0];
-
-            }
-
-        }
-
-
-        // اگر داده داخل data باشد
-        if (
-            isset($data['data']) &&
-            is_array($data['data'])
-        ) {
-
-            $data = $data['data'];
-
-
-            if (
-                isset($data[0]) &&
-                is_array($data[0])
-            ) {
-
-                $data = $data[0];
-
-            }
-
-        }
-
-
         return new self(
 
-            id:
-            (string) ($data['id'] ?? ''),
+            id: (string) ($data['id'] ?? ''),
 
-
-            conversation:
-            (string) (
+            conversation: (string) (
                 $data['conversation']
                 ??
                 $data['conversation_id']
                 ??
+                $data['chat_id']
+                ??
                 ''
             ),
 
+            user_id: isset($data['user_id'])
+                ? (string) $data['user_id']
+                : null,
 
-            user_id:
-            isset($data['user_id'])
-            ? (string) $data['user_id']
-            : null,
+            role: (string) ($data['role'] ?? 'user'),
 
+            type: (string) ($data['type'] ?? 'text'),
 
-            role:
-            (string) ($data['role'] ?? ''),
+            content: (string) ($data['content'] ?? ''),
 
+            image_url: $data['image_url'] ?? null,
 
-            content:
-            (string) ($data['content'] ?? ''),
+            token_count: (int) ($data['token_count'] ?? 0),
 
-
-            token_count:
-            (int) ($data['token_count'] ?? 0),
-
-
-            metadata:
-            isset($data['metadata'])
-            ? (
-                is_string($data['metadata'])
-                ? json_decode(
-                    $data['metadata'],
-                    true
+            metadata: isset($data['metadata'])
+                ? (
+                    is_string($data['metadata'])
+                    ? json_decode($data['metadata'], true)
+                    : $data['metadata']
                 )
-                :
-                $data['metadata']
-            )
-            :
-            null,
+                : null,
 
-
-            created_at:
-            (string) ($data['created_at'] ?? ''),
-
+            created_at: (string) ($data['created_at'] ?? now()),
         );
-
     }
 
 
-
-    /**
-     * ساخت مجموعه‌ای از DTO ها
-     */
-    public static function collectionFromArray(array $data): array
-    {
-
-        $items = [];
-
-
-        $flatten = function ($array) use (&$flatten, &$items) {
-
-            foreach ($array as $value) {
-
-
-                if (is_array($value)) {
-
-
-                    if (
-                        isset($value['id'])
-                    ) {
-
-                        $items[] = $value;
-
-                    } else {
-
-                        $flatten($value);
-
-                    }
-
-                }
-
-            }
-
-        };
-
-
-        $flatten($data);
-
-
-        return array_map(
-
-            fn($item) =>
-            self::fromArray($item),
-
-            $items
-
-        );
-
-    }
-
-
-
-    /**
-     * تبدیل DTO به آرایه
-     */
     public function toArray(): array
     {
-
         return [
-
-            'id' =>
-                $this->id,
-
-
-            'conversation' =>
-                $this->conversation,
-
-
-            'user_id' =>
-                $this->user_id,
-
-
-            'role' =>
-                $this->role,
-
-
-            'content' =>
-                $this->content,
-
-
-            'token_count' =>
-                $this->token_count,
-
-
-            'metadata' =>
-                $this->metadata,
-
-
-            'created_at' =>
-                $this->created_at,
-
+            'id'           => $this->id,
+            'conversation' => $this->conversation,
+            'user_id'      => $this->user_id,
+            'role'         => $this->role,
+            'type'         => $this->type,
+            'content'      => $this->content,
+            'image_url'    => $this->image_url,
+            'token_count'  => $this->token_count,
+            'metadata'     => $this->metadata,
+            'created_at'   => $this->created_at,
         ];
-
     }
-
-
 }

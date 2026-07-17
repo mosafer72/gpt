@@ -1,0 +1,314 @@
+/* ========================================
+   Header - نسخه نهایی با رنگ‌بندی مدرن
+   هماهنگ با سایدبار و صفحات مدیریت
+   ======================================== */
+
+:root {
+  --header-bg: #ffffff;
+  --header-border: #eef2f6;
+  --header-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --header-text: #1e293b;
+  --header-text-secondary: #64748b;
+  --header-icon-color: #94a3b8;
+  --header-icon-hover: #6366f1;
+  --header-badge-bg: #ef4444;
+  --header-badge-text: #ffffff;
+  --header-user-bg: #f8fafc;
+  --header-user-border: #e2e8f0;
+}
+
+/* ========================================
+   کانتینر اصلی هدر
+   ======================================== */
+
+.header {
+  position: fixed;
+  top: 0;
+  right: var(--sidebar-width);
+  left: 0;
+  height: 100px 80px;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--header-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  z-index: 50;
+  transition: right 0.35s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+  box-shadow: var(--header-shadow);
+  backdrop-filter: blur(4px);
+}
+
+/* سایه‌ی قوی‌تر هنگام اسکرول (با کلاس .scrolled که با JS اضافه می‌شود) */
+.header.scrolled {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+
+@media (max-width: 768px) {
+  .header {
+    right: 0;
+    padding: 0 16px;
+  }
+}
+
+/* ========================================
+   بخش چپ (آیکون منو + عنوان صفحه)
+   ======================================== */
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.menuBtn {
+  display: none;
+  font-size: 1.3rem;
+  padding: 8px 10px;
+  border-radius: 12px;
+  color: var(--header-icon-color);
+  transition: all 0.2s ease;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.menuBtn:hover {
+  background: var(--header-user-bg);
+  color: var(--header-icon-hover);
+  transform: scale(1.05);
+}
+
+@media (max-width: 768px) {
+  .menuBtn {
+    display: flex;
+  }
+}
+
+/* عنوان صفحه */
+.pageTitle {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--header-text);
+  letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ========================================
+   بخش راست (نوتیفیکیشن + کاربر)
+   ======================================== */
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+/* دکمه‌های آیکونی (نوتیفیکیشن و ...) */
+.iconBtn {
+  position: relative;
+  padding: 8px;
+  border-radius: 50%;
+  color: var(--header-icon-color);
+  transition: all 0.2s ease;
+  font-size: 1.15rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.iconBtn:hover {
+  background: var(--header-user-bg);
+  color: var(--header-icon-hover);
+  transform: scale(1.05);
+}
+
+.iconBtn:active {
+  transform: scale(0.95);
+}
+
+/* نشانگر (badge) برای نوتیفیکیشن */
+.badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: var(--header-badge-bg);
+  color: var(--header-badge-text);
+  font-size: 0.6rem;
+  font-weight: 700;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
+  border: 2px solid white;
+}
+
+/* ========================================
+   پروفایل کاربر
+   ======================================== */
+
+.user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px 6px 18px;
+  border-radius: 50px;
+  background: var(--header-user-bg);
+  border: 1px solid var(--header-user-border);
+  transition: all 0.25s ease;
+  cursor: pointer;
+}
+
+.user:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transform: translateY(-1px);
+}
+
+.userIcon {
+  color: var(--header-text-secondary);
+  font-size: 0.95rem;
+  background: #e2e8f0;
+  padding: 4px;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.userName {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--header-text);
+}
+
+/* ========================================
+   واکنش‌گرایی
+   ======================================== */
+
+@media (max-width: 768px) {
+  .header {
+    padding: 0 16px;
+    height: 60px;
+  }
+
+  .pageTitle {
+    font-size: 0.9rem;
+  }
+
+  .userName {
+    display: none;
+  }
+
+  .user {
+    padding: 6px 10px;
+  }
+
+  .right {
+    gap: 10px;
+  }
+
+  .iconBtn {
+    font-size: 1rem;
+    padding: 6px;
+  }
+
+  .badge {
+    width: 16px;
+    height: 16px;
+    font-size: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: 0 12px;
+  }
+
+  .pageTitle {
+    font-size: 0.8rem;
+  }
+
+  .right {
+    gap: 6px;
+  }
+
+  .iconBtn {
+    font-size: 0.9rem;
+    padding: 4px;
+  }
+
+  .user {
+    padding: 4px 8px;
+  }
+
+  .userIcon {
+    width: 24px;
+    height: 24px;
+    font-size: 0.8rem;
+  }
+}
+
+/* ========================================
+   حالت دارک (با کلاس dark-mode روی body)
+   ======================================== */
+
+.dark-mode .header {
+  --header-bg: #1e293b;
+  --header-border: #334155;
+  --header-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --header-text: #f1f5f9;
+  --header-text-secondary: #94a3b8;
+  --header-icon-color: #64748b;
+  --header-icon-hover: #818cf8;
+  --header-user-bg: #334155;
+  --header-user-border: #475569;
+  --header-badge-bg: #ef4444;
+  --header-badge-text: #ffffff;
+}
+
+.dark-mode .header.scrolled {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.dark-mode .menuBtn:hover {
+  background: #334155;
+  color: #818cf8;
+}
+
+.dark-mode .iconBtn:hover {
+  background: #334155;
+  color: #818cf8;
+}
+
+.dark-mode .badge {
+  border-color: #1e293b;
+}
+
+.dark-mode .user {
+  background: #334155;
+  border-color: #475569;
+}
+
+.dark-mode .user:hover {
+  border-color: #64748b;
+}
+
+.dark-mode .userIcon {
+  background: #475569;
+  color: #94a3b8;
+}
+
+.dark-mode .userName {
+  color: #e2e8f0;
+}

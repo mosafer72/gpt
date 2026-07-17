@@ -188,7 +188,7 @@ export async function sendMessageStream(
     throw new Error("Unauthorized");
   }
 
-  // خطاهای بک‌اند قبل از شروع استریم
+  // خطای بک‌اند قبل از شروع stream
   if (!response.ok) {
     let errorData: any = null;
 
@@ -217,11 +217,16 @@ export async function sendMessageStream(
   while (true) {
     const { done, value } = await reader.read();
 
-    if (done) break;
+    if (done) {
+      break;
+    }
 
-    buffer += decoder.decode(value, { stream: true });
+    buffer += decoder.decode(value, {
+      stream: true,
+    });
 
     const events = buffer.split("\n\n");
+
     buffer = events.pop() || "";
 
     for (const event of events) {
@@ -229,8 +234,9 @@ export async function sendMessageStream(
         continue;
       }
 
-      const payload = event.replace("data:", "").trim();
+      const payload = event.replace(/^data:\s*/, "").trim();
 
+      // پایان SSE
       if (payload === "[DONE]") {
         continue;
       }
@@ -238,22 +244,44 @@ export async function sendMessageStream(
       try {
         const json = JSON.parse(payload);
 
-        // اگر سرور داخل استریم خطا فرستاد
+        // خطای ارسال شده از سرور
         if (json.error) {
           throw new Error(json.error);
         }
 
-        if (typeof json.content === "string" && json.content.length > 0) {
-          onChunk?.(json.content);
-        }
-      } catch (err: any) {
-        // اگر payload اصلاً JSON نبود، نادیده بگیر
-        if (err instanceof SyntaxError) {
-          console.log("Invalid stream chunk", payload);
+        // ==========================
+        // پاسخ تصویر
+        // ==========================
+        if (json.type === "image" && json.image_url) {
+          onChunk?.(
+            JSON.stringify({
+              type: "image",
+
+              image_url: json.image_url,
+            }),
+          );
+
           continue;
         }
 
-        // خطای واقعی را به UI پاس بده
+        // ==========================
+        // پاسخ متنی Stream
+        // ==========================
+        if (typeof json.content === "string" && json.content.length > 0) {
+          onChunk?.(
+            JSON.stringify({
+              content: json.content,
+            }),
+          );
+        }
+      } catch (err: any) {
+        // payload غیر JSON
+        if (err instanceof SyntaxError) {
+          console.log("Invalid stream chunk", payload);
+
+          continue;
+        }
+
         throw err;
       }
     }
