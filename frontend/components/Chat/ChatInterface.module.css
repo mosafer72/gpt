@@ -1,29 +1,44 @@
-/* ===== Layout کلی ===== */
+/* ==========================================
+   Main Layout
+========================================== */
+
 .container {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background-color: #0b1020;
   overflow: hidden;
+
+  background: #0b1020;
+  color: #ffffff;
+
   font-family:
     system-ui,
     -apple-system,
     sans-serif;
-  color: #ffffff;
 }
 
-/* ===== هدر ===== */
+/* ==========================================
+   Header
+========================================== */
+
 .header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  flex-shrink: 0;
-  z-index: 10;
+
   min-height: 64px;
-  background: rgba(11, 16, 32, 0.7);
+
+  padding: 12px 24px;
+
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+
+  background: rgba(11, 16, 32, 0.75);
+
   backdrop-filter: blur(8px);
+
+  flex-shrink: 0;
+
+  z-index: 15;
 }
 
 .headerLeft {
@@ -32,280 +47,28 @@
   gap: 12px;
 }
 
-.logo {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #ffffff;
-  white-space: nowrap;
-}
-
 .headerRight {
   display: flex;
   align-items: center;
   gap: 16px;
 }
 
-/* دکمه همبرگر */
-.hamburger {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-around;
-  width: 28px;
-  height: 24px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-}
-
-.hamburgerLine {
-  display: block;
-  width: 100%;
-  height: 2.5px;
-  background: #94a3b8;
-  border-radius: 2px;
-  transition: all 0.2s;
-}
-
-/* ===== منطقه اصلی (سایدبار + محتوا) ===== */
-.mainArea {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-  position: relative;
-}
-
-/* ===== سایدبار ===== */
-.sidebarWrapper {
-  flex: 0 0 280px;
-  background: rgba(255, 255, 255, 0.04);
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
-  overflow-y: auto;
-  transition: transform 0.3s ease;
-  z-index: 20;
-  backdrop-filter: blur(4px);
-}
-
-/* حالت موبایل: سایدبار به صورت کشویی از چپ */
-.sidebarMobile {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 100vh;
-  width: 280px;
-  transform: translateX(-100%);
-  border-right: none;
-  box-shadow: 2px 0 24px rgba(0, 0, 0, 0.4);
-  background: #0b1020;
-  z-index: 30;
-}
-
-.sidebarMobile.sidebarOpen {
-  transform: translateX(0);
-}
-
-/* backdrop برای موبایل */
-.backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 25;
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-/* ===== محتوای اصلی (چت) ===== */
-.main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: #0b1020;
-  min-width: 0; /* جلوگیری از سرریز */
-}
-
-.messagesContainer {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px 24px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* حالت خالی */
-.emptyState {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: #94a3b8;
+.logo {
   font-size: 1.2rem;
-}
 
-.emptyState span {
-  font-size: 4rem;
-  margin-bottom: 0.5rem;
-}
-
-.emptyState h2 {
-  font-weight: 400;
-  color: #64748b;
-}
-
-/* ===== ورودی پیام ===== */
-.inputArea {
-  flex-shrink: 0;
-  padding: 16px 24px 24px;
-  background: rgba(255, 255, 255, 0.03);
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(4px);
-}
-
-/* ========================================== */
-/* ===== ریسپانسیو ===== */
-
-/* تبلت و موبایل بزرگ (تا 1024px) */
-@media (max-width: 1024px) {
-  .header {
-    padding: 10px 16px;
-  }
-  .sidebarWrapper {
-    flex: 0 0 240px;
-  }
-  .messagesContainer {
-    padding: 16px 16px 12px;
-  }
-  .inputArea {
-    padding: 12px 16px 16px;
-  }
-}
-
-/* موبایل (تا 767px) */
-@media (max-width: 767px) {
-  .header {
-    padding: 8px 12px;
-    min-height: 56px;
-  }
-  .logo {
-    font-size: 1rem;
-  }
-  .headerRight {
-    gap: 8px;
-  }
-  .messagesContainer {
-    padding: 12px 12px 8px;
-  }
-  .inputArea {
-    padding: 8px 12px 12px;
-  }
-  .emptyState span {
-    font-size: 3rem;
-  }
-  .emptyState h2 {
-    font-size: 1.2rem;
-  }
-}
-
-/* نمایش دکمه همبرگر فقط در موبایل */
-@media (min-width: 768px) {
-  .hamburger {
-    display: none;
-  }
-  .backdrop {
-    display: none;
-  }
-  .sidebarMobile {
-    position: static;
-    transform: none !important;
-    box-shadow: none;
-    height: auto;
-    width: auto;
-    background: transparent;
-  }
-}
-/* ===== بنر خطا ===== */
-.errorBanner {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 16px 20px;
-  background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 16px;
-  margin-bottom: 16px;
-  backdrop-filter: blur(8px);
-  animation: slideDown 0.3s ease;
-}
-
-.errorIcon {
-  font-size: 24px;
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.errorContent {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.errorTitle {
   font-weight: 700;
-  font-size: 15px;
-  color: #fca5a5;
+
+  color: #fff;
+
+  white-space: nowrap;
 }
 
-.errorMessage {
-  font-size: 14px;
-  color: #fecaca;
-  line-height: 1.5;
-}
-
-.errorHint {
-  font-size: 13px;
-  color: #fca5a5;
-  opacity: 0.8;
-}
-
-.errorDismiss {
-  background: transparent;
-  border: none;
-  color: #f87171;
-  font-size: 18px;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 8px;
-  transition: background 0.2s;
-}
-
-.errorDismiss:hover {
-  background: rgba(239, 68, 68, 0.15);
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 .modelBadge {
-  background: rgba(37, 99, 235, 0.15);
+  display: inline-flex;
 
-  border: 1px solid rgba(37, 99, 235, 0.3);
+  align-items: center;
+
+  margin-right: 12px;
 
   padding: 6px 14px;
 
@@ -314,125 +77,556 @@
   font-size: 13px;
 
   color: #93c5fd;
-}
-.aiErrorMessage {
 
-  display:flex;
+  background: rgba(37, 99, 235, 0.15);
 
-  gap:14px;
-
-  margin:20px auto;
-
-  max-width:650px;
-
-  padding:16px 18px;
-
-  background:
-    linear-gradient(
-      135deg,
-      #fff5f5,
-      #fff
-    );
-
-  border:1px solid #fecaca;
-
-  border-radius:18px;
-
-  box-shadow:
-    0 8px 25px rgba(0,0,0,.08);
-
-  animation:
-    errorAppear .3s ease;
-
+  border: 1px solid rgba(37, 99, 235, 0.3);
 }
 
+/* ==========================================
+   Main Area
+========================================== */
 
+.mainArea {
+  display: flex;
+
+  flex: 1;
+
+  overflow: hidden;
+
+  position: relative;
+}
+
+/* ==========================================
+   Sidebar
+========================================== */
+
+.sidebarWrapper {
+  flex: 0 0 280px;
+
+  overflow-y: auto;
+
+  background: rgba(255, 255, 255, 0.04);
+
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+
+  backdrop-filter: blur(4px);
+
+  z-index: 20;
+}
+
+.main {
+  flex: 1;
+
+  min-width: 0;
+
+  display: flex;
+
+  flex-direction: column;
+
+  background: #0b1020;
+}
+
+/* ==========================================
+   Messages
+========================================== */
+
+.messagesContainer {
+  flex: 1;
+
+  overflow-y: auto;
+
+  padding: 20px 24px 16px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 12px;
+}
+
+/* ==========================================
+   Empty State
+========================================== */
+
+.emptyState {
+  flex: 1;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  justify-content: center;
+
+  text-align: center;
+
+  padding: 2rem;
+
+  animation: fadeIn 0.35s ease;
+}
+
+.emptyGlow {
+  position: absolute;
+
+  width: 320px;
+
+  height: 320px;
+
+  border-radius: 50%;
+
+  background: radial-gradient(
+    circle,
+    rgba(99, 102, 241, 0.18),
+    rgba(99, 102, 241, 0.08) 35%,
+    transparent 70%
+  );
+
+  filter: blur(8px);
+}
+
+.emptyIcon {
+  position: relative;
+
+  width: 92px;
+
+  height: 92px;
+
+  display: flex;
+
+  justify-content: center;
+
+  align-items: center;
+
+  border-radius: 24px;
+
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+
+  color: white;
+
+  font-size: 42px;
+
+  margin-bottom: 1.5rem;
+
+  box-shadow: 0 20px 50px rgba(99, 102, 241, 0.35);
+
+  animation: float 4s ease-in-out infinite;
+}
+
+.emptyState h1 {
+  position: relative;
+
+  z-index: 1;
+
+  font-size: 2.2rem;
+
+  font-weight: 800;
+
+  margin: 0;
+}
+
+.emptyState p {
+  position: relative;
+
+  z-index: 1;
+
+  color: rgba(255, 255, 255, 0.7);
+
+  margin-top: 0.7rem;
+}
+
+.modelHint {
+  position: relative;
+
+  z-index: 1;
+
+  margin-top: 1.5rem;
+
+  padding: 0.8rem 1rem;
+
+  border-radius: 999px;
+
+  background: rgba(255, 255, 255, 0.06);
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+
+  backdrop-filter: blur(10px);
+}
+
+.suggestions {
+  position: relative;
+
+  z-index: 1;
+
+  margin-top: 2rem;
+
+  width: 100%;
+
+  max-width: 760px;
+
+  display: grid;
+
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+
+  gap: 1rem;
+}
+/* ==========================================
+   Suggestion Cards
+========================================== */
+
+.suggestionCard {
+  padding: 1rem 1.2rem;
+
+  border-radius: 18px;
+
+  background: rgba(255, 255, 255, 0.05);
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+
+  color: white;
+
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition: 0.25s ease;
+
+  backdrop-filter: blur(8px);
+}
+
+.suggestionCard:hover {
+  transform: translateY(-4px);
+
+  background: rgba(99, 102, 241, 0.12);
+
+  border-color: rgba(99, 102, 241, 0.28);
+}
+
+/* ==========================================
+   Chat Loading / Streaming Indicator
+========================================== */
+
+.loadingIndicator {
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  padding: 14px 18px;
+
+  /* margin: 10px 0; */
+
+  max-width: 80%;
+
+  align-self: flex-start;
+
+  direction: rtl;
+
+  border-radius: 16px;
+
+  background: rgba(255, 255, 255, 0.06);
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+
+  backdrop-filter: blur(8px);
+  margin: 0 auto 24px;
+}
+
+.loadingIndicator > span:last-child {
+  font-size: 14px;
+
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.dots {
+  display: flex;
+
+  gap: 5px;
+}
+
+.dots span {
+  width: 8px;
+
+  height: 8px;
+
+  border-radius: 50%;
+
+  background: #8b5cf6;
+
+  animation: dotBounce 1.4s infinite ease-in-out;
+}
+
+.dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes dotBounce {
+  0%,
+  100% {
+    transform: scale(0.5);
+
+    opacity: 0.4;
+  }
+
+  50% {
+    transform: scale(1);
+
+    opacity: 1;
+  }
+}
+
+/* ==========================================
+   Error Box
+========================================== */
+
+.errorBanner {
+  display: flex;
+
+  align-items: flex-start;
+
+  gap: 12px;
+
+  padding: 16px 20px;
+
+  margin-bottom: 16px;
+
+  border-radius: 16px;
+
+  background: rgba(239, 68, 68, 0.12);
+
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
 
 .errorIcon {
+  font-size: 24px;
 
-  font-size:28px;
-
+  flex-shrink: 0;
 }
-
-
 
 .errorContent {
+  flex: 1;
 
-  flex:1;
+  display: flex;
 
+  flex-direction: column;
+
+  gap: 6px;
 }
-
-
 
 .errorContent strong {
-
-  display:block;
-
-  font-size:16px;
-
-  margin-bottom:8px;
-
+  font-size: 16px;
 }
-
-
 
 .errorContent p {
+  line-height: 1.8;
 
-  white-space:pre-line;
-
-  line-height:1.8;
-
-  color:#555;
-
+  color: #ddd;
 }
 
+.errorDismiss {
+  border: none;
 
+  background: transparent;
 
-.errorContent button {
+  color: #f87171;
 
-  margin-top:10px;
+  cursor: pointer;
 
-  border:none;
-
-  background:#ef4444;
-
-  color:white;
-
-  padding:7px 18px;
-
-  border-radius:10px;
-
-  cursor:pointer;
-
+  font-size: 18px;
 }
 
+/* ==========================================
+   Input Area
+========================================== */
 
+.inputArea {
+  flex-shrink: 0;
 
-.errorContent button:hover {
+  padding: 16px 24px 24px;
 
-  opacity:.85;
+  background: rgba(255, 255, 255, 0.03);
 
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+
+  backdrop-filter: blur(4px);
 }
 
+/* ==========================================
+   Animations
+========================================== */
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
 
-@keyframes errorAppear {
+    transform: translateY(10px);
+  }
 
- from {
+  to {
+    opacity: 1;
 
-   opacity:0;
+    transform: translateY(0);
+  }
+}
 
-   transform:translateY(15px);
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
 
- }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+/* ==========================================
+   Responsive
+========================================== */
 
+@media (max-width: 1024px) {
+  .header {
+    padding: 10px 16px;
+  }
 
- to {
+  .sidebarWrapper {
+    flex-basis: 240px;
+  }
 
-   opacity:1;
+  .messagesContainer {
+    padding: 16px;
+  }
 
-   transform:translateY(0);
+  .inputArea {
+    padding: 12px 16px 16px;
+  }
+}
 
- }
+@media (max-width: 767px) {
+  .header {
+    min-height: 56px;
 
+    padding: 8px 12px;
+  }
+
+  .logo {
+    font-size: 1rem;
+  }
+
+  .modelBadge {
+    font-size: 12px;
+
+    padding: 5px 10px;
+  }
+
+  .sidebarWrapper {
+    position: fixed;
+
+    top: 0;
+
+    left: 0;
+
+    width: 280px;
+
+    height: 100vh;
+
+    transform: translateX(-100%);
+
+    background: #0b1020;
+
+    box-shadow: 2px 0 24px rgba(0, 0, 0, 0.4);
+  }
+
+  .messagesContainer {
+    padding: 12px;
+  }
+
+  .inputArea {
+    padding: 8px 12px 12px;
+  }
+
+  .emptyIcon {
+    width: 78px;
+
+    height: 78px;
+
+    font-size: 36px;
+  }
+
+  .emptyState h1 {
+    font-size: 1.7rem;
+  }
+}
+
+/* ==========================================
+   Scrollbar
+========================================== */
+
+.messagesContainer::-webkit-scrollbar,
+.sidebarWrapper::-webkit-scrollbar {
+  width: 6px;
+}
+
+.messagesContainer::-webkit-scrollbar-thumb,
+.sidebarWrapper::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+
+  border-radius: 10px;
+}
+
+/* ==========================================
+   Mobile Sidebar Helpers
+========================================== */
+
+.sidebarMobile {
+  position: fixed;
+
+  top: 0;
+
+  left: 0;
+
+  width: 280px;
+
+  height: 100vh;
+
+  transform: translateX(-100%);
+
+  background: #0b1020;
+
+  z-index: 30;
+}
+
+.sidebarOpen {
+  transform: translateX(0);
+}
+
+.backdrop {
+  position: fixed;
+
+  inset: 0;
+
+  background: rgba(0, 0, 0, 0.5);
+
+  z-index: 25;
+}
+
+@media (min-width: 768px) {
+  .sidebarMobile {
+    position: static;
+
+    transform: none;
+
+    height: auto;
+
+    width: auto;
+  }
+
+  .backdrop {
+    display: none;
+  }
 }

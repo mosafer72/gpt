@@ -26,7 +26,9 @@ export default function Sidebar({
     <aside className={styles.sidebar}>
       <div className={styles.header}>
         <span className={styles.logo}>✨ اکانتسرا</span>
-        <button className={styles.newBtn} onClick={onNewChat}>+ جدید</button>
+        <button className={styles.newBtn} onClick={onNewChat}>
+          + جدید
+        </button>
       </div>
       <ul className={styles.list}>
         {isLoading ? (
@@ -38,7 +40,6 @@ export default function Sidebar({
             const state = chatStreamStates[chat.id];
             const isComplete = state?.isComplete ?? true;
             const isStreaming = state?.loading ?? false;
-            
             return (
               <li
                 key={chat.id}

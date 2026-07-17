@@ -113,45 +113,73 @@ class StoreMessageJob implements ShouldQueue
 
 
 
+    /**
+     * حذف تمام کش پیام‌های یک چت
+     */
     protected function forgetMessageCache(
         string $conversationId
     ): void {
 
 
-        $redis = Redis::connection('cache');
-
-
         $pattern =
-            "laravel-cache-chat:{$conversationId}:messages:*";
+            "chat:{$conversationId}:messages:*";
 
 
+        $redis =
+            Redis::connection('cache');
 
-        $cursor = null;
+
+        $cursor = 0;
 
 
         do {
 
 
-            $result = $redis->scan(
-                $cursor,
-                'MATCH',
-                $pattern,
-                'COUNT',
-                100
-            );
+            $result =
+                $redis->scan(
+                    $cursor,
+                    [
+                        'match' => $pattern,
+                        'count' => 100
+                    ]
+                );
+
+            Cache::forget("conversation:{$conversationId}:history:20");
+            Cache::forget("conversation:{$conversationId}:history:50");
+
+            /**
+             * نتیجه scan:
+             *
+             * [
+             *   cursor,
+             *   keys[]
+             * ]
+             */
+            if (
+                !empty($result[1])
+            ) {
 
 
-            foreach ($result[1] ?? [] as $key) {
+                foreach (
+                    $result[1] as $key
+                ) {
 
 
-                $redis->del($key);
+                    Cache::forget(
+                        $key
+                    );
+
+
+                }
 
 
             }
 
 
 
-        } while ($cursor != 0);
+        } while (
+            $cursor != 0
+        );
 
 
     }

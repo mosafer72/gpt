@@ -206,3 +206,16 @@
     grid-template-columns: 1fr;
   }
 }
+.modelModalWrapper {
+  position: fixed;
+  top: 0;
+  left: 260px; /* عرض سایدبار */
+  right: 0;
+  bottom: 0;
+  z-index: 14;
+  pointer-events: none; /* اجازه کلیک روی سایدبار را می‌دهد */
+}
+
+.modelModalWrapper > * {
+  pointer-events: auto; /* فقط خود مودال قابل کلیک باشد */
+}

@@ -1,9 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, FormEvent, useCallback } from "react";
-
+import { useState, useEffect, useRef, FormEvent } from "react";
 import { useRouter } from "next/navigation";
-
 import {
   sendMessageStream,
   getChats,
@@ -11,550 +9,333 @@ import {
   getChat,
   getUserStatus,
 } from "@/lib/api";
-
 import { Chat, AIModel } from "@/types";
-
 import Sidebar from "@/components/Sidebar/Sidebar";
 import ChatMessage from "@/components/Chat/ChatMessage";
 import ChatInput from "@/components/Chat/ChatInput";
 import UserMenu from "@/components/Common/UserMenu";
-import SubscriptionWarning from "@/components/Chat/SubscriptionWarning";
 import TokenUsageBadge from "../Common/TokenUsageBadge";
-
 import styles from "./ChatInterface.module.css";
 
 interface ChatInterfaceProps {
   selectedModel?: AIModel | null;
-
   onNewChat: () => void;
-}
-
-function useMediaQuery(query: string) {
-  const [matches, setMatches] = useState(false);
-
-  useEffect(() => {
-    const media = window.matchMedia(query);
-
-    setMatches(media.matches);
-
-    const listener = (e: MediaQueryListEvent) => setMatches(e.matches);
-
-    media.addEventListener("change", listener);
-
-    return () => {
-      media.removeEventListener("change", listener);
-    };
-  }, [query]);
-
-  return matches;
+  newChatTrigger?: number;
+  initialChat?: Chat | null;
 }
 
 export default function ChatInterface({
   selectedModel,
-
   onNewChat,
+  newChatTrigger,
+  initialChat,
 }: ChatInterfaceProps) {
   const router = useRouter();
-
   const [chats, setChats] = useState<Chat[]>([]);
-
-  const [isLoadingChats, setIsLoadingChats] = useState(true);
-
-  const [userStatus, setUserStatus] = useState<any>(null);
-
-  const inputRef = useRef<HTMLTextAreaElement | null>(null);
-
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-  const lastMessageRef = useRef<HTMLDivElement | null>(null);
-  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
-  const [backendError, setBackendError] = useState<string | null>(null);
-
-  const streams = useRef<
-    Record<
-      string,
-      {
-        buffer: string;
-        timer: NodeJS.Timeout | null;
-        active: boolean;
-        lastBufferSize: number;
-      }
-    >
-  >({});
-
-  const [currentChat, setCurrentChat] = useState<Chat | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [currentChat, setCurrentChat] = useState<Chat | null>(
+    initialChat ?? null,
+  );
   const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [streamError, setStreamError] = useState<string | null>(null);
+  const [userStatus, setUserStatus] = useState<any>(null);
+  const [showEmptyState, setShowEmptyState] = useState(true);
 
+  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const lastMessageRef = useRef<HTMLDivElement | null>(null);
+
+  // اگر با initialChat وارد شدیم (از صفحه /chat/[id])
   useEffect(() => {
-    if (!selectedModel) return;
+    if (initialChat) {
+      setCurrentChat(initialChat);
+      setShowEmptyState(initialChat.messages.length === 0);
+    }
+  }, [initialChat]);
 
-    // ساخت چت جدید موقت با مدل انتخابی
+  // وقتی کاربر روی «چت جدید» می‌زند
+  useEffect(() => {
+    if (!newChatTrigger) return;
+
+    setShowEmptyState(true);
     setCurrentChat({
       id: 0,
       title: "چت جدید",
       messages: [],
       created_at: new Date().toISOString(),
-      model_id: selectedModel.id,
-      model_name: selectedModel.name,
     } as Chat);
-
     setInput("");
     setImageFile(null);
-    setStreamError(null);
-    setTimeout(() => {
-      scrollToBottomInstant();
-    }, 100);
-  }, [selectedModel]);
-  function formatBackendError(error: any): string {
-    const message = error?.message || error?.response?.data?.message || "";
 
-    if (message.includes("تعداد پیام روزانه")) {
-      return "🚦 سقف پیام روزانه شما تمام شده است.\n\nلطفاً پلن خود را ارتقا دهید یا فردا دوباره امتحان کنید.";
-    }
+    // ✅ برگشت به صفحه چت خالی (بدون ریدایرکت سنگین)
+    router.push("/chat");
+  }, [newChatTrigger]);
 
-    if (message.includes("اعتبار توکن")) {
-      return "💳 اعتبار توکن شما کافی نیست.\n\nلطفاً کیف پول خود را شارژ کنید یا پلن خود را ارتقا دهید.";
-    }
-
-    if (message.includes("Unauthorized")) {
-      return "🔐 نشست شما منقضی شده است.\n\nلطفاً دوباره وارد شوید.";
-    }
-
-    if (message.includes("مدل") || message.includes("model")) {
-      return "🤖 مدل انتخاب شده در دسترس نیست.\n\nلطفاً مدل دیگری انتخاب کنید.";
-    }
-
-    return message ? `⚠️ ${message}` : "⚠️ خطای ناشناخته‌ای رخ داد";
-  }
-
-  const isMobile = useMediaQuery("(max-width:767px)");
-
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
+  // بارگذاری اولیه
   useEffect(() => {
-    const token = localStorage.getItem("auth_token");
-
-    if (!token) {
-      router.push("/login");
-
-      return;
+    async function init() {
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        router.push("/login");
+        return;
+      }
+      await loadChats();
+      await loadStatus();
     }
-
-    loadChats();
-
-    fetchUserStatus();
+    init();
   }, []);
 
-  async function fetchUserStatus() {
+  async function loadStatus() {
     try {
       const status = await getUserStatus();
-
       setUserStatus(status);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) {}
   }
 
   async function loadChats() {
     try {
       const data = await getChats();
-
       setChats(data);
-
-      if (data.length && !currentChat) {
-        setCurrentChat(data[0]);
-      }
     } catch (e) {
       console.error(e);
-    } finally {
-      setIsLoadingChats(false);
     }
   }
 
+  // ✅ انتخاب چت از سایدبار + تغییر URL
   async function handleSelectChat(chat: Chat) {
-    try {
-      setStreamError(null);
+    if (!chat.id) return;
+    if (currentChat?.id === chat.id) return;
 
+    try {
       const full = await getChat(chat.id);
 
-      setCurrentChat(full);
+      const sorted = {
+        ...full,
+        messages: [...full.messages].sort(
+          (a, b) =>
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+        ),
+      };
 
-      if (isMobile) setSidebarOpen(false);
-    } catch (e) {
-      console.error(e);
+      setCurrentChat(sorted);
+      setShowEmptyState(sorted.messages.length === 0);
+
+      // ✅ تغییر URL به /chat/123
+      window.history.pushState(null, "", `/chat/${chat.id}`);
+    } catch (error) {
+      console.error("load chat failed:", error);
     }
   }
-  function startTyping(chatId: string, messageId: string) {
-    const stream = streams.current[chatId];
 
-    if (!stream) return;
-
-    if (stream.timer) return;
-
-    const render = () => {
-      const currentStream = streams.current[chatId];
-
-      if (!currentStream) {
-        return;
-      }
-
-      const bufferLength = currentStream.buffer.length;
-
-      if (bufferLength === 0) {
-        currentStream.timer = null;
-
-        return;
-      }
-
-      let chunkSize = 1;
-
-      let delay = 40;
-
-      /**
-       * سرعت هوشمند بر اساس حجم buffer
-       */
-
-      if (bufferLength > 2000) {
-        chunkSize = 80;
-
-        delay = 1;
-      } else if (bufferLength > 1000) {
-        chunkSize = 50;
-
-        delay = 5;
-      } else if (bufferLength > 300) {
-        chunkSize = 15;
-
-        delay = 15;
-      } else if (bufferLength > 100) {
-        chunkSize = 5;
-
-        delay = 25;
-      } else {
-        chunkSize = 1;
-
-        delay = 40;
-      }
-
-      const chars = currentStream.buffer.substring(0, chunkSize);
-
-      currentStream.buffer = currentStream.buffer.substring(chunkSize);
-
-      setCurrentChat((prev) => {
-        if (!prev) return prev;
-
-        return {
-          ...prev,
-
-          messages: prev.messages.map((m) => {
-            if (String(m.id) !== messageId) {
-              return m;
-            }
-
-            return {
-              ...m,
-
-              content: m.content + chars,
-            };
-          }),
-        };
-      });
-
-      requestAnimationFrame(() => {
-        scrollToBottomInstant();
-      });
-
-      currentStream.timer = setTimeout(render, delay);
-    };
-
-    render();
+  function scrollToBottom() {
+    const box = messagesContainerRef.current;
+    if (!box) return;
+    box.scrollTop = box.scrollHeight;
   }
 
-  function stopTyping(chatId: string) {
-    const stream = streams.current[chatId];
-
-    if (!stream) return;
-
-    if (stream.timer) {
-      clearTimeout(stream.timer);
+  useEffect(() => {
+    if (lastMessageRef.current) {
+      lastMessageRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+      });
     }
-
-    delete streams.current[chatId];
-  }
-
-  const handleScrollToBottom = useCallback(() => {
-    const container = messagesContainerRef.current;
-
-    if (!container) return;
-
-    container.scrollTo({
-      top: container.scrollHeight,
-      behavior: "smooth",
-    });
-  }, []);
-
-  const scrollToBottomInstant = useCallback(() => {
-    const container = messagesContainerRef.current;
-
-    if (!container) return;
-
-    container.scrollTop = container.scrollHeight;
-  }, []);
+  }, [currentChat?.messages]);
 
   async function handleSendMessage(e: FormEvent) {
     e.preventDefault();
-
     if (!input.trim() && !imageFile) return;
-
     if (loading) return;
-
     if (!selectedModel) {
       alert("ابتدا مدل را انتخاب کنید");
-
       return;
     }
 
-    setStreamError(null);
-
     const text = input.trim();
-
     setInput("");
-
     setLoading(true);
 
     const controller = new AbortController();
-
     abortControllerRef.current = controller;
 
-    const aiId = `ai-${Date.now()}`;
+    const isNewChat = !currentChat || currentChat.id === 0;
 
-    const userId = `user-${Date.now()}`;
+    if (isNewChat) {
+      setShowEmptyState(false);
+    }
 
-    const chatId = currentChat?.id
-      ? String(currentChat.id)
-      : `temp-${Date.now()}`;
+    const userMsgId = `user-${Date.now()}`;
+    const aiMsgId = `ai-${Date.now()}`;
 
     const userMessage: any = {
-      id: userId,
-
+      id: userMsgId,
       role: "user",
-
       content: text,
-
       created_at: new Date().toISOString(),
     };
-
     const aiMessage: any = {
-      id: aiId,
-
+      id: aiMsgId,
       role: "assistant",
-
       content: "",
-
       created_at: new Date().toISOString(),
     };
 
     setCurrentChat((prev) => {
-      const base = prev || {
-        id: 0,
-
-        title: "چت جدید",
-
-        messages: [],
-
-        created_at: new Date().toISOString(),
-      };
-
+      const base =
+        prev ??
+        ({
+          id: 0,
+          title: "چت جدید",
+          messages: [],
+          created_at: new Date().toISOString(),
+        } as Chat);
       return {
         ...base,
-
         messages: [...base.messages, userMessage, aiMessage],
       };
     });
-
-    setTimeout(() => {
-      scrollToBottomInstant();
-    }, 50);
-
-    streams.current[chatId] = {
-      buffer: "",
-      timer: null,
-      active: true,
-      lastBufferSize: 0,
-    };
-    function waitForTyping(chatId: string): Promise<void> {
-      return new Promise((resolve) => {
-        const check = () => {
-          const stream = streams.current[chatId];
-
-          if (!stream) {
-            resolve();
-
-            return;
-          }
-
-          if (stream.buffer.length === 0 && !stream.timer) {
-            resolve();
-
-            return;
-          }
-
-          setTimeout(check, 100);
-        };
-
-        check();
-      });
-    }
+    setTimeout(scrollToBottom, 100);
 
     try {
       await sendMessageStream(
         text,
-
-        currentChat?.id,
-
+        isNewChat ? undefined : currentChat?.id,
         imageFile,
-
         selectedModel.id,
-
         (chunk) => {
-          const stream = streams.current[chatId];
-
-          if (!stream) return;
-
-          stream.buffer += chunk.normalize("NFC");
-
-          if (!stream.timer) {
-            startTyping(chatId, aiId);
-          }
+          setCurrentChat((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              messages: prev.messages.map((msg) => {
+                if (msg.id === aiMsgId) {
+                  return { ...msg, content: msg.content + chunk };
+                }
+                return msg;
+              }),
+            };
+          });
+          setTimeout(scrollToBottom, 20);
         },
-
         controller.signal,
       );
-      await waitForTyping(chatId);
-      await loadChats();
+
+      // ✅ فقط سایدبار را به‌روز کن (بدون تغییر URL)
+      const updatedChats = await getChats();
+      setChats(updatedChats);
+
+      // اگر چت جدید بود، id واقعی را بگیر (بدون جایگزینی پیام‌ها)
+      if (isNewChat) {
+        const newChat = updatedChats[0];
+        if (newChat) {
+          setCurrentChat((prev) => ({
+            ...prev!,
+            id: newChat.id,
+            title: newChat.title || prev?.title || "چت جدید",
+          }));
+        }
+      }
     } catch (error: any) {
-  // حذف پیام خالی دستیار
-  setCurrentChat(prev => {
-    if (!prev) return prev;
-
-    return {
-      ...prev,
-      messages: prev.messages.filter(m => m.id !== aiId),
-    };
-  });
-
-  const errorMessage = formatBackendError(error);
-
-  setStreamError(errorMessage);
-} finally {
-      abortControllerRef.current = null;
-
+      console.error("Error in sendMessageStream:", error);
+      setCurrentChat((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          messages: [
+            ...prev.messages,
+            {
+              id: `error-${Date.now()}`,
+              role: "assistant",
+              content: `⚠️ خطا: ${error.message || "مشکل در ارتباط با سرور"}`,
+              created_at: new Date().toISOString(),
+            },
+          ],
+        };
+      });
+    } finally {
       setLoading(false);
-
       setImageFile(null);
-
+      abortControllerRef.current = null;
       inputRef.current?.focus();
-
-      scrollToBottomInstant();
+      scrollToBottom();
     }
   }
 
-  function handleCancelStream() {
+  function cancelStream() {
     abortControllerRef.current?.abort();
-
-    stopTyping(String(currentChat?.id || 0));
+    setLoading(false);
   }
 
   async function handleDeleteChat(id: number) {
     if (!confirm("حذف شود؟")) return;
-
     await deleteChat(id);
-
-    setChats((prev) => prev.filter((c) => c.id !== id));
-
-    if (currentChat?.id === id) setCurrentChat(null);
+    const updated = await getChats();
+    setChats(updated);
+    if (currentChat?.id === id) {
+      setCurrentChat({
+        id: 0,
+        title: "چت جدید",
+        messages: [],
+        created_at: new Date().toISOString(),
+      } as Chat);
+      setShowEmptyState(true);
+      router.push("/chat");
+    }
   }
 
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          {isMobile && (
-            <button
-              className={styles.hamburger}
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-            >
-              ☰
-            </button>
-          )}
-
+        <div>
           <span className={styles.logo}>✨ اکانتسرا</span>
-
           {selectedModel && (
-            <div className={styles.modelBadge}>🤖 {selectedModel.name}</div>
+            <span className={styles.modelBadge}>🤖 {selectedModel.name}</span>
           )}
         </div>
-
-        <div className={styles.headerRight}>
+        <div>
           <TokenUsageBadge />
-
           <UserMenu />
         </div>
       </header>
 
-      {userStatus && (
-        <SubscriptionWarning
-          hasSubscription={userStatus.has_subscription}
-          remainingMessages={userStatus.remaining_messages}
-          dailyLimit={userStatus.daily_message_limit}
-        />
-      )}
-
       <div className={styles.mainArea}>
-        <div
-          className={`${styles.sidebarWrapper}
-${sidebarOpen ? styles.sidebarOpen : ""}`}
-        >
+        <div className={styles.sidebarWrapper}>
           <Sidebar
             chats={chats}
             currentChatId={currentChat?.id}
             onSelectChat={handleSelectChat}
             onNewChat={onNewChat}
             onDeleteChat={handleDeleteChat}
-            isLoading={isLoadingChats}
+            isLoading={false}
           />
         </div>
 
         <main className={styles.main}>
           <div ref={messagesContainerRef} className={styles.messagesContainer}>
-            {streamError && (
-              <div className={styles.aiErrorMessage}>
-                <div className={styles.errorIcon}>⚠️</div>
-
-                <div className={styles.errorContent}>
-                  <strong>مشکلی پیش آمد</strong>
-
-                  <p>{streamError}</p>
-
-                  <button onClick={() => setStreamError(null)}>بستن</button>
+          {showEmptyState && (!currentChat || currentChat.messages.length === 0) ? (
+              <div className={styles.emptyState}>
+                <div className={styles.emptyGlow} />
+                <div className={styles.emptyIcon}>💬</div>
+                <h1>شروع یک گفتگوی جدید</h1>
+                <p>هر سوالی دارید بنویسید</p>
+                {selectedModel && (
+                  <div className={styles.modelHint}>
+                    🤖 {selectedModel.name}
+                  </div>
+                )}
+                <div className={styles.suggestions}>
+                  <div>✨ خلاصه سازی متن</div>
+                  <div>🧠 برنامه نویسی</div>
+                  <div>📊 تحلیل داده</div>
                 </div>
               </div>
-            )}
-
-            {!currentChat || currentChat.messages.length === 0 ? (
-              <div className={styles.emptyState}>
-                💬
-                <h2>چت جدید</h2>
-              </div>
             ) : (
-              currentChat.messages.map((msg, index) => (
+              currentChat?.messages.map((msg, index) => (
                 <div
                   key={`${msg.id}-${index}`}
                   ref={
-                    index === currentChat.messages.length - 1
+                    index === (currentChat?.messages.length ?? 0) - 1
                       ? lastMessageRef
                       : null
                   }
@@ -563,20 +344,29 @@ ${sidebarOpen ? styles.sidebarOpen : ""}`}
                 </div>
               ))
             )}
+            {loading && (
+              <div className={styles.loadingIndicator}>
+                <div className={styles.dots}>
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <span>در حال دریافت پاسخ...</span>
+              </div>
+            )}
           </div>
 
           <ChatInput
             value={input}
             onChange={setInput}
             onSubmit={handleSendMessage}
-            onImageUpload={setImageFile}
-            onImageRemove={() => setImageFile(null)}
-            imageFile={imageFile}
             disabled={loading}
             isStreaming={loading}
-            onCancel={handleCancelStream}
+            onCancel={cancelStream}
+            imageFile={imageFile}
+            onImageUpload={setImageFile}
+            onImageRemove={() => setImageFile(null)}
             inputRef={inputRef}
-            onScrollToBottom={handleScrollToBottom}
           />
         </main>
       </div>

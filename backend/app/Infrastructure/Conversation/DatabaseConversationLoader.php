@@ -13,46 +13,21 @@ class DatabaseConversationLoader implements ConversationLoader
         int $limit = 20
     ): array {
 
-
-        $cacheKey =
-            "conversation:{$conversationId}:history:{$limit}";
-
+        $cacheKey = "conversation:{$conversationId}:history:{$limit}";
 
         return Cache::remember(
             $cacheKey,
             now()->addHours(1),
-            function () use (
-                $conversationId,
-                $limit
-            ) {
-
+            function () use ($conversationId, $limit) {
 
                 return DB::table('messages')
-
-                    ->where(
-                        'chat_id',
-                        $conversationId
-                    )
-
-                    ->orderBy(
-                        'created_at',
-                        'desc'
-                    )
-
+                    ->where('chat_id', $conversationId)
+                    ->orderBy('created_at', 'asc')
+                    ->orderBy('id', 'asc')
                     ->limit($limit)
-
                     ->get()
-
-                    ->reverse()
-
-                    ->values()
-
                     ->toArray();
-
-
             }
         );
-
     }
-
 }

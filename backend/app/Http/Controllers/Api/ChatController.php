@@ -64,7 +64,7 @@ class ChatController extends Controller
 
                             $query
                                 ->latest()
-                                ->limit(20);
+                                ->limit(1);
 
                         }
                     ])
@@ -84,7 +84,6 @@ class ChatController extends Controller
         );
 
     }
-
 
     public function messages(
         Chat $chat,
@@ -106,7 +105,7 @@ class ChatController extends Controller
 
         $perPage = (int) $request->input(
             'per_page',
-            10
+            20
         );
 
 
@@ -124,16 +123,17 @@ class ChatController extends Controller
 
         $messages = Cache::remember(
             $cacheKey,
-            now()->addMinutes(30),
+            now()->addMinutes(10),
 
             function () use ($chat, $perPage, $page) {
 
 
                 $paginator =
-                    $chat->messages()
+                    $chat
+                        ->messages()
                         ->orderBy(
                             'created_at',
-                            'desc'
+                            'asc'
                         )
                         ->paginate(
                             $perPage,
@@ -143,31 +143,30 @@ class ChatController extends Controller
                         );
 
 
+
                 return [
 
                     'data' =>
-                        array_reverse(
-                            $paginator->items()
-                        ),
+                        $paginator->items(),
 
 
-                    'current_page' =>
-                        $paginator->currentPage(),
+                    'pagination' => [
 
+                        'current_page' =>
+                            $paginator->currentPage(),
 
-                    'last_page' =>
-                        $paginator->lastPage(),
+                        'last_page' =>
+                            $paginator->lastPage(),
 
+                        'per_page' =>
+                            $paginator->perPage(),
 
-                    'per_page' =>
-                        $paginator->perPage(),
+                        'total' =>
+                            $paginator->total(),
 
-
-                    'total' =>
-                        $paginator->total(),
+                    ],
 
                 ];
-
 
             }
         );
@@ -179,7 +178,6 @@ class ChatController extends Controller
         );
 
     }
-
     /**
      * ارسال پیام و دریافت پاسخ
      */
@@ -731,37 +729,41 @@ class ChatController extends Controller
     }
 
 
-
-
     /**
      * حذف چت
      */
-    public function destroy(
-        Chat $chat
-    ): JsonResponse {
-
-
-        if (
-            $chat->user_id !== auth()->id()
-        ) {
-
-            return response()->json([
-                'error' => 'Forbidden'
-            ], 403);
-
+    public function destroy(Chat $chat): JsonResponse
+    {
+        if ($chat->user_id !== auth()->id()) {
+            return response()->json(['error' => 'Forbidden'], 403);
         }
 
+        $userId = auth()->id();
+        $chatId = $chat->id;
 
+        $chat->messages()->delete();
         $chat->delete();
 
+        // کش لیست چت‌ها
+        Cache::forget("user:{$userId}:chats:last20");
+
+        // کش نمایش چت
+        Cache::forget("chat:{$chatId}:messages:page:1:limit:50");
+
+        // کش صفحه‌بندی پیام‌ها
+        for ($page = 1; $page <= 20; $page++) {
+            Cache::forget("chat:{$chatId}:messages:page:{$page}:limit:20");
+            Cache::forget("chat:{$chatId}:messages:page:{$page}:limit:50");
+        }
+
+        // کش تاریخچه برای LLM
+        Cache::forget("conversation:{$chatId}:history:20");
+        Cache::forget("conversation:{$chatId}:history:50");
 
         return response()->json([
-
+            'success' => true,
             'message' => 'deleted'
-
         ]);
-
     }
-
 
 }
