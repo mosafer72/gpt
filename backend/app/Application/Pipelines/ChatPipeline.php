@@ -14,6 +14,7 @@ use App\Domain\Message\DTOs\MessageDTO;
 use App\Application\Capabilities\CapabilityResolver;
 use App\Jobs\StoreMemoryJob;
 use App\Models\AiModel;
+use App\Models\Paper;
 use App\Models\User;
 use App\Http\Services\TokenService;
 use App\Jobs\StoreAssistantMessageJob;
@@ -33,7 +34,7 @@ class ChatPipeline
 
         protected MemoryPipeline $memoryPipeline,
 
-        protected IntentPipeline $intentPipeline,
+        // protected IntentPipeline $intentPipeline,
 
         protected PromptPipeline $promptPipeline,
 
@@ -55,6 +56,7 @@ class ChatPipeline
 
     public function stream(ChatContext $context)
     {
+        $originalUserMessage = $context->currentMessage;
 
         $user = $this->prepareContext($context);
 
@@ -100,31 +102,45 @@ class ChatPipeline
         }
 
 
-        if (
-            $this->capability->enabled(
-                $user,
-                'planner'
-            )
-        ) {
+        // if (
+        //     $this->capability->enabled(
+        //         $user,
+        //         'planner'
+        //     )
+        // ) {
+
+        //     $this->intentPipeline
+        //         ->process($context, true);
+
+        //     // اگر Planner پاسخ مستقیم تولید کرده
+        //     if (!empty($context->assistantResponse)) {
+
+        //         return collect([
+        //             (object) [
+        //                 'choices' => [
+        //                     (object) [
+        //                         'delta' => (object) [
+        //                             'content' => $context->assistantResponse
+        //                         ]
+        //                     ]
+        //                 ]
+        //             ]
+        //         ]);
+        //     }
+        // }
 
 
-            $this->intentPipeline
-                ->process($context, true);
+        $memoryEnabled = $this->capability->enabled(
+            $user,
+            'memory'
+        );
 
-        }
 
+        if ($memoryEnabled) {
 
-        if (
-            $this->capability->enabled(
-                $user,
-                'memory'
-            )
-            &&
-            mb_strlen($context->currentMessage) > 50
-        ) {
-
-            $this->loadMemory(
-                $context
+            StoreMemoryJob::dispatch(
+                userId: $context->userId,
+                message: $originalUserMessage
             );
 
         }
@@ -150,6 +166,16 @@ class ChatPipeline
 
         }
 
+        if (
+            !empty($context->metadata['rewritten_message'])
+            &&
+            empty($context->metadata['needs_clarification'])
+        ) {
+            $context->currentMessage =
+                $context->metadata['rewritten_message'];
+        }
+
+
         $this->promptPipeline
             ->build($context);
 
@@ -170,7 +196,10 @@ class ChatPipeline
 
 
 
-
+        \Log::info('CALLING REAL LLM', [
+            'model' => $model,
+            'prompt_count' => count($context->prompt)
+        ]);
 
         return $this->LlmProvider->stream($request);
 
@@ -294,7 +323,14 @@ class ChatPipeline
 
         }
 
-
+        if (
+            !empty($context->metadata['rewritten_message'])
+            &&
+            empty($context->metadata['needs_clarification'])
+        ) {
+            $context->currentMessage =
+                $context->metadata['rewritten_message'];
+        }
         $this->promptPipeline
             ->build(
                 $context
@@ -323,6 +359,7 @@ class ChatPipeline
 
 
 
+        $originalUserMessage = $context->currentMessage;
 
 
 
@@ -341,7 +378,7 @@ class ChatPipeline
 
             StoreMemoryJob::dispatch(
                 userId: $context->userId,
-                message: $context->currentMessage
+                message: $originalUserMessage
             );
 
         }

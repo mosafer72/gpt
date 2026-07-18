@@ -5,6 +5,7 @@ namespace App\Infrastructure\LLM;
 
 use App\Models\AiModel;
 use App\Models\LLMRequest;
+use Log;
 use OpenAI;
 
 use App\Domain\Contracts\LlmProvider;
@@ -175,7 +176,31 @@ class GapGPTProvider implements LlmProvider
         | Save Request Log
         |--------------------------------------------------------------------------
         */
+        $messages = array_map(
 
+            fn($message) =>
+            $message->toArray(),
+
+            $request->messages
+
+        );
+
+
+        Log::info('LLM REQUEST DEBUG', [
+
+            'base_url' => $aiModel->provider->base_url,
+
+            'provider' => $aiModel->provider->key,
+
+            'model' => $aiModel->model_name,
+
+            'messages' => $messages,
+
+            'temperature' => $request->temperature,
+
+            'max_tokens' => $request->maxTokens
+
+        ]);
 
         $log = LLMRequest::create([
 

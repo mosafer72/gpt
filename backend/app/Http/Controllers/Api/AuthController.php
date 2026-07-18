@@ -150,7 +150,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'ورود موفقیت‌آمیز بود.',
-            'user' => $user->only(['id', 'phone', 'name']),
+            'user' => $user->only(['id', 'phone', 'name','role']),
             'token' => $token,
         ]);
     }

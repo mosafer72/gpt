@@ -21,6 +21,38 @@ class PromptCollection
         mixed $content
     ): self {
 
+
+        /**
+         * جلوگیری از چند system message
+         */
+        if ($role === 'system') {
+
+            foreach ($this->messages as &$message) {
+
+                if ($message['role'] === 'system') {
+
+
+                    if (
+                        is_string($message['content'])
+                        &&
+                        is_string($content)
+                    ) {
+
+                        $message['content'] .= "\n\n" . $content;
+
+                    }
+
+
+                    return $this;
+
+                }
+
+            }
+
+        }
+
+
+
         $this->messages[] = [
             'role' => $role,
             'content' => $content
@@ -28,7 +60,46 @@ class PromptCollection
 
 
         return $this;
+
     }
+
+
+
+    /**
+     * اضافه کردن مستقیم به System Prompt
+     */
+    public function appendToSystem(
+        string $content
+    ): self {
+
+
+        foreach ($this->messages as &$message) {
+
+
+            if ($message['role'] === 'system') {
+
+
+                $message['content'] .= "\n\n" . $content;
+
+
+                return $this;
+
+            }
+
+        }
+
+
+        // اگر system وجود نداشت
+        $this->messages[] = [
+            'role' => 'system',
+            'content' => $content
+        ];
+
+
+        return $this;
+
+    }
+
 
 
 

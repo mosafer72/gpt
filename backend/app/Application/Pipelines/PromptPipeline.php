@@ -6,6 +6,8 @@ namespace App\Application\Pipelines;
 use App\Application\Context\ChatContext;
 use App\Application\Prompts\SystemPrompt;
 use App\Domain\Prompt\PromptCollection;
+use App\Models\Chat;
+use App\Models\Paper;
 
 
 
@@ -22,17 +24,22 @@ class PromptPipeline
 
 
 
-        /**
-         * 1 - System Prompt
-         */
         $this->addSystemPrompt(
             $prompt
         );
 
 
+        /**
+         * 2 - Paper Context
+         */
+        $this->addPaperContext(
+            $prompt,
+            $context
+        );
+
 
         /**
-         * 2 - Memory Context
+         * 3 - Memory Context
          */
         $this->addMemories(
             $prompt,
@@ -40,9 +47,8 @@ class PromptPipeline
         );
 
 
-
         /**
-         * 3 - Conversation History
+         * 4 - Conversation History
          */
         $this->addConversation(
             $prompt,
@@ -50,20 +56,51 @@ class PromptPipeline
         );
 
 
-
         /**
-         * 4 - Current User Message
+         * 5 - Current User Message
          */
         $this->addCurrentMessage(
             $prompt,
             $context
         );
 
+        $messages = $prompt->toArray();
+
+
+        $systemMessages = [];
+        $normalMessages = [];
+
+
+        foreach ($messages as $message) {
+
+            if (
+                $message['role'] === 'system'
+            ) {
+
+                $systemMessages[] = $message;
+
+            } else {
+
+                $normalMessages[] = $message;
+
+            }
+
+        }
+
 
         $context->setPrompt(
-            $prompt->toArray()
+            array_merge(
+                $systemMessages,
+                $normalMessages
+            )
         );
+        $finalMessages = array_merge($systemMessages, $normalMessages);
 
+        $context->setPrompt($finalMessages);
+
+        \Log::info('FINAL PROMPT ORDER', [
+            'messages' => $finalMessages
+        ]);
 
 
         return $context;
@@ -149,7 +186,51 @@ class PromptPipeline
             );
         }
     }
+    protected function addPaperContext(
+        PromptCollection $prompt,
+        ChatContext $context
+    ): void {
 
+        // اول از conversation بخوان، اگر نبود از metadata
+        $chat = Chat::find($context->conversationId);
+
+        if (!$chat) {
+            return;
+        }
+
+        $paper = $chat->papers()
+            ->orderByPivot('created_at', 'desc')
+            ->first();
+
+        if (!$paper || empty($paper->extracted_text)) {
+            return;
+        }
+
+        if (!$paper || empty($paper->extracted_text)) {
+            return;
+        }
+
+        $paperText = mb_substr(
+            $paper->extracted_text,
+            0,
+            12000
+        );
+
+        $prompt->add(
+            role: 'system',
+            content:
+            "کاربر یک مقاله علمی آپلود کرده است. " .
+            "در پاسخ‌های بعدی از محتوای این مقاله استفاده کن.\n\n" .
+            "عنوان مقاله: {$paper->title}\n\n" .
+            "متن مقاله:\n{$paperText}"
+        );
+
+        \Log::info('PAPER PROMPT', [
+            'paper_id' => $paper->id,
+            'title' => $paper->title,
+            'text_length' => mb_strlen($paper->extracted_text),
+        ]);
+    }
     protected function addCurrentMessage(
         PromptCollection $prompt,
         ChatContext $context

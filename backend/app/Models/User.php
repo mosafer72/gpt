@@ -18,6 +18,7 @@ class User extends Authenticatable
         'verification_code',
         'verification_code_expires_at',
         'phone_verified_at',
+        'role'
     ];
 
     protected $hidden = [
@@ -130,5 +131,9 @@ class User extends Authenticatable
         return $this->hasOne(Subscription::class)
             ->where('is_active', true)
             ->latest();
+    }
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
     }
 }

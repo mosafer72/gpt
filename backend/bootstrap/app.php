@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AdminMiddleware;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -12,20 +13,24 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__.'/../routes/web.php',
-        api: __DIR__.'/../routes/api.php',
-        commands: __DIR__.'/../routes/console.php',
+        web: __DIR__ . '/../routes/web.php',
+        api: __DIR__ . '/../routes/api.php',
+        commands: __DIR__ . '/../routes/console.php',
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->append(\App\Http\Middleware\CorsMiddleware::class);
     })
+    ->withMiddleware(function (Middleware $middleware) {
+
+        $middleware->alias([
+            'admin' => AdminMiddleware::class,
+        ]);
+
+    })
     ->withExceptions(function (Exceptions $exceptions): void {
 
-        $exceptions->render(function (
-            AuthenticationException $e,
-            Request $request
-        ) {
+        $exceptions->render(function (AuthenticationException $e, Request $request) {
             if ($request->is('api/*') || $request->expectsJson()) {
                 return response()->json([
                     'success' => false,
@@ -43,55 +48,55 @@ return Application::configure(basePath: dirname(__DIR__))
 
     })->withExceptions(function ($exceptions) {
 
-    $exceptions->render(function (Throwable $e, $request) {
+        $exceptions->render(function (Throwable $e, $request) {
 
-        if (!$request->is('api/*')) {
+            if (!$request->is('api/*')) {
 
-            return null;
+                return null;
 
-        }
+            }
 
-        if ($e instanceof ValidationException) {
+            if ($e instanceof ValidationException) {
+
+                return response()->json([
+
+                    'success' => false,
+
+                    'message' => 'Validation failed',
+
+                    'errors' => $e->errors(),
+
+                ], 422);
+
+            }
+
+            if ($e instanceof HttpExceptionInterface) {
+
+                return response()->json([
+
+                    'success' => false,
+
+                    'message' => $e->getMessage() ?: 'HTTP Error',
+
+                ], $e->getStatusCode());
+
+            }
 
             return response()->json([
 
                 'success' => false,
 
-                'message' => 'Validation failed',
+                'message' => $e->getMessage(),
 
-                'errors' => $e->errors(),
+                'exception' => class_basename($e),
 
-            ], 422);
+                'file' => basename($e->getFile()),
 
-        }
+                'line' => $e->getLine(),
 
-        if ($e instanceof HttpExceptionInterface) {
+            ], 500);
 
-            return response()->json([
-
-                'success' => false,
-
-                'message' => $e->getMessage() ?: 'HTTP Error',
-
-            ], $e->getStatusCode());
-
-        }
-
-        return response()->json([
-
-            'success' => false,
-
-            'message' => $e->getMessage(),
-
-            'exception' => class_basename($e),
-
-            'file' => basename($e->getFile()),
-
-            'line' => $e->getLine(),
-
-        ], 500);
-
-    });
+        });
     })
     ->create();
 

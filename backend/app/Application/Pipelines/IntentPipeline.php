@@ -110,7 +110,21 @@ class IntentPipeline
 
             $context->metadata['needs_clarification'] = $result->needsClarification;
 
-            $context->currentMessage = $result->rewrite;
+            // بازنویسی را در metadata نگه دار
+            $context->metadata['rewritten_message'] = $result->rewrite;
+
+            // اگر نیاز به سؤال تکمیلی دارد
+            if ($result->needsClarification) {
+
+                $context->setAssistantResponse(
+                    response: $result->rewrite,
+                    tokenUsage: [
+                        'prompt_tokens' => 0,
+                        'completion_tokens' => 0,
+                        'total_tokens' => 0,
+                    ]
+                );
+            }
         }
 
 

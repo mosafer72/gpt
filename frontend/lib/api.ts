@@ -167,8 +167,9 @@ export async function sendMessageStream(
 
   formData.append("model_id", String(modelId));
   formData.append("message", message);
-  if (file) {
-    formData.append("file", JSON.stringify(file));
+
+  if (file?.paper?.id) {
+    formData.append("paper_id", String(file.paper.id));
   }
   if (chatId) {
     formData.append("chat_id", String(chatId));
@@ -340,21 +341,25 @@ export function getAvailableModels() {
 // ============================
 // File Upload
 // ============================
-
 export interface UploadedFileResponse {
-  path: string;
-  name: string;
-  size: number;
-  mime: string;
-}
+  success: boolean;
 
-export async function uploadFile(file: File) {
+  paper: {
+    id: number;
+    title: string;
+    url: string;
+    size: number;
+  };
+}
+export async function uploadFile(file: File, conversationId: number) {
   const formData = new FormData();
+
   formData.append("file", file);
+  formData.append("conversation_id", conversationId.toString());
 
   const response = await fetch(`${API_BASE}/files/upload`, {
     method: "POST",
-    headers: headers(false), // بدون Content-Type
+    headers: headers(false),
     body: formData,
   });
 

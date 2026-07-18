@@ -10,10 +10,17 @@ class Chat extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['title','user_id','summery'];
+    protected $fillable = ['title', 'user_id', 'summery'];
 
     public function messages(): HasMany
     {
         return $this->hasMany(Message::class);
+    }
+    public function papers()
+    {
+        return $this->belongsToMany(
+            Paper::class,
+            'chat_paper'
+        )->withTimestamps();
     }
 }

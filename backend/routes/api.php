@@ -71,7 +71,7 @@ Route::get('/payment/callback', [SubscriptionController::class, 'paymentCallback
 
 
 
-Route::middleware(['auth:sanctum'])->prefix('admin')->group(function () {
+Route::middleware(['auth:sanctum','admin'])->prefix('admin')->group(function () {
 
    // Providers
     Route::get('/providers', [ProviderController::class, 'index']);

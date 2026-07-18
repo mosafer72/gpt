@@ -25,6 +25,7 @@ class DatabaseConversationRepository implements ConversationRepository
             title: $chat->title ?? 'New Conversation',
             model: $chat->model ?? 'gpt-4o',
             status: $chat->status ?? 'active',
+            paperId: $chat->paper_id ?? null, // 👈 اضافه کن
             createdAt: (string) $chat->created_at,
             updatedAt: (string) $chat->updated_at,
         );

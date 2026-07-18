@@ -203,7 +203,9 @@ class ChatController extends Controller
 
             'chat_id' => 'nullable|exists:chats,id',
 
-            'image' => 'nullable|image|max:5120'
+            'image' => 'nullable|image|max:5120',
+
+            'paper_id'=>'nullable|exists:papers,id'
 
         ]);
 
@@ -318,7 +320,9 @@ class ChatController extends Controller
                         ]
                     ]
                     :
-                    []
+                    [],
+                     'paper_id' => $request->paper_id ? $request->paper_id : ''
+
 
             ],
 
@@ -425,7 +429,9 @@ class ChatController extends Controller
                     ]
                 ]
                 :
-                []
+                [],
+
+                'paper_id' => $request->paper_id,
 
         ]);
 

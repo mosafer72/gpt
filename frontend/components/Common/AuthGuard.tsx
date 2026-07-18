@@ -1,67 +1,64 @@
-'use client';
+"use client";
 
- 
-
-import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useEffect, useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    const publicPaths = ['/login', '/verify'];
-    const publicPaths_wiht_auth = ['/login', '/verify'];
-    const isPublicPath = publicPaths.includes(pathname);
+    const token = localStorage.getItem("auth_token");
 
-    if (!token && !isPublicPath && !publicPaths_wiht_auth) {
-      router.replace('/login');
-      setIsAuthenticated(false);
-    } else if (token && isPublicPath) {
-      router.replace('/dashboard');
-      setIsAuthenticated(true);
-    } else if (token) {
-      setIsAuthenticated(true);
-    } else {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+    const role = user?.role;
+
+    const publicPaths = ["/login", "/verify"];
+
+    const adminPaths = ["/admin"];
+
+    const isPublic = publicPaths.includes(pathname);
+
+    const isAdminRoute = adminPaths.some((path) => pathname.startsWith(path));
+
+    // کاربر لاگین نیست
+    if (!token && !isPublic) {
+      router.replace("/login");
+
       setIsAuthenticated(false);
     }
+
+    // کاربر لاگین است
+    else if (token) {
+      // مسیر ادمین
+      if (isAdminRoute) {
+        if (role !== "admin") {
+          // router.replace("/dashboard");
+
+          setIsAuthenticated(false);
+
+          return;
+        }
+      }
+
+      // لاگین شده ولی صفحه login را باز کرده
+      if (isPublic) {
+        router.replace("/dashboard");
+      }
+
+      setIsAuthenticated(true);
+    }
+
     setIsLoading(false);
   }, [pathname, router]);
 
   if (isLoading) {
-    return (
-      <div className="loading-container">
-        <div className="loading-spinner"></div>
-        <p style={{ marginTop: 16, color: '#6C63FF', fontWeight: 500 }}>
-          در حال بارگذاری...
-        </p>
-        <style jsx>{`
-          .loading-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            background: #F0F2FF;
-          }
-          .loading-spinner {
-            width: 48px;
-            height: 48px;
-            border: 4px solid #E0E0FF;
-            border-top-color: #6C63FF;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-          }
-          @keyframes spin {
-            to { transform: rotate(360deg); }
-          }
-        `}</style>
-      </div>
-    );
+    return <div>Loading...</div>;
   }
 
-  return <>{children}</>;
+  return <>{isAuthenticated && children}</>;
 }

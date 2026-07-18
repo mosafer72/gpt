@@ -41,6 +41,7 @@ export default function ChatInterface({
   const [userStatus, setUserStatus] = useState<any>(null);
   const [showEmptyState, setShowEmptyState] = useState(true);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<any>(null);
 
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -137,12 +138,20 @@ export default function ChatInterface({
   }, [currentChat?.messages]);
 
   async function handleSendMessage(e: FormEvent) {
-    
     e.preventDefault();
+
     let uploadedFile = null;
 
-    if (attachedFile) {
-      uploadedFile = await uploadFile(attachedFile);
+    let uploadedPaper = uploadedFile;
+
+    if (attachedFile && !uploadedPaper) {
+      if (!currentChat?.id) {
+        throw new Error("Conversation id is required");
+      }
+
+      uploadedPaper = await uploadFile(attachedFile, currentChat.id);
+
+      setUploadedFile(uploadedPaper);
     }
     if (!input.trim() && !imageFile) return;
     if (loading) return;
@@ -271,7 +280,7 @@ export default function ChatInterface({
           setTimeout(scrollToBottom, 20);
         },
         controller.signal,
-        uploadedFile
+        uploadedPaper,
       );
 
       const updatedChats = await getChats();
