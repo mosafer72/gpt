@@ -50,7 +50,18 @@ class Plan extends Model
     ];
 
 
+    public function capability(
+        string $key,
+        mixed $default = null
+    ): mixed {
 
+        return data_get(
+            $this->capabilities,
+            $key,
+            $default
+        );
+
+    }
 
 
     public function subscriptions(): HasMany
@@ -61,24 +72,31 @@ class Plan extends Model
         );
 
     }
+    public function hasCapability(string $key): bool
+    {
+        return data_get(
+            $this->capabilities,
+            $key,
+            false
+        );
+    }
 
 
 
 
 
-
-public function models()
-{
-    return $this->belongsToMany(
-        AiModel::class,
-        'plan_model',
-        'plan_id',
-        'ai_model_id'
-    )
-    ->withPivot(
-        'is_default'
-    );
-}
+    public function models()
+    {
+        return $this->belongsToMany(
+            AiModel::class,
+            'plan_model',
+            'plan_id',
+            'ai_model_id'
+        )
+            ->withPivot(
+                'is_default'
+            );
+    }
 
 
 

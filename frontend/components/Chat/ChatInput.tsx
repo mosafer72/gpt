@@ -12,7 +12,7 @@ import {
 
 import styles from "./ChatInput.module.css";
 
-type ScrollBehavior = 'auto' | 'smooth';
+type ScrollBehavior = "auto" | "smooth";
 
 interface ChatInputProps {
   value: string;
@@ -21,6 +21,12 @@ interface ChatInputProps {
   onImageUpload: (file: File) => void;
   onImageRemove: () => void;
   imageFile: File | null;
+
+  // جدید
+  onFileUpload: (file: File) => void;
+  onFileRemove: () => void;
+  attachedFile: File | null;
+
   disabled?: boolean;
   isStreaming?: boolean;
   onCancel?: () => void;
@@ -35,6 +41,9 @@ export default function ChatInput({
   onImageUpload,
   onImageRemove,
   imageFile,
+  onFileUpload,
+  onFileRemove,
+  attachedFile,
   disabled,
   isStreaming = false,
   onCancel,
@@ -44,46 +53,32 @@ export default function ChatInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // ترکیب refهای داخلی و خارجی
   const setTextareaRef = useCallback(
     (element: HTMLTextAreaElement | null) => {
       textareaRef.current = element;
       if (inputRef) {
-        // @ts-ignore - برای سازگاری با RefObject
+        // @ts-ignore
         inputRef.current = element;
       }
     },
     [inputRef]
   );
 
-  // تابع تنظیم ارتفاع خودکار
   const autoResize = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
-    // ریست کردن ارتفاع برای محاسبه صحیح scrollHeight
-    textarea.style.height = 'auto';
-    // تنظیم ارتفاع جدید با محدودیت 400px
+    textarea.style.height = "auto";
     const newHeight = Math.min(textarea.scrollHeight, 400);
     textarea.style.height = `${newHeight}px`;
-    textarea.style.maxHeight = '400px';
   }, []);
 
-  // هر بار value تغییر کند، ارتفاع را تنظیم کن
   useEffect(() => {
     autoResize();
   }, [value, autoResize]);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const compressed = await compressImage(file);
-      onImageUpload(compressed);
-    }
-    e.target.value = "";
-  };
-
   const [isComposing, setIsComposing] = useState(false);
+
   const previewUrl = useMemo(() => {
     return imageFile ? URL.createObjectURL(imageFile) : null;
   }, [imageFile]);
@@ -120,18 +115,35 @@ export default function ChatInput({
             if (!blob) return resolve(file);
 
             resolve(
-              new File([blob], file.name.replace(/.(png|jpg|jpeg)$/i, ".jpg"), {
+              new File([blob], file.name.replace(/\\.(png|jpg|jpeg)$/i, ".jpg"), {
                 type: "image/jpeg",
-              }),
+              })
             );
           },
           "image/jpeg",
-          0.8,
+          0.8
         );
       };
 
       reader.readAsDataURL(file);
     });
+  };
+
+  // نسخه نهایی آپلود فایل
+  const handleFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type.startsWith("image/")) {
+      const compressed = await compressImage(file);
+      onImageUpload(compressed);
+    } else {
+      onFileUpload(file);
+    }
+
+    e.target.value = "";
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -141,32 +153,21 @@ export default function ChatInput({
     }
   };
 
-  const handleScrollDown = useCallback(() => {
-    onScrollToBottom('smooth');
-  }, [onScrollToBottom]);
-
   return (
     <div className={styles.inputArea}>
-      <button
-        type="button"
-        className={styles.scrollDownBtn}
-        onClick={handleScrollDown}
-        aria-label="رفتن به انتهای گفتگو"
-      >
-        <span>↓</span>
-        رفتن به آخر گفتگو
-      </button>
-
       {imageFile && (
         <div className={styles.preview}>
           <img src={previewUrl ?? undefined} alt="preview" />
-          <button
-            type="button"
-            className={styles.removeBtn}
-            onClick={onImageRemove}
-          >
+          <button type="button" className={styles.removeBtn} onClick={onImageRemove}>
             ✕
           </button>
+        </div>
+      )}
+
+      {attachedFile && (
+        <div className={styles.filePreview}>
+          <span>📄 {attachedFile.name}</span>
+          <button type="button" onClick={onFileRemove}>✕</button>
         </div>
       )}
 
@@ -178,13 +179,15 @@ export default function ChatInput({
         >
           📎
         </button>
+
         <input
           type="file"
           ref={fileInputRef}
-          accept="image/*"
+          accept="image/*,.pdf"
           onChange={handleFileChange}
           hidden
         />
+
         <textarea
           ref={setTextareaRef}
           className={styles.input}
@@ -192,19 +195,13 @@ export default function ChatInput({
           onChange={(e) => onChange(e.target.value)}
           onCompositionStart={() => setIsComposing(true)}
           onCompositionEnd={() => setIsComposing(false)}
-          placeholder={
-            imageFile ? "توضیح عکس (اختیاری)..." : "پیام خود را بنویسید..."
-          }
+          placeholder="پیام خود را بنویسید..."
           rows={1}
           disabled={disabled}
           onKeyDown={handleKeyDown}
-          style={{
-            resize: 'none',
-            overflow: 'auto',
-            maxHeight: '400px',
-            minHeight: '44px',
-          }}
+          style={{ resize: "none", overflow: "auto", maxHeight: "400px" }}
         />
+
         {isStreaming ? (
           <button type="button" className={styles.cancelBtn} onClick={onCancel}>
             ■
@@ -213,7 +210,7 @@ export default function ChatInput({
           <button
             type="submit"
             className={styles.sendBtn}
-            disabled={(!value.trim() && !imageFile) || disabled}
+            disabled={(!value.trim() && !imageFile && !attachedFile) || disabled}
           >
             ➤
           </button>

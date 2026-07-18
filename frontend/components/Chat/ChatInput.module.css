@@ -212,3 +212,25 @@
 .input::placeholder {
   color: #94a3b8;
 }
+.filePreview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #1e293b;
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  font-size: 14px;
+  max-width: 850px;
+  width: fit-content;
+  margin: auto;
+}
+
+.filePreview button {
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 16px;
+}

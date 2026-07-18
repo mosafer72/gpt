@@ -1,27 +1,99 @@
 <?php
 
-
 namespace App\Application\Pipelines;
-
 
 use App\Application\Context\ChatContext;
 use App\Domain\Contracts\MemoryRetriever;
 use App\Domain\Contracts\MemoryStore;
 use App\Domain\Memory\DTOs\MemoryDTO;
 
-
-
 class MemoryPipeline
 {
-
 
     public function __construct(
         protected MemoryRetriever $retriever,
         protected MemoryStore $store
     ) {
-
     }
 
+
+    /**
+     * ذخیره Memory از طریق Queue Job
+     */
+    public function storeMessage(
+        string $userId,
+        string $message
+    ): void {
+
+
+        /**
+         * استخراج اطلاعات مهم از پیام
+         */
+        $memoryData = $this->extractMemory(
+            $message
+        );
+
+
+        /**
+         * اگر چیزی برای ذخیره پیدا نشد
+         */
+        if (!$memoryData) {
+
+            return;
+
+        }
+
+
+
+        $memory = new MemoryDTO(
+
+            id: uniqid(),
+
+            user_id: $userId,
+
+            /**
+             * مقدار استخراج شده
+             *
+             * مثال:
+             * "برنامه نویس لاراول"
+             */
+            text: $memoryData['text'],
+
+
+            importance:
+            $memoryData['importance'],
+
+
+            category:
+            $memoryData['category'],
+
+
+            /**
+             * متن اصلی برای Trace
+             */
+            source_message:
+            $message,
+
+
+            embedding: null,
+
+
+            last_used:
+            now()->toDateTimeString(),
+
+
+            created_at:
+            now()->toDateTimeString(),
+
+        );
+
+
+
+        $this->store->store(
+            $memory
+        );
+
+    }
 
 
 
@@ -34,109 +106,79 @@ class MemoryPipeline
     ): ChatContext {
 
 
-        $memories = $this->retriever
-            ->retrieve(
+        $memories =
+            $this->retrieveMemories(
                 userId: $context->userId,
-                query: $context->currentMessage,
+                query: $context->currentMessage
+            );
+
+
+        $context->setMemories(
+            $memories
+        );
+
+
+        return $context;
+
+    }
+
+
+
+
+
+    /**
+     * Retrieval اصلی
+     */
+    public function retrieveMemories(
+        string $userId,
+        string $query
+    ): array {
+
+
+        $results =
+            $this->retriever->retrieve(
+                userId: $userId,
+                query: $query,
                 limit: 10
             );
-        $memories = collect($memories)
-            ->map(function ($memory) use ($context) {
+
+
+
+        return collect($results)
+            ->map(function ($memory) use ($userId) {
+
+
                 return new MemoryDTO(
 
                     id: uniqid(),
 
-                    user_id: $context->userId,
+                    user_id: $userId,
 
-                    text: $memory->content,
+                    text: $memory->text,
 
-                    importance: 1,
+                    importance:
+                    $memory->importance ?? 1,
 
-                    category: 'general',
+                    category:
+                    $memory->category ?? 'general',
 
-                    source_message: null,
+                    source_message:
+                    $memory->source_message ?? null,
 
                     embedding: null,
 
-                    last_used: now()->toDateTimeString(),
+                    last_used:
+                    now()->toDateTimeString(),
 
-                    created_at: now()->toDateTimeString(),
+                    created_at:
+                    now()->toDateTimeString(),
 
                 );
+
 
             })
             ->toArray();
 
-
-        $context->setMemories($memories);
-
-
-        return $context;
-
-    }
-
-
-
-
-
-
-    /**
-     * ذخیره حافظه جدید
-     */
-    public function store(
-        ChatContext $context
-    ): ChatContext {
-
-
-        /**
-         * فعلاً خیلی ساده:
-         * فقط پیام‌هایی که مهم هستند ذخیره می‌شوند
-         */
-
-
-        if (
-            !$this->shouldRemember($context)
-        ) {
-
-            return $context;
-
-        }
-
-
-
-
-        $memory = new MemoryDTO(
-
-            id: uniqid(),
-
-            user_id: (string) $context->userId,
-
-            text: $context->currentMessage,
-
-            importance: 8,
-
-            category: 'general',
-
-            source_message: null,
-
-            embedding: null,
-
-            last_used: now()->toDateTimeString(),
-
-            created_at: now()->toDateTimeString(),
-
-        );
-
-
-
-        $this->store->store(
-            $memory
-        );
-
-
-
-        return $context;
-
     }
 
 
@@ -146,52 +188,110 @@ class MemoryPipeline
 
 
     /**
-     * تصمیم اینکه چیزی ذخیره شود یا نه
+     * استخراج Memory از متن کاربر
      *
-     * نسخه اول ساده است
+     * نسخه MVP
      *
-     * بعداً:
-     *
-     * LLM Classifier
-     * Embedding
-     * Importance Model
-     *
-     * اضافه می‌شود
+     * بعداً جایگزین:
+     * LLM Memory Extractor
      */
-    protected function shouldRemember(
-        ChatContext $context
-    ): bool {
+    protected function extractMemory(
+        string $message
+    ): ?array {
 
 
-        $message =
-            strtolower(
-                $context->currentMessage
-            );
+        $patterns = [
+
+
+            /**
+             * مثال:
+             * من هستم برنامه نویس لاراول
+             */
+            '/من هستم (.+)/u' => [
+
+                'category' => 'profile'
+
+            ],
 
 
 
-        $keywords = [
+            /**
+             * مثال:
+             * من رنگ آبی دوست دارم
+             */
+            '/من (.+) دوست دارم/u' => [
 
-            'من هستم',
-            'من دارم',
-            'یادم باشه',
-            'همیشه',
-            'ترجیح میدم'
+                'category' => 'preference'
+
+            ],
+
+
+
+            /**
+             * مثال:
+             * ترجیح میدم شب کار کنم
+             */
+            '/ترجیح میدم (.+)/u' => [
+
+                'category' => 'preference'
+
+            ],
+
+
+
+            /**
+             * مثال:
+             * همیشه فارسی جواب بده
+             */
+            '/همیشه (.+)/u' => [
+
+                'category' => 'instruction'
+
+            ],
+
+
+            /**
+             * مثال:
+             * یادم باشه من لاراول کار میکنم
+             */
+            '/یادم باشه (.+)/u' => [
+
+                'category' => 'profile'
+
+            ],
+
 
         ];
 
 
 
-        foreach ($keywords as $word) {
+
+        foreach ($patterns as $pattern => $meta) {
+
 
             if (
-                str_contains(
+                preg_match(
+                    $pattern,
                     $message,
-                    $word
+                    $matches
                 )
             ) {
 
-                return true;
+
+                return [
+
+                    'text' =>
+                    trim($matches[1]),
+
+
+                    'category' =>
+                    $meta['category'],
+
+
+                    'importance' =>
+                    8,
+
+                ];
 
             }
 
@@ -199,9 +299,8 @@ class MemoryPipeline
 
 
 
-        return false;
+        return null;
 
     }
-
 
 }

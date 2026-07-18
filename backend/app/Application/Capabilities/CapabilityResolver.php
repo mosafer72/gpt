@@ -2,20 +2,15 @@
 
 namespace App\Application\Capabilities;
 
-
 use App\Models\User;
-use App\Models\AiModel;
-
 
 class CapabilityResolver
 {
 
-
     public function enabled(
         User $user,
         string $key
-    ): bool
-    {
+    ): bool {
 
         return (bool) $this->value(
             $user,
@@ -27,22 +22,14 @@ class CapabilityResolver
 
 
 
-
-
     public function value(
-
         User $user,
-
         string $key,
-
         mixed $default = null
-
-    ): mixed
-    {
+    ): mixed {
 
 
         $plan = $user->currentPlan();
-
 
 
         if (!$plan) {
@@ -53,30 +40,57 @@ class CapabilityResolver
 
 
 
-
         /*
         |--------------------------------------------------------------------------
-        | مدل انتخابی
+        | Dynamic Capabilities
         |--------------------------------------------------------------------------
         */
 
 
-        if ($key === 'model') {
+        return data_get(
+            $plan->capabilities,
+            $key,
+            $default
+        );
+
+    }
 
 
-            /*
-             * اگر کاربر مدل انتخاب کرده باشد
-             * مثلا از فرانت:
-             *
-             * selected_model_id
-             *
-             */
+
+    /**
+     * مدل فعال کاربر
+     */
+    public function model(
+        User $user,
+        ?string $requestedModel = null
+    ): ?string {
 
 
-            if ($user->selected_model_id) {
+        $plan = $user->currentPlan();
 
 
-                $model = $plan
+        if (!$plan) {
+
+            return null;
+
+        }
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | مدل انتخاب شده توسط کاربر
+        |--------------------------------------------------------------------------
+        */
+
+
+        if (
+            $user->selected_model_id
+        ) {
+
+
+            $model =
+                $plan
                     ->models()
                     ->where(
                         'ai_models.id',
@@ -86,67 +100,27 @@ class CapabilityResolver
 
 
 
-                if ($model) {
+            if ($model) {
 
-                    return $model->model_key;
-
-                }
+                return $model->model_key;
 
             }
-
-
-
-
-
-            /*
-             * اگر کاربر انتخاب نکرده بود
-             * مدل پیش فرض پلن
-             */
-
-
-            $defaultModel =
-                $plan->defaultModel();
-
-
-
-            if ($defaultModel) {
-
-
-                return $defaultModel->model_key;
-
-
-            }
-
-
-
-            return $default;
 
         }
 
 
 
-
-
-
         /*
         |--------------------------------------------------------------------------
-        | بقیه capability ها
+        | مدل پیش فرض پلن
         |--------------------------------------------------------------------------
         */
 
 
-        return data_get(
-
-            $plan->capabilities,
-
-            $key,
-
-            $default
-
-        );
-
+        return $plan
+            ->defaultModel()
+            ?->model_key;
 
     }
-
 
 }

@@ -161,12 +161,15 @@ export async function sendMessageStream(
   modelId?: number,
   onChunk?: (text: string) => void,
   signal?: AbortSignal,
+  file?: UploadedFileResponse | null,
 ) {
   const formData = new FormData();
 
   formData.append("model_id", String(modelId));
   formData.append("message", message);
-
+  if (file) {
+    formData.append("file", JSON.stringify(file));
+  }
   if (chatId) {
     formData.append("chat_id", String(chatId));
   }
@@ -332,4 +335,38 @@ export function getAvailableModels() {
   return request<{
     models: AIModel[];
   }>("/models");
+}
+
+// ============================
+// File Upload
+// ============================
+
+export interface UploadedFileResponse {
+  path: string;
+  name: string;
+  size: number;
+  mime: string;
+}
+
+export async function uploadFile(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${API_BASE}/files/upload`, {
+    method: "POST",
+    headers: headers(false), // بدون Content-Type
+    body: formData,
+  });
+
+  if (response.status === 401) {
+    logout();
+    throw new Error("Unauthorized");
+  }
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.message || "خطا در آپلود فایل");
+  }
+
+  return response.json();
 }

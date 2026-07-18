@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\ModelController;
 use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\UsageController;
 use App\Http\Controllers\Api\TokenWalletController;
+use App\Http\Controllers\Api\PaperController;
 use Illuminate\Http\Request;
 
 // روت‌های عمومی (بدون احراز هویت)
@@ -44,6 +45,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/initiate-payment', [SubscriptionController::class, 'initiatePayment']);
     Route::post('auth/logout', [AuthController::class, 'logout']);
     Route::get('/user/status', [AuthController::class, 'status']);
+    Route::post('/papers/upload', [PaperController::class, 'upload']);
+    Route::post('/files/upload', [PaperController::class, 'upload']);
 
 
     Route::get('/usage', [UsageController::class, 'index']);

@@ -16,7 +16,7 @@ import ChatInput from "@/components/Chat/ChatInput";
 import UserMenu from "@/components/Common/UserMenu";
 import TokenUsageBadge from "../Common/TokenUsageBadge";
 import styles from "./ChatInterface.module.css";
-
+import { uploadFile } from "@/lib/api";
 interface ChatInterfaceProps {
   selectedModel?: AIModel | null;
   onNewChat: () => void;
@@ -40,6 +40,7 @@ export default function ChatInterface({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [userStatus, setUserStatus] = useState<any>(null);
   const [showEmptyState, setShowEmptyState] = useState(true);
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
 
   const messagesContainerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
@@ -136,7 +137,13 @@ export default function ChatInterface({
   }, [currentChat?.messages]);
 
   async function handleSendMessage(e: FormEvent) {
+    
     e.preventDefault();
+    let uploadedFile = null;
+
+    if (attachedFile) {
+      uploadedFile = await uploadFile(attachedFile);
+    }
     if (!input.trim() && !imageFile) return;
     if (loading) return;
     if (!selectedModel) {
@@ -226,7 +233,11 @@ export default function ChatInterface({
                 // =========================
                 // Image Response
                 // =========================
-                if (typeof data === "object" && data !== null && data.type === "image") {
+                if (
+                  typeof data === "object" &&
+                  data !== null &&
+                  data.type === "image"
+                ) {
                   // اصلاح: استفاده از as any برای تطابق با تایپ Message
                   return {
                     ...msg,
@@ -260,6 +271,7 @@ export default function ChatInterface({
           setTimeout(scrollToBottom, 20);
         },
         controller.signal,
+        uploadedFile
       );
 
       const updatedChats = await getChats();
@@ -294,6 +306,7 @@ export default function ChatInterface({
         };
       });
     } finally {
+      setAttachedFile(null);
       setLoading(false);
       setImageFile(null);
       abortControllerRef.current = null;
@@ -409,6 +422,9 @@ export default function ChatInterface({
             onImageRemove={() => setImageFile(null)}
             inputRef={inputRef}
             onScrollToBottom={scrollToBottom}
+            attachedFile={attachedFile}
+            onFileUpload={setAttachedFile}
+            onFileRemove={() => setAttachedFile(null)}
           />
         </main>
       </div>

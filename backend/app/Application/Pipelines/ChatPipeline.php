@@ -123,8 +123,9 @@ class ChatPipeline
             mb_strlen($context->currentMessage) > 50
         ) {
 
-            $this->memoryPipeline
-                ->retrieve($context);
+            $this->loadMemory(
+                $context
+            );
 
         }
 
@@ -165,6 +166,11 @@ class ChatPipeline
             $user,
             $model
         );
+
+
+
+
+
 
         return $this->LlmProvider->stream($request);
 
@@ -249,11 +255,12 @@ class ChatPipeline
                 'memory'
             )
             &&
-            mb_strlen($context->currentMessage) > 100
+            mb_strlen($context->currentMessage) > 50
         ) {
 
-            $this->memoryPipeline
-                ->retrieve($context);
+            $this->loadMemory(
+                $context
+            );
 
         }
 
@@ -332,7 +339,10 @@ class ChatPipeline
             )
         ) {
 
-            StoreMemoryJob::dispatch($context->toArray());
+            StoreMemoryJob::dispatch(
+                userId: $context->userId,
+                message: $context->currentMessage
+            );
 
         }
 
@@ -344,7 +354,24 @@ class ChatPipeline
 
     }
 
+    protected function loadMemory(
+        ChatContext $context
+    ): void {
 
+
+        $memories =
+            $this->memoryPipeline
+                ->retrieveMemories(
+                    userId: $context->userId,
+                    query: $context->currentMessage
+                );
+
+
+        $context->setMemories(
+            $memories
+        );
+
+    }
 
 
 
