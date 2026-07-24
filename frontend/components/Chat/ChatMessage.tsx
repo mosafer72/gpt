@@ -8,6 +8,7 @@ import rehypeKatex from "rehype-katex";
 import ChatImage from "./ChatImage";
 import CopyButton from "./CopyButton";
 import CodeBlock from "./CodeBlock";
+import PaperAttachment from "./PaperAttachment";
 
 import { Message } from "@/types";
 
@@ -28,6 +29,7 @@ function ChatMessage({
     (message as any).metadata?.image_url ||
     (message as any).metadata?.attachments?.[0]?.url ||
     (message as any).image;
+  const paperId = (message as any).metadata?.paper_id;
 
   return (
     <div
@@ -40,6 +42,8 @@ function ChatMessage({
       <div className={styles.bubble}>
         {/* ✅ نمایش تصویر اگر وجود داشته باشد */}
         {imageUrl && <ChatImage src={imageUrl} />}
+        
+        {paperId && <PaperAttachment paperId={paperId} />}
 
         {/* ✅ نمایش متن */}
         {message.content && (

@@ -1,0 +1,13 @@
+#V2
+SELECT * FROM document_embedding;
+SELECT document_id, chunk_id, content, array::len(embedding) AS vector_length \nFROM document_embedding \nWHERE document_id = '27';
+SELECT count() FROM document_chunk GROUP ALL;
+SELECT count() FROM document_embedding GROUP ALL;
+SELECT * FROM document_embedding LIMIT 5;
+SELECT * FROM document_embedding;
+SELECT * FROM document_chunk;
+SELECT * FROM document_embedding;
+SELECT\n    array::len(embedding) AS dimension\nFROM document_chunks;
+SELECT\n    array::len(embedding) AS dimension\nFROM document_chunks;SELECT \n    array::len(embedding) AS dimension\nFROM document_embedding\nLIMIT 5;
+SELECT \n    array::len(embedding) AS dimension\nFROM document_embedding\nLIMIT 5;
+SELECT \n    document_id,\n    array::len(embedding) AS dim\nFROM document_embedding\nLIMIT 10;

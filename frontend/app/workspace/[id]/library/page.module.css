@@ -1,0 +1,256 @@
+/* --- Base Container --- */
+.container {
+  min-height: 100vh;
+  padding: 32px;
+  background: #080d1c;
+  color: white;
+  direction: rtl;
+  position: relative;
+  overflow: hidden;
+}
+
+/* --- Glow Effect --- */
+.container::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(124, 58, 237, 0.25), transparent 35%),
+    radial-gradient(circle at 80% 10%, rgba(37, 99, 235, 0.25), transparent 35%);
+  pointer-events: none;
+}
+
+/* --- Header --- */
+.header {
+  position: relative;
+  z-index: 2;
+  max-width: 1200px;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* فاصله دادن بین متن و دکمه */
+  gap: 20px;
+  padding: 30px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 28px;
+  backdrop-filter: blur(20px);
+  margin-bottom: 25px;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 800;
+}
+
+.header p {
+  color: #94a3b8;
+  margin: 8px 0 0 0;
+  font-size: 15px;
+}
+
+/* Upload Button */
+.upload {
+  padding: 14px 28px;
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  color: white;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.3);
+  white-space: nowrap;
+}
+
+.upload:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 35px rgba(124, 58, 237, 0.4);
+}
+
+/* --- Toolbar (Search & Filter) --- */
+.toolbar {
+  position: relative;
+  z-index: 2;
+  max-width: 1200px;
+  margin: 0 auto 25px;
+  display: flex;
+  gap: 15px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 20px;
+  border-radius: 20px;
+  backdrop-filter: blur(15px);
+}
+
+/* --- Info Section --- */
+.info {
+  position: relative;
+  z-index: 2;
+  max-width: 1200px;
+  margin: 0 auto 25px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 25px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 18px;
+}
+
+.info span {
+  color: #94a3b8;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.info strong {
+  font-size: 20px;
+  color: #fff;
+  background: rgba(124, 58, 237, 0.2);
+  padding: 4px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(124, 58, 237, 0.3);
+}
+
+/* --- Grid System --- */
+.grid {
+  position: relative;
+  z-index: 2;
+  max-width: 1200px;
+  margin: auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 25px;
+}
+
+/* --- Document Cards (استایل‌هایی که درون کامپوننت کارت استفاده می‌شود) --- */
+.card {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 28px;
+  padding: 28px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.icon {
+  width: 65px;
+  height: 65px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.15), rgba(124, 58, 237, 0.15));
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 20px;
+}
+
+.card h2 {
+  font-size: 22px;
+  margin: 0 0 12px;
+  color: #f8fafc;
+}
+
+.card p {
+  color: #94a3b8;
+  line-height: 1.8;
+  height: 55px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card button {
+  width: 100%;
+  height: 48px;
+  margin-top: 20px;
+  border: none;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.card button:hover {
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  transform: scale(1.02);
+}
+
+/* --- Skeleton Loading state --- */
+.skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
+  background-size: 200% 100%;
+  animation: skeletonLoading 1.5s infinite;
+  border-radius: 28px;
+  min-height: 280px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+@keyframes skeletonLoading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* --- Empty State --- */
+.empty {
+  grid-column: 1 / -1; /* کل عرض گرید را پر کند */
+  text-align: center;
+  padding: 80px 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 2px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 28px;
+}
+
+.empty h3 {
+  font-size: 26px;
+  margin: 0 0 10px;
+  color: #e2e8f0;
+}
+
+.empty p {
+  color: #94a3b8;
+  font-size: 16px;
+}
+
+/* --- Responsive Layout --- */
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 650px) {
+  .container {
+    padding: 16px;
+  }
+  
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  .upload {
+    width: 100%;
+  }
+
+  .toolbar {
+    flex-direction: column;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

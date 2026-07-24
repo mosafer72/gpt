@@ -1,46 +1,99 @@
 <?php
-
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
-    /**
-     * Run the migrations.
-     */
+
+return new class extends Migration {
+
+
     public function up(): void
     {
+
+
         Schema::create('usages', function (Blueprint $table) {
 
-             $table->id();
+            $table->id();
 
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
 
-            $table->foreignId('conversation_id')->nullable()->constrained('chats')->nullOnDelete();
+            $table->foreignId('workspace_id')
+                ->constrained()
+                ->cascadeOnDelete();
 
-            $table->string('model')->nullable();
 
-            $table->integer('prompt_tokens')->default(0);
+            $table->foreignId('user_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
 
-            $table->integer('completion_tokens')->default(0);
 
-            $table->integer('total_tokens')->default(0);
+            $table->foreignId('ai_model_id')
+                ->nullable()
+                ->constrained()
+                ->nullOnDelete();
 
-            $table->string('type')->default('chat');
+
+
+            $table->string('provider')
+                ->nullable();
+
+
+            $table->string('model')
+                ->nullable();
+
+
+
+            $table->unsignedBigInteger('input_tokens')
+                ->default(0);
+
+
+            $table->unsignedBigInteger('output_tokens')
+                ->default(0);
+
+
+            $table->unsignedBigInteger('total_tokens')
+                ->default(0);
+
+
+
+            $table->decimal('input_cost', 10, 6)
+                ->default(0);
+
+
+            $table->decimal('output_cost', 10, 6)
+                ->default(0);
+
+
+            $table->decimal('total_cost', 10, 6)
+                ->default(0);
+
+
+
+            $table->string('status')
+                ->default('success');
+
+
+
+            $table->json('metadata')
+                ->nullable();
+
+
 
             $table->timestamps();
 
-            $table->index(['user_id', 'created_at']);
-
         });
+
+
     }
 
-    /**
-     * Reverse the migrations.
-     */
+
+
     public function down(): void
     {
-        Schema::dropIfExists('memories');
+
+        Schema::dropIfExists('usages');
+
     }
+
+
 };

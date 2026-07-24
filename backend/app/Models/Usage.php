@@ -4,50 +4,66 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Usage extends Model
 {
 
     protected $fillable = [
 
+
+        'workspace_id',
+
         'user_id',
 
-        'conversation_id',
+        'ai_model_id',
+
+        'provider',
 
         'model',
 
-        'prompt_tokens',
+        'input_tokens',
 
-        'completion_tokens',
+        'output_tokens',
 
         'total_tokens',
 
+        'input_cost',
+
+        'output_cost',
+
+        'total_cost',
+
+        'status',
+
+        'metadata'
+
     ];
+
 
     protected $casts = [
 
-        'prompt_tokens' => 'integer',
+        'metadata' => 'array'
 
-        'completion_tokens' => 'integer',
-
-        'total_tokens' => 'integer',
 
     ];
 
-    public function user(): BelongsTo
+
+
+    public function workspace()
     {
-
-        return $this->belongsTo(User::class);
-
+        return $this->belongsTo(
+            Workspace::class
+        );
     }
 
-    public function conversation(): BelongsTo
+
+
+    public function conversation()
     {
-
-        return $this->belongsTo(Chat::class);
-
+        return $this->belongsTo(
+            Chat::class
+        );
     }
+
 
 }
-

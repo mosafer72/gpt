@@ -41,11 +41,25 @@ export interface AIModel {
 
   name: string;
 
-  provider: string;
+  model_name?: string;
 
-  description?: string;
+  provider_id?: number;
 
-  icon?: string;
+  input_cost?: string;
+
+  output_cost?: string;
+
+  type?: string;
+
+  pivot?: {
+    plan_id?: number;
+
+    workspace_plan_id?: number;
+
+    ai_model_id: number;
+
+    is_default?: number | boolean;
+  };
 }
 
 // ============================
@@ -60,8 +74,6 @@ export interface Chat {
   messages: Message[];
 
   created_at: string;
-
-  // مدل انتخاب شده برای این چت
 
   model_id?: number;
 
@@ -101,7 +113,7 @@ export interface Plan {
 
   features: string[];
 
-  models: AIModel[];
+  models?: AIModel[];
 }
 
 // ============================
@@ -122,18 +134,6 @@ export interface Subscription {
 
     expires_at: string;
   };
-}
-
-// ============================
-// Token Wallet
-// ============================
-
-export interface TokenWallet {
-  total_tokens: number;
-
-  used_tokens: number;
-
-  remaining_tokens: number;
 }
 
 // ============================
@@ -166,4 +166,182 @@ export interface UserStatus {
   today_messages_count: number;
 
   remaining_messages: number;
+}
+
+// ============================
+// Workspace Subscription
+// ============================
+
+export interface WorkspaceSubscription {
+  id: number;
+
+  user_id: number;
+
+  workspace_id: number;
+
+  workspace_plan_id: number;
+
+  workspace_plan: WorkspacePlan;
+
+  started_at: string;
+
+  expires_at: string;
+
+  is_active: boolean;
+
+  transaction_id?: string | null;
+}
+
+// ============================
+// Dashboard
+// ============================
+
+export interface DashboardResponse {
+  user: {
+    id: number;
+
+    phone: string;
+
+    name: string;
+
+    role: string;
+  };
+
+  workspace: Workspace | null;
+
+  subscription: WorkspaceSubscription | null;
+
+  wallet: TokenWallet | null;
+
+  today_usage: {
+    requests: number;
+
+    prompt_tokens: number;
+
+    completion_tokens: number;
+
+    total_tokens: number;
+  };
+}
+
+// ============================
+// Workspace Type
+// ============================
+
+export interface WorkspaceType {
+  id: number;
+
+  key: string;
+
+  name: string;
+
+  display_name: string;
+
+  description: string;
+
+  icon: string;
+
+  features: string[];
+
+  is_active: boolean;
+}
+
+// ============================
+// Workspace Plan
+// ============================
+
+export interface WorkspacePlan {
+  id: number;
+
+  name: string;
+
+  display_name: string;
+
+  description?: string | null;
+
+  price: number;
+
+  duration_days: number;
+
+  token_limit: number;
+
+  features: string[];
+
+  workspace_type_id: number;
+
+  is_active: boolean;
+
+  models?: AIModel[];
+}
+
+// ============================
+// Token Wallet
+// ============================
+
+export interface TokenWallet {
+  id: number;
+
+  workspace_id: number;
+
+  total_tokens: number;
+
+  used_tokens: number;
+
+  remaining_tokens: number;
+}
+
+export interface DocumentItem {
+  id: number;
+
+  name: string;
+
+  size: string;
+
+  pages: number;
+
+  selected?: boolean;
+}
+
+// ============================
+// Workspace
+// ============================
+
+export interface Workspace {
+  id: number;
+
+  user_id: number;
+
+  workspace_type_id: number;
+
+  workspace_plan_id: number;
+
+  name: string;
+
+  type: string;
+
+  started_at: string;
+
+  expires_at: string;
+
+  is_active: boolean;
+
+  workspace_type: WorkspaceType;
+
+  wallet: TokenWallet | null;
+
+  /*
+   |--------------------------------------------------------------------------
+   | حالت اصلی فعلی API
+   |--------------------------------------------------------------------------
+   */
+
+  workspace_subscriptions?: WorkspaceSubscription[];
+
+  /*
+   |--------------------------------------------------------------------------
+   | برای بعضی endpoint ها
+   |--------------------------------------------------------------------------
+   */
+
+  plan?: WorkspacePlan;
 }

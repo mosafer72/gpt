@@ -16,40 +16,33 @@ class AiModelSeeder extends Seeder
     {
 
 
-        $openai =
-            LlmProvider::where('key','openai')
-            ->first();
+        $providers = [
+
+            'openai' =>
+                LlmProvider::where('key','openai')->first(),
+
+            'openrouter' =>
+                LlmProvider::where('key','openrouter')->first(),
+
+            'deepseek' =>
+                LlmProvider::where('key','deepseek')->first(),
+
+            'anthropic' =>
+                LlmProvider::where('key','anthropic')->first(),
+
+            'qwen' =>
+                LlmProvider::where('key','qwen')->first(),
+
+        ];
 
 
 
 
-
-        $openrouter =
-            LlmProvider::where('key','openrouter')
-            ->first();
-
-
-
-        $deepseek =
-            LlmProvider::where('key','deepseek')
-            ->first();
-
-
-
-        $anthropic =
-            LlmProvider::where('key','anthropic')
-            ->first();
-
-
-
-        $qwen =
-            LlmProvider::where('key','qwen')
-            ->first();
-
-
-
-
-
+        /*
+        |--------------------------------------------------------------------------
+        | OpenAI Models
+        |--------------------------------------------------------------------------
+        */
 
 
         AiModel::updateOrCreate(
@@ -62,9 +55,9 @@ class AiModelSeeder extends Seeder
 
                 'name'=>'GPT 4.1 Mini',
 
-                'model_name'=>'gapgpt-qwen-3.6',
+                'model_name'=>'gpt-4.1-mini',
 
-                'provider_id'=>$openai->id,
+                'provider_id'=>$providers['openai']->id,
 
                 'input_cost'=>0,
 
@@ -75,9 +68,6 @@ class AiModelSeeder extends Seeder
             ]
 
         );
-
-
-
 
 
 
@@ -92,9 +82,9 @@ class AiModelSeeder extends Seeder
 
                 'name'=>'GPT 5',
 
-                'model_name'=>'gapgpt-qwen-3.6',
+                'model_name'=>'gpt-5',
 
-                'provider_id'=>$openai->id,
+                'provider_id'=>$providers['openai']->id,
 
                 'input_cost'=>0,
 
@@ -111,6 +101,12 @@ class AiModelSeeder extends Seeder
 
 
 
+
+        /*
+        |--------------------------------------------------------------------------
+        | OpenRouter / GapGPT
+        |--------------------------------------------------------------------------
+        */
 
 
         AiModel::updateOrCreate(
@@ -121,11 +117,11 @@ class AiModelSeeder extends Seeder
 
             [
 
-                'name'=>'gapgpt-qwen-3.6',
+                'name'=>'GapGPT Qwen 3.6',
 
                 'model_name'=>'gapgpt-qwen-3.6',
 
-                'provider_id'=>$openrouter->id,
+                'provider_id'=>$providers['openrouter']->id,
 
                 'input_cost'=>0,
 
@@ -141,6 +137,13 @@ class AiModelSeeder extends Seeder
 
 
 
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | DeepSeek
+        |--------------------------------------------------------------------------
+        */
 
 
         AiModel::updateOrCreate(
@@ -155,7 +158,7 @@ class AiModelSeeder extends Seeder
 
                 'model_name'=>'deepseek-chat',
 
-                'provider_id'=>$deepseek->id,
+                'provider_id'=>$providers['deepseek']->id,
 
                 'input_cost'=>0,
 
@@ -172,6 +175,12 @@ class AiModelSeeder extends Seeder
 
 
 
+
+        /*
+        |--------------------------------------------------------------------------
+        | Anthropic
+        |--------------------------------------------------------------------------
+        */
 
 
         AiModel::updateOrCreate(
@@ -186,7 +195,7 @@ class AiModelSeeder extends Seeder
 
                 'model_name'=>'claude-sonnet-4',
 
-                'provider_id'=>$anthropic->id,
+                'provider_id'=>$providers['anthropic']->id,
 
                 'input_cost'=>0,
 
@@ -204,6 +213,12 @@ class AiModelSeeder extends Seeder
 
 
 
+        /*
+        |--------------------------------------------------------------------------
+        | Qwen
+        |--------------------------------------------------------------------------
+        */
+
 
         AiModel::updateOrCreate(
 
@@ -217,7 +232,7 @@ class AiModelSeeder extends Seeder
 
                 'model_name'=>'qwen-3',
 
-                'provider_id'=>$qwen->id,
+                'provider_id'=>$providers['qwen']->id,
 
                 'input_cost'=>0,
 
@@ -227,6 +242,12 @@ class AiModelSeeder extends Seeder
 
             ]
 
+        );
+
+
+
+        $this->command->info(
+            '✅ AI Models seeded successfully'
         );
 
 

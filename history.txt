@@ -1,0 +1,12 @@
+#V2
+DEFINE NAMESPACE test;
+DEFINE DATABASE test;
+INFO FOR NS;
+INFO FOR DB;
+CREATE document_chunk SET\ndocument_id = "doc_1",\nchunk_index = 0,\ncontent = "Laravel is a PHP framework",\ntokens = 6;
+CREATE document_embedding SET\ndocument_id = "doc_1",\nworkspace_id = "ws_1",\nchunk_id = "chunk_1",\ncontent = "Laravel is a PHP framework",\nembedding = [0.1,0.2,0.3],\nmetadata = {\n    source: "test"\n};
+REMOVE FIELD metadata ON document_embedding;
+DEFINE FIELD metadata\nON document_embedding\nTYPE object FLEXIBLE;
+CREATE document_embedding SET\ndocument_id = "doc_1",\nworkspace_id = "ws_1",\nchunk_id = "chunk_1",\ncontent = "Laravel is a PHP framework",\nembedding = [0.1,0.2,0.3],\nmetadata = {\n    source: "test"\n};
+REMOVE TABLE document_embedding;
+CREATE document_embedding SET\ndocument_id = "doc_1",\nworkspace_id = "ws_1",\nchunk_id = "chunk_1",\ncontent = "Laravel is a PHP framework",\nembedding = [0.1,0.2,0.3],\nmetadata = {\n    source: "test"\n};

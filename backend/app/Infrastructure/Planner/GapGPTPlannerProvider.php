@@ -15,11 +15,10 @@ class GapGPTPlannerProvider implements PlannerProvider
 
     public function __construct()
     {
-        \Log::info('Planner Config', [
-            'url' => config('services.planner.base_url'),
-            'model' => config('services.planner.model'),
-            'api_key' => config('services.planner.key'),
-        ]);
+            //     'url' => config('services.planner.base_url'),
+        //     'model' => config('services.planner.model'),
+        //     'api_key' => config('services.planner.key'),
+        // ]);
 
 
         $this->client = OpenAI::factory()
@@ -45,7 +44,7 @@ class GapGPTPlannerProvider implements PlannerProvider
     public function analyze(ChatContext $context): IntentResult
     {
 
-        \Log::info('Planner analyze executed');
+        // \Log::info('Planner analyze executed');
 
 
         $prompt = <<<PROMPT
@@ -116,9 +115,9 @@ PROMPT;
 
         ]);
 
-        \Log::info('Planner Time', [
-            'seconds' => microtime(true) - $start
-        ]);
+        // \Log::info('Planner Time', [
+        //     'seconds' => microtime(true) - $start
+        // ]);
 
 
         $content = trim($response->choices[0]->message->content);

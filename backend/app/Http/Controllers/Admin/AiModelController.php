@@ -13,6 +13,11 @@ class AiModelController extends Controller
         return response()->json(AiModel::with('provider')->get());
     }
 
+     public function show($id)
+    {
+        $model = AiModel::findOrFail($id);
+        return response()->json($model);
+    }
     public function store(Request $request)
     {
         $validated = $request->validate([

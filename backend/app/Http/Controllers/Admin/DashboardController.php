@@ -27,7 +27,7 @@ class DashboardController extends Controller
             'todayMessages' => Message::whereDate('created_at', today())->count(),
             'weekMessages' => Message::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
             'monthMessages' => Message::whereMonth('created_at', now()->month)->count(),
-            'activeSubscriptions' => Subscription::where('is_active', true)->count(),
+            'activeSubscriptions' => Workspace::where('is_active', true)->count(),
             'pendingTransactions' => PaymentTransaction::where('status', 'pending')->count(),
         ]);
     }

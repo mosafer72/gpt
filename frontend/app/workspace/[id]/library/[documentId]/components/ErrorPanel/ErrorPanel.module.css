@@ -1,0 +1,63 @@
+.wrapper {
+  background: #fff1f2;
+
+  border: 1px solid #fecdd3;
+
+  border-radius: 22px;
+
+  padding: 22px;
+}
+
+.header {
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  margin-bottom: 15px;
+}
+
+.header span {
+  font-size: 24px;
+}
+
+.header h2 {
+  margin: 0;
+
+  font-size: 17px;
+
+  color: #be123c;
+}
+
+.message {
+  background: white;
+
+  padding: 15px;
+
+  border-radius: 14px;
+
+  font-size: 13px;
+
+  line-height: 1.8;
+
+  color: #475569;
+
+  word-break: break-word;
+}
+
+.wrapper button {
+  margin-top: 15px;
+
+  border: none;
+
+  background: #e11d48;
+
+  color: white;
+
+  padding: 10px 18px;
+
+  border-radius: 12px;
+
+  cursor: pointer;
+}

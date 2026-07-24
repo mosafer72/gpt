@@ -20,11 +20,20 @@ return [
     | ORM Models
     |--------------------------------------------------------------------------
     */
-     'models' => [
-        \App\Domain\Conversation\Models\Conversation::class,
+    'models' => [
+        // \App\Domain\Conversation\Models\Conversation::class,
         // بعداً مدل‌های دیگر را اضافه کنید
-        \App\Domain\Message\Models\Message::class,
-        \App\Domain\Memory\Models\Memory::class,
+        // \App\Domain\Message\Models\Message::class,
+        // \App\Domain\Memory\Models\Memory::class,
+         \App\Domain\Documents\Models\DocumentSectionPlan::class,
+
+        \App\Domain\Documents\Models\DocumentSectionPlan::class,
+
+        \App\Domain\Documents\Models\DocumentChunk::class,
+
+        \App\Domain\Documents\Models\DocumentEmbedding::class,
+
+        \App\Domain\Documents\Models\DocumentVector::class,
     ],
 
     /*

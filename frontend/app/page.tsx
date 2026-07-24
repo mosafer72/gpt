@@ -1,169 +1,181 @@
-'use client'
+"use client";
+
 import Footer from "@/components/Common/Footer.tsx/Footer";
-import styles from "./page.module.css";
+import WorkspaceCard from "@/components/Workspace/WorkspaceCard";
+
 import Link from "next/link";
-import { useEffect,useState } from "react";
+import { useEffect, useState } from "react";
 
-const services = [
-  {
-    id: "chatgpt",
-    name: "ChatGPT",
-    icon: "🤖",
-    description: "گفتگو، تحلیل، تولید محتوا و کدنویسی حرفه‌ای",
-    status: "active",
-    href: "/chat",
-  },
-  {
-    id: "grok",
-    name: "Grok",
-    icon: "⚡",
-    description: "تحلیل داده‌های لحظه‌ای و اخبار روز",
-    status: "soon",
-    href: "#",
-  },
-  {
-    id: "claude",
-    name: "Claude",
-    icon: "☁️",
-    description: "پردازش متون طولانی و تحلیل عمیق",
-    status: "soon",
-    href: "#",
-  },
-  {
-    id: "codex",
-    name: "Codex",
-    icon: "💻",
-    description: "تولید کد حرفه‌ای و توسعه نرم‌افزار",
-    status: "soon",
-    href: "#",
-  },
-  // ===== سرویس‌های جدید =====
-  {
-    id: "speech-to-text",
-    name: "تبدیل صدا به متن",
-    icon: "🎤",
-    description: "رونویسی خودکار فایل‌های صوتی و جلسات",
-    status: "soon",
-    href: "#",
-  },
-  {
-    id: "pdf-to-word",
-    name: "تبدیل PDF به Word",
-    icon: "📄",
-    description: "تبدیل دقیق فایل‌های PDF به اسناد قابل ویرایش",
-    status: "soon",
-    href: "#",
-  },
-  {
-    id: "ocr",
-    name: "استخراج متن از تصویر",
-    icon: "🖼️",
-    description: "تشخیص کاراکترهای نوری برای اسناد و اسکرین‌شات‌ها",
-    status: "soon",
-    href: "#",
-  },
-  {
-    id: "ai-video",
-    name: "تولید ویدیو با هوش مصنوعی",
-    icon: "🎬",
-    description: "ساخت ویدیو از توضیحات متنی با کیفیت بالا",
-    status: "soon",
-    href: "#",
-  },
-];
+import styles from "./page.module.css";
 
+import { services } from "@/lib/services";
+import { workspaces } from "@/lib/workspaces";
 export default function Home() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  useEffect(() => {
+    setIsAuthenticated(
+      !!localStorage.getItem("auth_token")
+    );
+  }, []);
 
-  function checklogin(){
-    const token = localStorage.getItem("auth_token");
-
-      if(!token){          
-            return (<Link href="/login" className={styles.btnOutline}>
-              ورود / ثبت‌نام
-            </Link>);
-      }else{
-        return (<Link href="/dashboard" className={styles.btnOutline}>
-              داشبورد
-            </Link>);
-      }
-  }
   return (
     <div className={styles.container}>
       <header className={styles.header}>
         <div className={styles.logoWrapper}>
           <div className={styles.logoIcon}>AI</div>
-          <span className={styles.logo}>اکانتسرا</span>
+
+          <span className={styles.logo}>
+            اکانتسرا
+          </span>
         </div>
+
         <nav className={styles.nav}>
-          {checklogin()}
-          <Link href="/chat" className={styles.btnPrimary}>
+          {isAuthenticated ? (
+            <Link
+              href="/dashboard"
+              className={styles.btnOutline}
+            >
+              داشبورد
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              className={styles.btnOutline}
+            >
+              ورود / ثبت‌نام
+            </Link>
+          )}
+
+          <Link
+            href="/chat"
+            className={styles.btnPrimary}
+          >
             شروع گفتگو
           </Link>
         </nav>
       </header>
 
       <main className={styles.hero}>
-        <div className={styles.badge}>نسل جدید دستیارهای هوشمند</div>
+        <div className={styles.badge}>
+          نسل جدید دستیارهای هوشمند
+        </div>
+
         <h1 className={styles.title}>
           با یک اکانت، به همه
-          <span className={styles.gradient}> مدل‌های هوش مصنوعی </span>
+          <span className={styles.gradient}>
+            {" "}
+            مدل‌های هوش مصنوعی{" "}
+          </span>
           دسترسی داشته باش
         </h1>
+
         <p className={styles.sub}>
-          یک پنل واحد برای ChatGPT، Grok، Claude و Codex — بدون نیاز به ساخت چند
-          حساب کاربری.
+          یک پنل واحد برای ChatGPT، Grok، Claude و Codex —
+          بدون نیاز به ساخت چند حساب کاربری.
         </p>
+
         <div className={styles.actions}>
-          <Link href="/chat" className={styles.cta}>
+          <Link
+            href="/chat"
+            className={styles.cta}
+          >
             🚀 شروع مکالمه
           </Link>
-          <Link href="/login" className={styles.secondaryCta}>
-            ورود به حساب
-          </Link>
+
+          {!isAuthenticated && (
+            <Link
+              href="/login"
+              className={styles.secondaryCta}
+            >
+              ورود به حساب
+            </Link>
+          )}
         </div>
       </main>
 
       <section className={styles.servicesSection}>
         <div className={styles.sectionHeader}>
           <h2>سرویس‌های هوش مصنوعی</h2>
+
           <p>فعلاً فقط ChatGPT فعال است</p>
         </div>
+
         <div className={styles.servicesGrid}>
           {services.map((service) => {
-            const isActive = service.status === "active";
+            const isActive =
+              service.status === "active";
+
             return (
               <div
                 key={service.id}
                 className={`${styles.serviceCard} ${
-                  isActive ? styles.activeService : ""
+                  isActive
+                    ? styles.activeService
+                    : ""
                 }`}
               >
                 <div className={styles.serviceTop}>
-                  <div className={styles.serviceIcon}>{service.icon}</div>
+                  <div className={styles.serviceIcon}>
+                    {service.icon}
+                  </div>
+
                   <span
                     className={`${styles.serviceStatus} ${
-                      isActive ? styles.statusActive : styles.statusSoon
+                      isActive
+                        ? styles.statusActive
+                        : styles.statusSoon
                     }`}
                   >
-                    {isActive ? "فعال" : "به‌زودی"}
+                    {isActive
+                      ? "فعال"
+                      : "به‌زودی"}
                   </span>
                 </div>
+
                 <h3>{service.name}</h3>
+
                 <p>{service.description}</p>
+
                 {isActive ? (
-                  <Link href={service.href} className={styles.serviceButton}>
+                  <Link
+                    href={service.href}
+                    className={styles.serviceButton}
+                  >
                     شروع گفتگو
                   </Link>
                 ) : (
-                  <button className={styles.serviceButtonDisabled}>
+                  <button
+                    className={
+                      styles.serviceButtonDisabled
+                    }
+                  >
                     غیرفعال
                   </button>
                 )}
               </div>
             );
           })}
+        </div>
+      </section>
+
+      <section className={styles.servicesSection}>
+        <div className={styles.sectionHeader}>
+          <h2>Workspace های تخصصی</h2>
+
+          <p>
+            محیط‌های اختصاصی برای تحقیق، برنامه‌نویسی،
+            تولید محتوا و یادگیری
+          </p>
+        </div>
+
+        <div className={styles.servicesGrid}>
+          {workspaces.map((workspace) => (
+            <WorkspaceCard
+              key={workspace.id}
+              workspace={workspace}
+            />
+          ))}
         </div>
       </section>
 

@@ -13,6 +13,16 @@ class ChatRequest
         public readonly float $temperature = 0.7,
         public readonly ?int $maxTokens = null,
     ) {
+
+        foreach ($this->messages as $message) {
+
+            if (!$message instanceof ChatMessage) {
+                throw new \InvalidArgumentException(
+                    'ChatRequest messages must be ChatMessage objects'
+                );
+            }
+
+        }
     }
 
 

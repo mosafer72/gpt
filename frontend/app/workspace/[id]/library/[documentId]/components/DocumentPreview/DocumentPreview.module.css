@@ -1,0 +1,147 @@
+/* --- Wrapper Box --- */
+.wrapper {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 28px;
+  padding: 25px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+/* --- Header --- */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.header h2 {
+  font-size: 20px;
+  color: #f8fafc;
+  font-weight: 700;
+  margin: 0;
+}
+
+.open {
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 14px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+}
+
+.open:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 30px rgba(124, 58, 237, 0.4);
+}
+
+/* --- Viewer Container --- */
+.viewer {
+  height: 700px;
+  overflow: hidden;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.viewer iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* --- Loading State --- */
+.loading {
+  height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 5px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #60a5fa;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading h3 {
+  color: #f8fafc;
+  font-size: 16px;
+  margin: 0 0 6px 0;
+}
+
+.loading p {
+  color: #94a3b8;
+  font-size: 13px;
+  margin: 0;
+}
+
+/* --- Error State --- */
+.error {
+  height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 20px;
+}
+
+.errorIcon {
+  font-size: 45px;
+  margin-bottom: 15px;
+}
+
+.error h3 {
+  color: #f87171;
+  font-size: 17px;
+  margin: 0 0 8px 0;
+}
+
+.error p {
+  max-width: 600px;
+  color: #fca5a5;
+  font-size: 14px;
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* --- Responsive Layout --- */
+@media (max-width: 700px) {
+  .viewer {
+    height: 500px;
+  }
+  
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .open {
+    width: 100%;
+    text-align: center;
+  }
+}

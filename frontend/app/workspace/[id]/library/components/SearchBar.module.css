@@ -1,0 +1,36 @@
+.wrapper{
+
+display:flex;
+align-items:center;
+
+gap:12px;
+
+background:white;
+
+border:1px solid #e5e7eb;
+
+padding:14px 18px;
+
+border-radius:16px;
+
+}
+
+.icon{
+
+font-size:22px;
+
+}
+
+.wrapper input{
+
+flex:1;
+
+border:none;
+
+outline:none;
+
+font-size:15px;
+
+background:none;
+
+}

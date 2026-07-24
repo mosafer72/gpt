@@ -2,15 +2,22 @@
 
 namespace App\Providers;
 
+use App\Application\AI\OpenAIEmbeddingProvider;
+use App\Application\Services\Documents\DocumentRetrieverService;
 use App\Domain\Contracts\ConversationRepository;
+use App\Domain\Contracts\DocumentRetriever;
+use App\Domain\Contracts\EmbeddingProvider;
 use App\Domain\Contracts\MessageStore;
 use App\Domain\Contracts\PlannerProvider;
+use App\Domain\Contracts\SmallChatProvider;
 use App\Infrastructure\Conversation\DatabaseConversationLoader;
+use App\Infrastructure\Embedding\BgeM3EmbeddingProvider;
 use App\Infrastructure\LLM\GapGPTProvider;
+use App\Infrastructure\LLM\OllamaQwenChatProvider;
 use App\Infrastructure\LLM\OpenAIProvider;
 use App\Infrastructure\Memory\DatabaseMemoryRetriever;
 use App\Infrastructure\Message\DatabaseMessageStore;
-use App\Infrastructure\Planner\GapGPTPlannerProvider;
+use App\Infrastructure\Planner\OllamaQwenPlannerProvider;
 use App\Infrastructure\Repositories\DatabaseConversationRepository;
 use Illuminate\Support\ServiceProvider;
 use App\Infrastructure\Memory\DatabaseMemoryStore;
@@ -57,14 +64,25 @@ class AppServiceProvider extends ServiceProvider
             DatabaseMemoryStore::class
         );
         $this->app->bind(
-
             PlannerProvider::class,
-
-            GapGPTPlannerProvider::class
-
-
+            OllamaQwenPlannerProvider::class
+        );
+        $this->app->bind(
+            SmallChatProvider::class,
+            OllamaQwenChatProvider::class
         );
 
+        $this->app->bind(
+            EmbeddingProvider::class,
+            BgeM3EmbeddingProvider::class
+        );
+        $this->app->bind(
+
+            DocumentRetriever::class,
+
+            DocumentRetrieverService::class
+
+        );
     }
 
     /**

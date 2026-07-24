@@ -5,6 +5,9 @@ import type {
   TokenWallet,
   UserStatus,
   Chat,
+  WorkspacePlan,
+  Workspace,
+  DashboardResponse,
 } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL;
@@ -35,7 +38,7 @@ function logout() {
   }
 }
 
-function headers(json: boolean = true) {
+function headers(json = true) {
   const token = getToken();
 
   return {
@@ -82,34 +85,10 @@ async function request<T>(
   if (!response.ok) {
     const error = await response.json().catch(() => null);
 
-    throw new Error(error?.message || "API Request Failed");
+    throw new Error(error?.message ?? "API Request Failed");
   }
 
   return response.json();
-}
-
-// ============================
-// Types
-// ============================
-
-// ============================
-// Dashboard
-// ============================
-
-export async function getDashboardData() {
-  const [plansResponse, subscription] = await Promise.all([
-    getPlans(),
-    getMySubscription(),
-  ]);
-
-  const plans = Array.isArray(plansResponse)
-    ? plansResponse
-    : plansResponse.data;
-
-  return {
-    plans,
-    subscription,
-  };
 }
 
 // ============================
@@ -133,7 +112,29 @@ export function getMySubscription() {
 }
 
 // ============================
-// Token Wallet
+// Dashboard
+// ============================
+
+export function getDashboard() {
+  return request<DashboardResponse>("/dashboard");
+}
+
+export async function getDashboardData() {
+  const [plansResponse, subscription] = await Promise.all([
+    getPlans(),
+
+    getMySubscription(),
+  ]);
+
+  return {
+    plans: Array.isArray(plansResponse) ? plansResponse : plansResponse.data,
+
+    subscription,
+  };
+}
+
+// ============================
+// Wallet
 // ============================
 
 export function getTokenWallet() {
@@ -141,8 +142,12 @@ export function getTokenWallet() {
 }
 
 // ============================
-// Usage
+// User
 // ============================
+
+export function getUserStatus() {
+  return request<UserStatus>("/user/status");
+}
 
 export async function getTodayUsage() {
   const data = await request<any>("/usage/today");
@@ -150,33 +155,48 @@ export async function getTodayUsage() {
   return data.data ?? data;
 }
 
-export function getUserStatus() {
-  return request<UserStatus>("/user/status");
-}
-
+// ============================
+// Chat Stream
+// ============================
+// ============================
+// Chat Stream
+// ============================
 export async function sendMessageStream(
   message: string,
+  workspaceId: number,
   chatId?: number,
   image?: File | null,
   modelId?: number,
   onChunk?: (text: string) => void,
   signal?: AbortSignal,
   file?: UploadedFileResponse | null,
+  documentIds?: number[],
 ) {
   const formData = new FormData();
 
-  formData.append("model_id", String(modelId));
+  formData.append("workspace_id", String(workspaceId));
   formData.append("message", message);
 
-  if (file?.paper?.id) {
-    formData.append("paper_id", String(file.paper.id));
-  }
   if (chatId) {
     formData.append("chat_id", String(chatId));
   }
 
+  if (modelId) {
+    formData.append("model_id", String(modelId));
+  }
+
   if (image) {
     formData.append("image", image);
+  }
+
+  if (file?.paper?.id) {
+    formData.append("paper_id", String(file.paper.id));
+  }
+
+  if (documentIds && documentIds.length > 0) {
+    documentIds.forEach((id) => {
+      formData.append("document_ids[]", String(id));
+    });
   }
 
   const response = await fetch(`${API_BASE}/chats/stream`, {
@@ -186,27 +206,14 @@ export async function sendMessageStream(
     signal,
   });
 
-  // عدم احراز هویت
   if (response.status === 401) {
     logout();
     throw new Error("Unauthorized");
   }
 
-  // خطای بک‌اند قبل از شروع stream
   if (!response.ok) {
-    let errorData: any = null;
-
-    try {
-      errorData = await response.json();
-    } catch {
-      errorData = null;
-    }
-
-    throw {
-      type: "backend",
-      status: response.status,
-      message: errorData?.message || "خطایی رخ داده است",
-    };
+    const error = await response.json().catch(() => null);
+    throw new Error(error?.message ?? "Chat error");
   }
 
   if (!response.body) {
@@ -215,123 +222,89 @@ export async function sendMessageStream(
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
-
   let buffer = "";
 
   while (true) {
     const { done, value } = await reader.read();
+    if (done) break;
 
-    if (done) {
-      break;
-    }
+    buffer += decoder.decode(value, { stream: true });
 
-    buffer += decoder.decode(value, {
-      stream: true,
-    });
+    // جدا کردن خطوط بر اساس line break های مختلف (\r\n یا \n)
+    const lines = buffer.split(/\r?\n/);
 
-    const events = buffer.split("\n\n");
+    // نگه داشتن آخرین بخش ناقص درون بافر
+    buffer = lines.pop() || "";
 
-    buffer = events.pop() || "";
+    for (const line of lines) {
+      const trimmedLine = line.trim();
 
-    for (const event of events) {
-      if (!event.startsWith("data:")) {
-        continue;
-      }
+      // رد کردن خطوط خالی و خطوطی که رویداد data نیستند
+      if (!trimmedLine || !trimmedLine.startsWith("data:")) continue;
 
-      const payload = event.replace(/^data:\s*/, "").trim();
+      // حذف کلمه data: و فواصل خالی ابتدای آن
+      const payload = trimmedLine.replace(/^data:\s*/, "").trim();
 
-      // پایان SSE
-      if (payload === "[DONE]") {
+      if (!payload || payload === "[DONE]") {
         continue;
       }
 
       try {
         const json = JSON.parse(payload);
 
-        // خطای ارسال شده از سرور
         if (json.error) {
           throw new Error(json.error);
         }
 
-        // ==========================
-        // پاسخ تصویر
-        // ==========================
-        if (json.type === "image" && json.image_url) {
-          onChunk?.(
-            JSON.stringify({
-              type: "image",
-
-              image_url: json.image_url,
-            }),
-          );
-
-          continue;
-        }
-
-        // ==========================
-        // پاسخ متنی Stream
-        // ==========================
-        if (typeof json.content === "string" && json.content.length > 0) {
+        if (typeof json.content === "string") {
           onChunk?.(
             JSON.stringify({
               content: json.content,
             }),
           );
         }
-      } catch (err: any) {
-        // payload غیر JSON
-        if (err instanceof SyntaxError) {
-          console.log("Invalid stream chunk", payload);
-
-          continue;
-        }
-
-        throw err;
+      } catch (e) {
+        // جلوگیری از کرش کردن برنامه در صورت دریافت دیتای نادرست یا ناقص
+        console.warn("Skipped invalid stream chunk:", payload);
       }
     }
   }
 }
+
 // ============================
 // Chats
 // ============================
 
-export function getChats() {
-  return request<Chat[]>("/chats");
+export function getChats(workspaceId: number) {
+  return request<Chat[]>(`/workspaces/${workspaceId}/chats`);
 }
 
-export function getChat(id: number) {
-  return request<Chat>(`/chats/${id}`);
+export function getChat(
+  workspaceId: number,
+
+  id: number,
+) {
+  return request<Chat>(`/workspaces/${workspaceId}/chats/${id}`);
 }
 
-export async function deleteChat(id: number) {
-  await request(`/chats/${id}`, {
-    method: "DELETE",
-  });
-}
+export function deleteChat(
+  workspaceId: number,
 
-// ============================
-// Payment
-// ============================
-
-export interface PaymentResponse {
-  payment_url?: string;
-
-  message?: string;
-}
-
-export function initiatePayment(planId: number) {
-  return request<PaymentResponse>(
-    "/initiate-payment",
+  id: number,
+) {
+  return request(
+    `/workspaces/${workspaceId}/chats/${id}`,
 
     {
-      method: "POST",
-
-      body: JSON.stringify({
-        plan_id: planId,
-      }),
+      method: "DELETE",
     },
   );
 }
+
+// ============================
+// Models
+// ============================
+
 export function getAvailableModels() {
   return request<{
     models: AIModel[];
@@ -341,26 +314,222 @@ export function getAvailableModels() {
 // ============================
 // File Upload
 // ============================
+
 export interface UploadedFileResponse {
   success: boolean;
 
   paper: {
     id: number;
+
     title: string;
+
     url: string;
+
     size: number;
   };
 }
-export async function uploadFile(file: File, conversationId: number) {
+
+export async function uploadFile(
+  file: File,
+
+  conversationId: number,
+) {
   const formData = new FormData();
 
   formData.append("file", file);
-  formData.append("conversation_id", conversationId.toString());
 
-  const response = await fetch(`${API_BASE}/files/upload`, {
+  formData.append("conversation_id", String(conversationId));
+
+  return request("/files/upload", {
     method: "POST",
-    headers: headers(false),
+
     body: formData,
+  });
+}
+
+// ============================
+// Workspace
+// ============================
+
+export interface WorkspaceResponse {
+  success: boolean;
+
+  workspace: Workspace;
+}
+
+export function getWorkspace(id: number) {
+  return request<WorkspaceResponse>(`/workspaces/${id}`);
+}
+
+export function getWorkspaces() {
+  return request<Workspace[]>("/workspaces");
+}
+
+export function getMyWorkspace() {
+  return request<{
+    success: boolean;
+
+    data: Workspace;
+  }>("/workspace/my");
+}
+
+// ============================
+// Workspace Plans
+// ============================
+
+export function getWorkspacePlans(workspaceTypeId: number) {
+  return request<{
+    success: boolean;
+
+    data: WorkspacePlan[];
+  }>(`/workspace-types/${workspaceTypeId}/plans`);
+}
+
+// ============================
+// Workspace Models
+// ============================
+
+export interface WorkspaceModelsResponse {
+  success: boolean;
+
+  workspace: {
+    id: number;
+
+    name: string;
+  };
+
+  plan: WorkspacePlan;
+
+  models: AIModel[];
+}
+
+export function getWorkspaceModels(id: number) {
+  return request<WorkspaceModelsResponse>(`/workspace/${id}/models`);
+}
+
+// ============================
+// Subscribe
+// ============================
+
+export function subscribeWorkspace(workspacePlanId: number) {
+  return request(
+    "/workspace/subscribe",
+
+    {
+      method: "POST",
+
+      body: JSON.stringify({
+        workspace_plan_id: workspacePlanId,
+      }),
+    },
+  );
+}
+
+export function cancelWorkspace() {
+  return request(
+    "/workspace/cancel",
+
+    {
+      method: "POST",
+    },
+  );
+}
+// ============================
+// Workspace Payment
+// ============================
+
+export interface WorkspacePaymentResponse {
+  success?: boolean;
+
+  payment_url?: string;
+
+  authority?: string;
+
+  amount?: number;
+
+  message?: string;
+}
+
+export function initiateWorkspacePayment(
+  workspaceId: number,
+  workspacePlanId: number,
+) {
+  return request<WorkspacePaymentResponse>("/workspace/subscription/payment", {
+    method: "POST",
+
+    body: JSON.stringify({
+      workspace_id: workspaceId,
+
+      workspace_plan_id: workspacePlanId,
+    }),
+  });
+}
+// ============================
+// Documents
+// ============================
+
+export interface DocumentItem {
+  id: number;
+
+  name: string;
+
+  path?: string;
+
+  mime_type?: string;
+
+  size?: number;
+
+  status?: string;
+
+  created_at?: string;
+}
+
+export interface DocumentsResponse {
+  success: boolean;
+
+  data: DocumentItem[];
+}
+
+export function getDocuments(workspaceId: number) {
+  return request<DocumentsResponse>(`/workspaces/${workspaceId}/documents`);
+}
+
+export async function uploadDocument(workspaceId: number, file: File) {
+  const formData = new FormData();
+
+  formData.append("file", file);
+
+  return request(`/workspaces/${workspaceId}/documents`, {
+    method: "POST",
+
+    body: formData,
+  });
+}
+
+// ============================
+// Document Chat
+// ============================
+
+// ============================
+// Document Chat (Streaming response)
+// ============================
+
+export async function createChat(
+  workspaceId: number,
+  data: {
+    document_ids: number[];
+    model_id: number;
+  },
+) {
+  const token = getToken();
+
+  const response = await fetch(`${API_BASE}/workspaces/${workspaceId}/chats`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+    },
+    body: JSON.stringify(data),
   });
 
   if (response.status === 401) {
@@ -369,9 +538,80 @@ export async function uploadFile(file: File, conversationId: number) {
   }
 
   if (!response.ok) {
-    const error = await response.json().catch(() => null);
-    throw new Error(error?.message || "خطا در آپلود فایل");
+    throw new Error("خطا در پاسخ سرور");
   }
 
-  return response.json();
+  if (!response.body) {
+    throw new Error("استریم دریافتی خالی است");
+  }
+
+  // خواندن استریم برای استخراج chat_id یا اولین دیتا
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let chatId: number | null = null;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split(/\r?\n/);
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith("data:")) continue;
+
+      const payload = trimmed.replace(/^data:\s*/, "").trim();
+
+      if (!payload || payload === "[DONE]") continue;
+
+      try {
+        const parsed = JSON.parse(payload);
+
+        // اگر بک‌اند chat_id یا id یا اطلاعات چت را ارسال کرده باشد
+        if (parsed.chat_id) {
+          chatId = parsed.chat_id;
+        } else if (parsed.chat?.id) {
+          chatId = parsed.chat.id;
+        } else if (parsed.id) {
+          chatId = parsed.id;
+        }
+      } catch (e) {
+        // نادیده گرفتن خطوط غیر معتبر
+      }
+    }
+  }
+
+  // اگر شناسه چت در استریم پیدا نشد، کاربر را به صفحه چت اصلی ورک‌اسپیس هدایت می‌کنیم
+  return {
+    success: true,
+    chat: {
+      id: chatId ?? 0,
+    },
+  };
+}
+
+export async function deleteDocument(
+  workspaceId: number | string,
+  documentId: number | string,
+) {
+  const response = await fetch(
+    `/api/workspaces/${workspaceId}/documents/${documentId}`,
+    {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        // در صورت وجود Authorization header آن را اضافه کنید
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "خطا در حذف سند");
+  }
+
+  return await response.json();
 }

@@ -136,4 +136,11 @@ class User extends Authenticatable
     {
         return $this->role === 'admin';
     }
+
+    public function workspaces()
+    {
+        return $this->hasMany(
+            Workspace::class
+        );
+    }
 }

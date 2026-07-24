@@ -1,0 +1,138 @@
+/* --- Card Container --- */
+.card {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 22px;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  backdrop-filter: blur(10px);
+}
+
+.card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* --- Header & Icon --- */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.icon {
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.15), rgba(124, 58, 237, 0.15));
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+}
+
+/* --- Status Badges --- */
+.status {
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.completed {
+  background: rgba(22, 163, 74, 0.15);
+  color: #4ade80;
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.processing {
+  background: rgba(202, 138, 4, 0.15);
+  color: #facc15;
+  border-color: rgba(234, 179, 8, 0.3);
+}
+
+.failed {
+  background: rgba(220, 38, 38, 0.15);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* --- Typography --- */
+.title {
+  font-size: 19px;
+  font-weight: 700;
+  color: #f8fafc;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.authors {
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+.info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #cbd5e1;
+}
+
+.updated {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+/* --- Actions (Buttons) --- */
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: auto; /* دکمه‌ها را به پایین کارت هل می‌دهد */
+}
+
+.primary,
+.danger {
+  flex: 1;
+  border: none;
+  border-radius: 12px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* دکمه اصلی (آبی/بنفش) */
+.primary {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.primary:hover {
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  transform: scale(1.03);
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.25);
+  border-color: transparent;
+}
+
+/* دکمه خطر (حذف) */
+.danger {
+  background: rgba(220, 38, 38, 0.1);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.danger:hover {
+  background: rgba(220, 38, 38, 0.2);
+  transform: scale(1.03);
+  border-color: rgba(239, 68, 68, 0.4);
+}

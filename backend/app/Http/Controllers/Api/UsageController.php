@@ -3,37 +3,37 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Usage;
+use App\Application\Services\UsageService;
 use Illuminate\Http\Request;
-
-
-use Illuminate\Support\Facades\Auth;
 
 
 class UsageController extends Controller
 {
 
 
+    public function __construct(
+
+        protected UsageService $usageService
+
+    ) {
+
+    }
+
+
+
+
+
     public function index(Request $request)
     {
 
-        $user = Auth::user();
-
-
-        $usage = Usage::where(
-            'user_id',
-            $user->id
-        )
-        ->latest()
-        ->get();
-
-
-
         return response()->json([
 
-            'success'=>true,
+            'success' => true,
 
-            'data'=>$usage
+            'data' => $this->usageService
+                ->all(
+                    $request->user()
+                )
 
         ]);
 
@@ -46,71 +46,44 @@ class UsageController extends Controller
     public function today(Request $request)
     {
 
-        $user = Auth::user();
+        $user = $request->user();
 
 
-        $usage = Usage::where(
-
-            'user_id',
-
-            $user->id
-
-        )
-        ->whereDate(
-
-            'created_at',
-
-            now()->toDateString()
-
-        )
-        ->get();
+        $workspace = $user
+            ->workspaces()
+            ->where(
+                'is_active',
+                true
+            )
+            ->first();
 
 
 
-        $totalTokens = $usage->sum(
-            'total_tokens'
-        );
+        if (!$workspace) {
+
+            return response()->json([
+
+                'message' => 'Workspace فعال ندارید'
+
+            ], 404);
+
+        }
 
 
 
-        $promptTokens = $usage->sum(
-            'prompt_tokens'
-        );
-
-
-
-        $completionTokens = $usage->sum(
-            'completion_tokens'
-        );
-
+        $usage =
+            $this->usageService
+                ->today(
+                    $workspace
+                );
 
 
 
         return response()->json([
 
+            'success' => true,
 
-            'success'=>true,
-
-
-            'data'=>[
-
-
-                'date'=>now()->toDateString(),
-
-
-                'prompt_tokens'=>$promptTokens,
-
-
-                'completion_tokens'=>$completionTokens,
-
-
-                'total_tokens'=>$totalTokens,
-
-
-                'requests'=>$usage->count()
-
-
-            ]
+            'data' => $usage
 
         ]);
 
@@ -120,32 +93,24 @@ class UsageController extends Controller
 
 
 
-
-    public function show($id)
-    {
-
-
-        $usage = Usage::where(
-
-            'user_id',
-
-            Auth::id()
-
-        )
-        ->findOrFail($id);
-
-
+    public function show(
+        Request $request,
+        $id
+    ) {
 
         return response()->json([
 
-            'success'=>true,
+            'success' => true,
 
-            'data'=>$usage
+            'data' => $this->usageService
+                ->find(
+                    $request->user(),
+                    $id
+                )
 
         ]);
 
     }
-
 
 
 
@@ -154,93 +119,22 @@ class UsageController extends Controller
     public function summary(Request $request)
     {
 
-
-        $user = Auth::user();
-
-
-        $usage = Usage::where(
-
-            'user_id',
-
-            $user->id
-
-        );
-
-
-
-        if($request->filled('from'))
-        {
-
-            $usage->whereDate(
-
-                'created_at',
-
-                '>=',
-
-                $request->from
-
-            );
-
-        }
-
-
-
-        if($request->filled('to'))
-        {
-
-            $usage->whereDate(
-
-                'created_at',
-
-                '<=',
-
-                $request->to
-
-            );
-
-        }
-
-
-
-        $usage = $usage->get();
-
-
-
-
         return response()->json([
 
+            'success' => true,
 
-            'success'=>true,
+            'data' => $this->usageService
+                ->summary(
 
+                    $request->user(),
 
-            'data'=>[
+                    $request->all()
 
-
-                'requests'=>$usage->count(),
-
-
-                'prompt_tokens'=>$usage->sum(
-                    'prompt_tokens'
-                ),
-
-
-                'completion_tokens'=>$usage->sum(
-                    'completion_tokens'
-                ),
-
-
-                'total_tokens'=>$usage->sum(
-                    'total_tokens'
                 )
-
-
-            ]
 
         ]);
 
-
     }
-
 
 
 }

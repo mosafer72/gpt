@@ -3,62 +3,55 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
-export default function AuthGuard({ children }: { children: React.ReactNode }) {
+export default function AuthGuard({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const router = useRouter();
   const pathname = usePathname();
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
 
     const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-    const role = user?.role;
-
-    const publicPaths = ["/login", "/verify"];
-
-    const adminPaths = ["/admin"];
+    const publicPaths = ["/login", "/verify","/"];
 
     const isPublic = publicPaths.includes(pathname);
 
-    const isAdminRoute = adminPaths.some((path) => pathname.startsWith(path));
+    const isAdmin = pathname.startsWith("/admin");
 
-    // کاربر لاگین نیست
-    if (!token && !isPublic) {
-      router.replace("/login");
-
-      setIsAuthenticated(false);
-    }
-
-    // کاربر لاگین است
-    else if (token) {
-      // مسیر ادمین
-      if (isAdminRoute) {
-        if (role !== "admin") {
-          // router.replace("/dashboard");
-
-          setIsAuthenticated(false);
-
-          return;
-        }
-      }
-
-      // لاگین شده ولی صفحه login را باز کرده
-      if (isPublic) {
+    // صفحات عمومی
+    if (isPublic) {
+      if (token) {
         router.replace("/dashboard");
+        return;
       }
 
-      setIsAuthenticated(true);
+      setLoading(false);
+      return;
     }
 
-    setIsLoading(false);
+    // صفحات خصوصی
+    if (!token) {
+      router.replace("/login");
+      return;
+    }
+
+    if (isAdmin && user.role !== "admin") {
+      router.replace("/dashboard");
+      return;
+    }
+
+    setLoading(false);
   }, [pathname, router]);
 
-  if (isLoading) {
+  if (loading) {
     return <div>Loading...</div>;
   }
 
-  return <>{isAuthenticated && children}</>;
+  return <>{children}</>;
 }

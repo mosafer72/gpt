@@ -1,107 +1,649 @@
 <?php
 
-use App\Http\Controllers\Admin\AiModelController;
-use App\Http\Controllers\Admin\DashboardController;
-use App\Http\Controllers\Admin\LlmRequestController;
-use App\Http\Controllers\Admin\MemoryController;
-use App\Http\Controllers\Admin\PlanController;
-use App\Http\Controllers\Admin\ProviderController;
-use App\Http\Controllers\Admin\TransactionController;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\DocumentController;
+use App\Http\Controllers\Api\WorkspaceSubscriptionController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+
+
+/*
+|--------------------------------------------------------------------------
+| Controllers
+|--------------------------------------------------------------------------
+*/
+
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\MessageExportController;
+use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\ModelController;
-use App\Http\Controllers\Api\SubscriptionController;
 use App\Http\Controllers\Api\UsageController;
 use App\Http\Controllers\Api\TokenWalletController;
 use App\Http\Controllers\Api\PaperController;
-use Illuminate\Http\Request;
+use App\Http\Controllers\Api\MessageExportController;
+use App\Http\Controllers\Api\WorkspaceController;
+use App\Http\Controllers\Api\WorkspacePlanController;
+use App\Http\Controllers\Api\SubscriptionController;
 
-// روت‌های عمومی (بدون احراز هویت)
-Route::post('/auth/send-login-code', [AuthController::class, 'sendLoginCode']);
-Route::post('/auth/send-register-code', [AuthController::class, 'sendRegisterCode']);
 
-Route::post('auth/verify-code', [AuthController::class, 'verifyCode']);
-Route::post('auth/resend-code', [AuthController::class, 'resendCode']);
+/*
+|--------------------------------------------------------------------------
+| Auth
+|--------------------------------------------------------------------------
+*/
 
-// Route::apiResource('/chats', ChatController::class);
-// روت‌های محافظت‌شده
+
+Route::post(
+    '/auth/send-login-code',
+    [AuthController::class, 'sendLoginCode']
+);
+
+
+Route::post(
+    '/auth/send-register-code',
+    [AuthController::class, 'sendRegisterCode']
+);
+
+
+Route::post(
+    '/auth/verify-code',
+    [AuthController::class, 'verifyCode']
+);
+
+
+Route::post(
+    '/auth/resend-code',
+    [AuthController::class, 'resendCode']
+);
+
+
+
+/*
+|--------------------------------------------------------------------------
+| Protected User Routes
+|--------------------------------------------------------------------------
+*/
+
+
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/user', function (Request $request) {
-        return $request->user();
-    });
 
-    Route::apiResource('/chats', ChatController::class);
-    Route::get('/chats/{chat}/messages', [ChatController::class, 'messages']);
-
-
-    Route::post('/chats/stream', [ChatController::class, 'store'])
-
-        ->middleware('auth:sanctum');
-    Route::get('/plans', [SubscriptionController::class, 'plans']);
-    Route::get('/my-subscription', [SubscriptionController::class, 'mySubscription']);
-    Route::post('/calculate-upgrade', [SubscriptionController::class, 'calculateUpgrade']);
-    Route::post('/initiate-payment', [SubscriptionController::class, 'initiatePayment']);
-    Route::post('auth/logout', [AuthController::class, 'logout']);
-    Route::get('/user/status', [AuthController::class, 'status']);
-    Route::post('/papers/upload', [PaperController::class, 'upload']);
-    Route::post('/files/upload', [PaperController::class, 'upload']);
-
-
-    Route::get('/usage', [UsageController::class, 'index']);
-    Route::get('/usage/today', [UsageController::class, 'today']);
-    Route::get('/usage/summary', [UsageController::class, 'summary']);
-    Route::get('/usage/{id}', [UsageController::class, 'show']);
-    Route::get('/messages/{message}/export', [MessageExportController::class, 'export']);
     Route::get(
-        '/models',
-        [ModelController::class, 'index']
+        '/workspaces/{workspaceId}/documents',
+        [DocumentController::class, 'index']
     );
+
+    Route::post(
+        '/workspaces/{workspace}/chats',
+        [ChatController::class, 'store']
+    );
+
+
+    Route::post(
+        '/workspaces/{workspaceId}/documents',
+        [DocumentController::class, 'store']
+    );
+
+
+
+    Route::delete(
+        '/workspaces/{workspaceId}/documents/{documentId}',
+        [DocumentController::class, 'destroy']
+    );
+
+
+
+
+        Route::get('/workspaces/{workspaceId}/documents/{document}', [DocumentController::class, 'show']);
+
+        Route::put('/workspaces/{workspaceId}/documents/{document}', [DocumentController::class, 'update']);
+
+
+
+
+    Route::prefix('workspaces/{workspace}')
+        ->group(function () {
+
+            Route::get(
+                'chats',
+                [ChatController::class, 'index']
+            );
+
+
+            Route::post(
+                'chats',
+                [ChatController::class, 'store']
+            );
+
+
+            Route::get(
+                'chats/{chat}',
+                [ChatController::class, 'show']
+            );
+
+
+            Route::delete(
+                'chats/{chat}',
+                [ChatController::class, 'destroy']
+            );
+
+        });
+
+    /*
+    |--------------------------------------------------------------------------
+    | User
+    |--------------------------------------------------------------------------
+    */
+
+
+    Route::get(
+        '/user',
+        function (Request $request) {
+
+            return $request->user();
+
+        }
+    );
+
+
+    Route::post(
+        '/auth/logout',
+        [AuthController::class, 'logout']
+    );
+
+
+
+    Route::get(
+        '/user/status',
+        [AuthController::class, 'status']
+    );
+
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Workspace
+    |--------------------------------------------------------------------------
+    |
+    | کاربر Workspace های خودش را می‌بیند
+    |
+    */
+
+
+    Route::get(
+        '/workspaces',
+        [WorkspaceController::class, 'index']
+    );
+
+
+    Route::get(
+        '/workspaces/{workspace}',
+        [WorkspaceController::class, 'show']
+    );
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Workspace Subscription
+    |--------------------------------------------------------------------------
+    */
+
+
+    Route::get(
+        '/workspace-subscriptions',
+        [
+            WorkspaceController::class,
+            'subscriptions'
+        ]
+    );
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Chats
+    |--------------------------------------------------------------------------
+    |
+    | همه چت‌ها متعلق به Workspace هستند
+    |
+    */
+
+
+    Route::apiResource(
+        '/chats',
+        ChatController::class
+    );
+
+
+
+    Route::get(
+        '/chats/{chat}/messages',
+        [
+            ChatController::class,
+            'messages'
+        ]
+    );
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Stream Chat
+    |--------------------------------------------------------------------------
+    */
+
+
+    Route::post(
+        '/chats/stream',
+        [
+            ChatController::class,
+            'store'
+        ]
+    );
+
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Papers / Files
+    |--------------------------------------------------------------------------
+    */
+
+
+    Route::post(
+        '/papers/upload',
+        [
+            PaperController::class,
+            'upload'
+        ]
+    );
+
+
+    Route::post(
+        '/files/upload',
+        [
+            PaperController::class,
+            'upload'
+        ]
+    );
+
+
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Usage
+    |--------------------------------------------------------------------------
+    */
+
+
+    Route::get(
+        '/usage',
+        [
+            UsageController::class,
+            'index'
+        ]
+    );
+
+
+    Route::get(
+        '/usage/today',
+        [
+            UsageController::class,
+            'today'
+        ]
+    );
+
+
+    Route::get(
+        '/usage/summary',
+        [
+            UsageController::class,
+            'summary'
+        ]
+    );
+
+
+    Route::get(
+        '/usage/{id}',
+        [
+            UsageController::class,
+            'show'
+        ]
+    );
+
+
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Token Wallet
+    |--------------------------------------------------------------------------
+    */
+
+
     Route::get(
         '/token-wallet',
-        [TokenWalletController::class, 'show']
+        [
+            TokenWalletController::class,
+            'show'
+        ]
     );
 
+
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Models
+    |--------------------------------------------------------------------------
+    */
+
+
+    Route::get(
+        '/models',
+        [
+            ModelController::class,
+            'index'
+        ]
+    );
+
+
+    Route::post(
+        '/workspace/upgrade',
+        [
+            WorkspaceSubscriptionController::class,
+            'upgrade'
+        ]
+    );
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Export
+    |--------------------------------------------------------------------------
+    */
+
+
+    Route::get(
+        '/messages/{message}/export',
+        [
+            MessageExportController::class,
+            'export'
+        ]
+    );
+    /*
+    |--------------------------------------------------------------------------
+    | Workspace
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get(
+        '/workspace/plans',
+        [WorkspaceSubscriptionController::class, 'plans']
+    );
+
+
+    Route::get(
+        '/workspace/my',
+        [WorkspaceSubscriptionController::class, 'myWorkspace']
+    );
+
+
+    Route::post(
+        '/workspace/subscribe',
+        [WorkspaceSubscriptionController::class, 'subscribe']
+    );
+
+    Route::post(
+        '/subscription/payment',
+        [SubscriptionController::class, 'initiatePayment']
+    );
+
+    Route::post(
+        '/workspace/cancel',
+        [WorkspaceSubscriptionController::class, 'cancel']
+    );
+
+    Route::get(
+        '/workspaces',
+        [WorkspaceController::class, 'index']
+    );
+    Route::get(
+        '/dashboard',
+        [DashboardController::class, 'index']
+    );
+
+    Route::get(
+        '/workspaces/{key}',
+        [WorkspaceController::class, 'show']
+    );
+
+
+    Route::get(
+        '/workspaces/{id}/plans',
+        [WorkspaceController::class, 'plans']
+    );
+
+    Route::get(
+        '/workspace/{id}/subscription',
+        [
+            WorkspaceController::class,
+            'subscription'
+        ]
+    );
+    Route::get(
+        '/workspace/{id}/models',
+        [WorkspaceController::class, 'models']
+    );
+    Route::get(
+        '/workspace-types/{id}/plans',
+        [WorkspaceController::class, 'plans']
+    );
+    Route::post(
+        '/workspace/initiate-payment',
+        [WorkspaceSubscriptionController::class, 'initiatePayment']
+    );
+
+    Route::post(
+        '/workspace/subscription/payment',
+        [
+            WorkspaceSubscriptionController::class,
+            'initiatePayment'
+        ]
+    );
+    Route::get(
+        '/my-workspace-subscription',
+        [WorkspaceSubscriptionController::class, 'mySubscription']
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Subscription Payment
+    |--------------------------------------------------------------------------
+    */
+
+
+    Route::get(
+        '/plans',
+        [
+            SubscriptionController::class,
+            'plans'
+        ]
+    );
+
+
+    Route::get(
+        '/my-subscription',
+        [
+            SubscriptionController::class,
+            'mySubscription'
+        ]
+    );
+
+
+    Route::post(
+        '/calculate-upgrade',
+        [
+            SubscriptionController::class,
+            'calculateUpgrade'
+        ]
+    );
+
+
+    Route::post(
+        '/initiate-payment',
+        [
+            SubscriptionController::class,
+            'initiatePayment'
+        ]
+    );
+
+
 });
 
-// Callback درگاه پرداخت (بدون middleware auth)
-Route::get('/payment/callback', [SubscriptionController::class, 'paymentCallback'])->name('payment.callback');
 
 
 
 
-Route::middleware(['auth:sanctum','admin'])->prefix('admin')->group(function () {
-
-   // Providers
-    Route::get('/providers', [ProviderController::class, 'index']);
-    Route::post('/providers', [ProviderController::class, 'store']);
-    Route::get('/providers/{id}', [ProviderController::class, 'show']);
-    Route::put('/providers/{id}', [ProviderController::class, 'update']);
-    Route::delete('/providers/{id}', [ProviderController::class, 'destroy']);
+/*
+|--------------------------------------------------------------------------
+| Payment Callback
+|--------------------------------------------------------------------------
+*/
 
 
-
-    Route::get('/dashboard', [DashboardController::class, 'index']);
-
-    Route::get('/users', [UserController::class, 'index']);
-    Route::get('/users/{id}', [UserController::class, 'show']);
-    Route::delete('/users/{id}', [UserController::class, 'destroy']);
-
-    Route::apiResource('/plans', PlanController::class);
-    Route::apiResource('/models', AiModelController::class);
-
-    Route::get('/transactions', [TransactionController::class, 'index']);
-
-    Route::get('/chats', [ChatController::class, 'index']);
-    Route::get('/chats/{id}', [ChatController::class, 'show']);
-    Route::delete('/chats/{id}', [ChatController::class, 'destroy']);
-
-    Route::get('/llm-requests', [LlmRequestController::class, 'index']);
-    Route::get('/llm-requests/{id}', [LlmRequestController::class, 'show']);
-
-    Route::get('/memories', [MemoryController::class, 'index']);
-    Route::delete('/memories/{id}', [MemoryController::class, 'destroy']);
-});
+Route::get(
+    '/payment/callback',
+    [
+        SubscriptionController::class,
+        'paymentCallback'
+    ]
+)
+    ->name('payment.callback');
 
 
+
+
+
+/*
+|--------------------------------------------------------------------------
+| Admin
+|--------------------------------------------------------------------------
+*/
+
+
+Route::middleware([
+    'auth:sanctum',
+    'admin'
+])
+    ->prefix('admin')
+    ->group(function () {
+
+
+
+        Route::get(
+            '/dashboard',
+            [
+                \App\Http\Controllers\Admin\DashboardController::class,
+                'index'
+            ]
+        );
+
+
+
+        Route::apiResource(
+            '/plans',
+            \App\Http\Controllers\Admin\PlanController::class
+        );
+
+
+
+        Route::apiResource(
+            '/models',
+            \App\Http\Controllers\Admin\AiModelController::class
+        );
+
+
+
+        Route::apiResource(
+            '/providers',
+            \App\Http\Controllers\Admin\ProviderController::class
+        );
+
+
+
+        Route::get(
+            '/users',
+            [
+                \App\Http\Controllers\Admin\UserController::class,
+                'index'
+            ]
+        );
+
+
+        Route::get(
+            '/transactions',
+            [
+                \App\Http\Controllers\Admin\TransactionController::class,
+                'index'
+            ]
+        );
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Admin Workspace
+        |--------------------------------------------------------------------------
+        */
+
+
+        Route::apiResource(
+            '/workspace-types',
+            \App\Http\Controllers\Admin\WorkspaceTypeController::class
+        );
+        Route::get(
+            '/workspace-types/{id}/plans',
+            [WorkspaceController::class, 'plans']
+        );
+
+
+        Route::apiResource(
+            '/workspace-plans',
+            \App\Http\Controllers\Admin\WorkspacePlanController::class
+        );
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Monitoring
+        |--------------------------------------------------------------------------
+        */
+
+
+        Route::get(
+            '/chats',
+            [
+                ChatController::class,
+                'index'
+            ]
+        );
+
+
+        Route::get(
+            '/memories',
+            [
+                \App\Http\Controllers\Admin\MemoryController::class,
+                'index'
+            ]
+        );
+
+
+    });

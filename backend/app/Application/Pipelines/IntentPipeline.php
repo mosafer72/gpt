@@ -4,8 +4,8 @@ namespace App\Application\Pipelines;
 
 use App\Application\Context\ChatContext;
 use App\Application\Intent\RuleIntentDetector;
+use App\Application\DTOs\IntentResult;
 use App\Domain\Contracts\PlannerProvider;
-use App\Models\Usage;
 
 class IntentPipeline
 {
@@ -16,115 +16,142 @@ class IntentPipeline
 
         protected PlannerProvider $planner
 
-    ) {
-    }
+    ) {}
+
 
 
     public function process(
         ChatContext $context,
-        bool $usePlanner = false
+        bool $usePlanner = true
     ): ChatContext {
 
 
-        $text = mb_strtolower(
-            trim($context->currentMessage)
+        /*
+        |--------------------------------------------------------------------------
+        | Rule Based Detection
+        |--------------------------------------------------------------------------
+        */
+
+        $result =
+            $this->rules->detect(
+                $context->currentMessage
+            );
+
+
+
+        if ($result instanceof IntentResult) {
+
+            return $this->applyResult(
+                $context,
+                $result
+            );
+
+        }
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Planner Detection
+        |--------------------------------------------------------------------------
+        */
+
+        if ($usePlanner) {
+
+
+            $result =
+                $this->planner->analyze(
+                    $context
+                );
+
+
+
+            if ($result instanceof IntentResult) {
+
+
+                return $this->applyResult(
+                    $context,
+                    $result
+                );
+
+            }
+
+        }
+
+
+
+        return $context;
+
+    }
+
+
+
+
+
+
+
+    protected function applyResult(
+        ChatContext $context,
+        IntentResult $result
+    ): ChatContext {
+
+
+        $context->addMetadata(
+            'intent',
+            $result->intent
         );
 
 
-        $simpleMessages = [
-
-            'سلام',
-            'سلامم',
-            'خوبی',
-            'چطوری',
-            'hi',
-            'hello',
-            'hey',
-            'ok',
-            'اوکی',
-            'مرسی',
-            'ممنون'
-
-        ];
+        $context->addMetadata(
+            'confidence',
+            $result->confidence
+        );
 
 
-
-        /**
-         * پیام‌های ساده
-         */
-        if (
-            in_array($text, $simpleMessages)
-        ) {
-
-            $context->metadata['intent'] = 'chat';
-
-            $context->metadata['confidence'] = 1;
-
-            $context->metadata['needs_clarification'] = false;
+        $context->addMetadata(
+            'needs_clarification',
+            $result->needsClarification
+        );
 
 
-            return $context;
+        $context->addMetadata(
+            'rewritten_message',
+            $result->rewrite
+        );
 
-        }
+
+        $context->addMetadata(
+            'use_main_model',
+            $result->useMainModel
+        );
 
 
 
-        /**
-         * انتخاب روش تشخیص
-         */
-        if ($usePlanner) {
+        /*
+        |--------------------------------------------------------------------------
+        | Stop pipeline if clarification needed
+        |--------------------------------------------------------------------------
+        */
 
-            $result = $this->planner->analyze($context);
-
-        } else {
-
-            $result = $this->rules->detect($context);
-        }
+        if ($result->needsClarification) {
 
 
+            $context->setAssistantResponse(
 
-        /**
-         * اگر Rule چیزی پیدا نکرد
-         */
-        // if (!$result && $usePlanner) {
+                response:
+                    $result->rewrite,
 
+                tokenUsage:
+                [
+                    'prompt_tokens'=>0,
 
-        //     $result =
-        //         $this->planner
-        //             ->analyze(
-        //                 $context->currentMessage
-        //             );
+                    'completion_tokens'=>0,
 
-        // }
+                    'total_tokens'=>0,
+                ]
 
+            );
 
-
-        /**
-         * ذخیره نتیجه
-         */
-        if ($result) {
-
-            $context->metadata['intent'] = $result->intent;
-
-            $context->metadata['confidence'] = $result->confidence;
-
-            $context->metadata['needs_clarification'] = $result->needsClarification;
-
-            // بازنویسی را در metadata نگه دار
-            $context->metadata['rewritten_message'] = $result->rewrite;
-
-            // اگر نیاز به سؤال تکمیلی دارد
-            if ($result->needsClarification) {
-
-                $context->setAssistantResponse(
-                    response: $result->rewrite,
-                    tokenUsage: [
-                        'prompt_tokens' => 0,
-                        'completion_tokens' => 0,
-                        'total_tokens' => 0,
-                    ]
-                );
-            }
         }
 
 

@@ -28,7 +28,7 @@ class SurrealConversationRepository
 
 
         // 🧪 دیباگ: کوئری را لاگ کنید
-        \Log::debug('CREATE SQL: ' . $sql);
+        // \Log::debug('CREATE SQL: ' . $sql);
 
         $result = SurrealDB::query(new BoundQuery($sql));
 

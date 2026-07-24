@@ -43,6 +43,7 @@ export default function RootLayout({
   return (
     <html lang="fa" dir="rtl" className={iranSans.variable}>
       <body style={{ fontFamily: 'var(--font-iran-sans)' }}>
+        {/* <AuthGuard>{children}</AuthGuard> */}
         <AuthGuard>{children}</AuthGuard>
       </body>
     </html>

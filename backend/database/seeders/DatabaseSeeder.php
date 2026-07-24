@@ -16,12 +16,17 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            ChatSeeder::class,              // ۱۰ چت با پیام‌های محدود
-            ChatWithMessagesSeeder::class,  // چت طولانی + ۵ چت متوسط
             LlmProviderSeeder::class,
             AiModelSeeder::class,
             PlanSeeder::class,  // چت طولانی + ۵ چت متوسط
+            WorkspaceTypeSeeder::class,
+            WorkspacePlanSeeder::class,
+            WorkspaceSeeder::class,
+            ChatSeeder::class,              // ۱۰ چت با پیام‌های محدود
+            ChatWithMessagesSeeder::class,  // چت طولانی + ۵ چت متوسط
+            WorkspaceSeeder::class,
             UserSeeder::class,  // چت طولانی + ۵ چت متوسط
+
         ]);
     }
 }

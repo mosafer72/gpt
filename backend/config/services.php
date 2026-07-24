@@ -62,19 +62,36 @@ return [
 
     ],
 
-
     'planner' => [
 
-        'key' => env('PLANNER_API_KEY'),
-
-        'base_url' => env(
-            'PLANNER_BASE_URL'
+        'url' => env(
+            'PLANNER_URL',
+            'http://127.0.0.1:11434'
         ),
 
         'model' => env(
             'PLANNER_MODEL',
-            'gapgpt-qwen-3.6'
+            'qwen2.5:3b-instruct'
+        ),
+
+    ],
+    'local_ai' => [
+
+        'url' => 'http://localhost:11434/v1',
+
+        'embedding_model' => 'bge-m3:latest',
+
+    ],
+
+    'embedding' => [
+
+        'model' => env(
+            'EMBEDDING_MODEL',
+            'bge-m3'
         ),
 
     ],
 ];
+
+
+

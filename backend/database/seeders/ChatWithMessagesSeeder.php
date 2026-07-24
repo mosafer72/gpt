@@ -4,64 +4,167 @@ namespace Database\Seeders;
 
 use App\Models\Chat;
 use App\Models\Message;
+use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Database\Seeder;
 
 class ChatWithMessagesSeeder extends Seeder
 {
     public function run(): void
     {
-        // ایجاد یک چت با عنوان خاص
-        $chat = Chat::create([
-            'title' => 'چت طولانی برای تست صفحه‌بندی',
-        ]);
+        $user = User::first();
 
-        // تولید ۲۰۰ پیام برای این چت (۱۰۰ کاربر و ۱۰۰ دستیار)
-        for ($i = 0; $i < 200; $i++) {
-            $role = $i % 2 === 0 ? 'user' : 'assistant';
-            Message::create([
-                'chat_id' => $chat->id,
-                'role' => $role,
-                'content' => $this->generateLongMessage($role, $i),
-            ]);
+        $workspace = Workspace::first();
+
+
+        if (!$user || !$workspace) {
+
+            $this->command->error(
+                "User or Workspace not found"
+            );
+
+            return;
+
         }
 
-        // همچنین چند چت دیگر با تعداد پیام متوسط
-        Chat::factory()->count(5)->create()->each(function ($chat) {
-            $messageCount = rand(10, 30);
-            for ($i = 0; $i < $messageCount; $i++) {
-                $role = $i % 2 === 0 ? 'user' : 'assistant';
-                Message::create([
-                    'chat_id' => $chat->id,
-                    'role' => $role,
-                    'content' => $this->generateMediumMessage($role, $i),
-                ]);
-            }
-        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | Main Chat
+        |--------------------------------------------------------------------------
+        */
+
+        $chat = Chat::create([
+
+            'user_id' => $user->id,
+
+            'workspace_id' => $workspace->id,
+
+            'title' => 'چت طولانی برای تست صفحه‌بندی',
+
+        ]);
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | 200 Messages
+        |--------------------------------------------------------------------------
+        */
+
+        for ($i = 0; $i < 200; $i++) {
+
+            Message::create([
+
+                'chat_id' => $chat->id,
+
+                'role' => $i % 2 === 0
+                    ? 'user'
+                    : 'assistant',
+
+                'content' =>
+                    $this->generateLongMessage(
+                        $i
+                    ),
+
+            ]);
+
+        }
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | More Chats
+        |--------------------------------------------------------------------------
+        */
+
+        Chat::factory()
+            ->count(5)
+            ->create([
+
+                'user_id' => $user->id,
+
+                'workspace_id' => $workspace->id,
+
+            ])
+            ->each(function ($chat) {
+
+
+                $messageCount = rand(10, 30);
+
+
+                for ($i = 0; $i < $messageCount; $i++) {
+
+
+                    Message::create([
+
+                        'chat_id' => $chat->id,
+
+                        'role' => $i % 2 === 0
+                            ? 'user'
+                            : 'assistant',
+
+                        'content' =>
+                            $this->generateMediumMessage(
+                                $i
+                            ),
+
+                    ]);
+
+                }
+
+            });
+
     }
 
-    private function generateLongMessage(string $role, int $index): string
+
+
+    private function generateLongMessage(int $index): string
     {
-        $longTexts = [
-            'لورم ایپسوم متن ساختگی با تولید سادگی نامفهوم از صنعت چاپ و با استفاده از طراحان گرافیک است. چاپگرها و متون بلکه روزنامه و مجله در ستون و سطرآنچنان که لازم است و برای شرایط فعلی تکنولوژی مورد نیاز و کاربردهای متنوع با هدف بهبود ابزارهای کاربردی می‌باشد.',
-            'کتاب‌های زیادی در شصت و سه درصد گذشته، حال و آینده شناخت فراوان جامعه و متخصصان را می‌طلبد تا با نرم‌افزارها شناخت بیشتری را برای طراحان رایانه‌ای علی‌الخصوص طراحان خلاقی و فرهنگ پیشرو در زبان فارسی ایجاد کرد.',
-            'در این صورت می‌توان امید داشت که تمام و دشواری موجود در ارائه راهکارها و شرایط سخت تایپ به پایان رسد و زمان مورد نیاز شامل حروفچینی دستاوردهای اصلی و جوابگوی سوالات پیوسته اهل دنیای موجود طراحی اساسا مورد استفاده قرار گیرد.',
-            'با توجه به اهمیت یادگیری ماشین در دنیای امروز، بسیاری از شرکت‌ها به دنبال استفاده از این تکنولوژی برای بهبود فرآیندهای خود هستند و این موضوع باعث شده است که بازار کار برای متخصصان این حوزه بسیار داغ باشد.',
-            'لاراول یکی از محبوب‌ترین فریم‌ورک‌های PHP است که با ارائه امکانات قدرتمند مانند Eloquent ORM، سیستم Blade و ابزارهای امنیتی، توسعه برنامه‌های وب را بسیار سریع و آسان کرده است.',
+        $texts = [
+
+            'لورم ایپسوم متن ساختگی برای تست سیستم چت و صفحه بندی پیام ها است.',
+
+            'یادگیری ماشین و هوش مصنوعی در سال های اخیر رشد زیادی داشته است.',
+
+            'لاراول یک فریم ورک قدرتمند برای توسعه برنامه های وب است.',
+
+            'این پیام برای بررسی عملکرد ذخیره سازی و نمایش پیام ها ایجاد شده است.',
+
+            'سیستم Workspace امکان مدیریت چند محیط کاری مستقل را فراهم می کند.',
+
         ];
 
-        return $longTexts[$index % count($longTexts)] . ' (پیام شماره ' . ($index + 1) . ')';
+
+        return $texts[$index % count($texts)]
+            . ' (پیام شماره '
+            . ($index + 1)
+            . ')';
     }
 
-    private function generateMediumMessage(string $role, int $index): string
+
+
+    private function generateMediumMessage(int $index): string
     {
-        $shortTexts = [
+        $texts = [
+
             'این یک پیام آزمایشی است.',
-            'چگونه می‌توانم به شما کمک کنم؟',
-            'لطفاً سوال خود را مطرح کنید.',
-            'پاسخ به سوال شما در حال آماده‌سازی است.',
-            'آیا سوال دیگری دارید؟',
+
+            'چگونه می‌توانم کمک کنم؟',
+
+            'پاسخ آماده شد.',
+
+            'لطفاً سوال خود را ارسال کنید.',
+
+            'ادامه بده.',
+
         ];
 
-        return $shortTexts[$index % count($shortTexts)] . ' (' . ($index + 1) . ')';
+
+        return $texts[$index % count($texts)]
+            . ' ('
+            . ($index + 1)
+            . ')';
     }
 }

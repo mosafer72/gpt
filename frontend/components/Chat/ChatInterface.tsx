@@ -1,201 +1,143 @@
 "use client";
 
-import { useState, useEffect, useRef, FormEvent } from "react";
+import { useEffect, useRef, useState, FormEvent } from "react";
+
 import { useRouter } from "next/navigation";
-import {
-  sendMessageStream,
-  getChats,
-  deleteChat,
-  getChat,
-  getUserStatus,
-} from "@/lib/api";
-import { Chat, AIModel } from "@/types";
+
+import { sendMessageStream, getChats, getChat, deleteChat } from "@/lib/api";
+
+import { Chat, AIModel, Workspace } from "@/types";
+
 import Sidebar from "@/components/Sidebar/Sidebar";
 import ChatMessage from "@/components/Chat/ChatMessage";
 import ChatInput from "@/components/Chat/ChatInput";
 import UserMenu from "@/components/Common/UserMenu";
-import TokenUsageBadge from "../Common/TokenUsageBadge";
+import TokenUsageBadge from "@/components/Common/TokenUsageBadge";
+
 import styles from "./ChatInterface.module.css";
-import { uploadFile } from "@/lib/api";
-interface ChatInterfaceProps {
-  selectedModel?: AIModel | null;
-  onNewChat: () => void;
-  newChatTrigger?: number;
+
+interface Props {
+  workspace: Workspace;
+
+  workspaceId: number;
+
+  models?: AIModel[];
+
+  onNewChat?: () => void;
+
   initialChat?: Chat | null;
+
+  documents?: any[];
+
+  selectedModel?: any;
 }
 
 export default function ChatInterface({
-  selectedModel,
-  onNewChat,
-  newChatTrigger,
+  workspace,
+
+  workspaceId,
+
+  models,
+
   initialChat,
-}: ChatInterfaceProps) {
+
+  onNewChat,
+
+  documents,
+
+  selectedModel,
+}: Props) {
   const router = useRouter();
+
   const [chats, setChats] = useState<Chat[]>([]);
+
   const [currentChat, setCurrentChat] = useState<Chat | null>(
     initialChat ?? null,
   );
+
+  const [activeModel, setActiveModel] = useState<AIModel | null>(null);
+
   const [input, setInput] = useState("");
+
   const [loading, setLoading] = useState(false);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [userStatus, setUserStatus] = useState<any>(null);
-  const [showEmptyState, setShowEmptyState] = useState(true);
-  const [attachedFile, setAttachedFile] = useState<File | null>(null);
-  const [uploadedFile, setUploadedFile] = useState<any>(null);
 
-  const messagesContainerRef = useRef<HTMLDivElement | null>(null);
-  const inputRef = useRef<HTMLTextAreaElement | null>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const lastMessageRef = useRef<HTMLDivElement | null>(null);
+  const messagesRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    if (initialChat) {
-      setCurrentChat(initialChat);
-      setShowEmptyState(initialChat.messages.length === 0);
-    }
-  }, [initialChat]);
+  const abortRef = useRef<AbortController | null>(null);
+
+  /*
+|--------------------------------------------------------------------------
+| انتخاب مدل پیش فرض Workspace
+|--------------------------------------------------------------------------
+*/
 
   useEffect(() => {
-    if (!newChatTrigger) return;
-
-    setShowEmptyState(true);
-    setCurrentChat({
-      id: 0,
-      title: "چت جدید",
-      messages: [],
-      created_at: new Date().toISOString(),
-    } as Chat);
-    setInput("");
-    setImageFile(null);
-    router.push("/chat");
-  }, [newChatTrigger]);
-
-  useEffect(() => {
-    async function init() {
-      const token = localStorage.getItem("auth_token");
-      if (!token) {
-        router.push("/login");
-        return;
-      }
-      await loadChats();
-      await loadStatus();
-    }
-    init();
-  }, []);
-
-  async function loadStatus() {
-    try {
-      const status = await getUserStatus();
-      setUserStatus(status);
-    } catch (e) {}
-  }
-
-  async function loadChats() {
-    try {
-      const data = await getChats();
-      setChats(data);
-    } catch (e) {
-      console.error(e);
-    }
-  }
-
-  async function handleSelectChat(chat: Chat) {
-    if (!chat.id) return;
-    if (currentChat?.id === chat.id) return;
-
-    try {
-      const full = await getChat(chat.id);
-
-      const sorted = {
-        ...full,
-        messages: [...full.messages].sort(
-          (a, b) =>
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
-        ),
-      };
-
-      setCurrentChat(sorted);
-      setShowEmptyState(sorted.messages.length === 0);
-      router.push(`/chat/${chat.id}`);
-    } catch (error) {
-      console.error("load chat failed:", error);
-    }
-  }
-
-  function scrollToBottom() {
-    const box = messagesContainerRef.current;
-    if (!box) return;
-    box.scrollTop = box.scrollHeight;
-  }
-
-  useEffect(() => {
-    if (lastMessageRef.current) {
-      lastMessageRef.current.scrollIntoView({
-        behavior: "smooth",
-        block: "end",
-      });
-    }
-  }, [currentChat?.messages]);
-
-  async function handleSendMessage(e: FormEvent) {
-    e.preventDefault();
-
-    let uploadedFile = null;
-
-    let uploadedPaper = uploadedFile;
-
-    if (attachedFile && !uploadedPaper) {
-      if (!currentChat?.id) {
-        throw new Error("Conversation id is required");
-      }
-
-      uploadedPaper = await uploadFile(attachedFile, currentChat.id);
-
-      setUploadedFile(uploadedPaper);
-    }
-    if (!input.trim() && !imageFile) return;
-    if (loading) return;
-    if (!selectedModel) {
-      alert("ابتدا مدل را انتخاب کنید");
+    if (!models.length) {
+      setActiveModel(null);
       return;
     }
 
-    const text = input.trim();
-    setInput("");
+    const defaultModel =
+      models.find((m: any) => m.pivot?.is_default === 1) ?? models[0];
+    setActiveModel(defaultModel);
+  }, [models]);
+
+  useEffect(() => {
+    loadChats();
+  }, []);
+
+  async function loadChats() {
+    try {
+      const data = await getChats(workspaceId);
+
+      setChats(data);
+    } catch (e) {
+      console.log(e);
+    }
+  }
+
+  async function selectChat(chat: Chat) {
+    try {
+      const data = await getChat(workspaceId, chat.id);
+
+      setCurrentChat(data);
+
+      router.push(`/workspace/${workspaceId}/chat/${chat.id}`);
+    } catch (e) {
+      console.log(e);
+    }
+  }
+
+  function scrollBottom() {
+    setTimeout(() => {
+      messagesRef.current?.scrollTo({
+        top: messagesRef.current.scrollHeight,
+
+        behavior: "smooth",
+      });
+    }, 100);
+  }
+
+  async function send(e: FormEvent) {
+    e.preventDefault();
+
+    if (!input.trim()) return;
+
+    if (!activeModel) {
+      alert("مدلی برای این Workspace وجود ندارد");
+      return;
+    }
+
     setLoading(true);
 
     const controller = new AbortController();
-    abortControllerRef.current = controller;
+    abortRef.current = controller;
 
+    const text = input.trim();
+    setInput("");
+
+    const tempId = Date.now();
     const isNewChat = !currentChat || currentChat.id === 0;
-
-    if (isNewChat) {
-      setShowEmptyState(false);
-    }
-
-    const userMsgId = `user-${Date.now()}`;
-    const aiMsgId = `ai-${Date.now()}`;
-
-    const chatId = currentChat?.id || 0;
-
-    const imagePreview = imageFile ? URL.createObjectURL(imageFile) : null;
-
-    const userMessage: any = {
-      id: userMsgId,
-      role: "user",
-      content: text,
-      image: imagePreview,
-      created_at: new Date().toISOString(),
-      chat_id: chatId,
-    };
-
-    const aiMessage: any = {
-      id: aiMsgId,
-      role: "assistant",
-      content: "",
-      created_at: new Date().toISOString(),
-      chat_id: chatId,
-    };
 
     setCurrentChat((prev) => {
       const base =
@@ -204,28 +146,46 @@ export default function ChatInterface({
           id: 0,
           title: "چت جدید",
           messages: [],
-          created_at: new Date().toISOString(),
         } as Chat);
+
       return {
         ...base,
-        messages: [...base.messages, userMessage, aiMessage],
+        messages: [
+          ...base.messages,
+          {
+            id: tempId,
+            role: "user",
+            content: text,
+            created_at: new Date().toISOString(),
+          } as any,
+          {
+            id: `ai-${tempId}`,
+            role: "assistant",
+            content: "",
+            created_at: new Date().toISOString(),
+          } as any,
+        ],
       };
     });
-    setTimeout(scrollToBottom, 100);
 
     try {
       await sendMessageStream(
         text,
+        workspaceId,
         isNewChat ? undefined : currentChat?.id,
-        imageFile,
-        selectedModel.id,
+        null,
+        activeModel.id,
         (chunk) => {
-          let data: any = chunk; // صریحاً any بدهیم
+          let textChunk = chunk;
 
+          // ✅ هندل امن پارس کردن chunk بدون کرش کردن برنامه
           try {
-            data = JSON.parse(chunk);
+            const json = JSON.parse(chunk);
+            if (json && typeof json.content === "string") {
+              textChunk = json.content;
+            }
           } catch {
-            // متن عادی LLM است
+            // اگر chunk متنی خام باشد، همان textChunk استفاده می‌شود
           }
 
           setCurrentChat((prev) => {
@@ -233,116 +193,36 @@ export default function ChatInterface({
 
             return {
               ...prev,
-
               messages: prev.messages.map((msg) => {
-                if (msg.id !== aiMsgId) {
-                  return msg;
-                }
-
-                // =========================
-                // Image Response
-                // =========================
-                if (
-                  typeof data === "object" &&
-                  data !== null &&
-                  data.type === "image"
-                ) {
-                  // اصلاح: استفاده از as any برای تطابق با تایپ Message
+                if (msg.id === `ai-${tempId}`) {
                   return {
                     ...msg,
-                    content: "عکس ایجاد شد",
-                    image_url: data.image_url,
-                    metadata: {
-                      type: "image",
-                      image_url: data.image_url,
-                    },
-                  } as any;
-                }
-
-                // =========================
-                // Text Stream
-                // =========================
-                if (typeof data === "object" && data !== null && data.content) {
-                  return {
-                    ...msg,
-                    content: msg.content + data.content,
+                    content: msg.content + textChunk,
                   };
                 }
-
-                return {
-                  ...msg,
-                  content: msg.content + chunk,
-                };
+                return msg;
               }),
             };
           });
 
-          setTimeout(scrollToBottom, 20);
+          scrollBottom();
         },
         controller.signal,
-        uploadedPaper,
       );
 
-      const updatedChats = await getChats();
-      setChats(updatedChats);
+      await loadChats();
 
       if (isNewChat) {
-        const newChat = updatedChats[0];
-        if (newChat) {
-          setCurrentChat((prev) => ({
-            ...prev!,
-            id: newChat.id,
-            title: newChat.title || prev?.title || "چت جدید",
-          }));
+        const created = chats[0];
+        if (created) {
+          router.push(`/workspace/${workspaceId}/chat/${created.id}`);
         }
       }
-    } catch (error: any) {
-      console.error("Error in sendMessageStream:", error);
-      setCurrentChat((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          messages: [
-            ...prev.messages,
-            {
-              id: `error-${Date.now()}`,
-              role: "assistant",
-              content: `⚠️ خطا: ${error.message || "مشکل در ارتباط با سرور"}`,
-              created_at: new Date().toISOString(),
-              chat_id: prev.id || 0,
-            },
-          ],
-        };
-      });
+    } catch (e) {
+      console.error(e);
     } finally {
-      setAttachedFile(null);
       setLoading(false);
-      setImageFile(null);
-      abortControllerRef.current = null;
-      inputRef.current?.focus();
-      scrollToBottom();
-    }
-  }
-
-  function cancelStream() {
-    abortControllerRef.current?.abort();
-    setLoading(false);
-  }
-
-  async function handleDeleteChat(id: number) {
-    if (!confirm("حذف شود؟")) return;
-    await deleteChat(id);
-    const updated = await getChats();
-    setChats(updated);
-    if (currentChat?.id === id) {
-      setCurrentChat({
-        id: 0,
-        title: "چت جدید",
-        messages: [],
-        created_at: new Date().toISOString(),
-      } as Chat);
-      setShowEmptyState(true);
-      router.push("/chat");
+      abortRef.current = null;
     }
   }
 
@@ -351,12 +231,23 @@ export default function ChatInterface({
       <header className={styles.header}>
         <div>
           <span className={styles.logo}>✨ اکانتسرا</span>
-          {selectedModel && (
-            <span className={styles.modelBadge}>🤖 {selectedModel.name}</span>
-          )}
+
+          <span className={styles.modelBadge}>
+            🤖
+            {activeModel?.name ?? "بدون مدل"}
+          </span>
         </div>
+        <header className={styles.header}>
+          <h1>{workspace.name}</h1>
+
+          <span>
+            {workspace.workspace_type?.icon}{" "}
+            {workspace.workspace_type?.display_name}
+          </span>
+        </header>
         <div>
           <UserMenu />
+
           <TokenUsageBadge />
         </div>
       </header>
@@ -366,74 +257,34 @@ export default function ChatInterface({
           <Sidebar
             chats={chats}
             currentChatId={currentChat?.id}
-            onSelectChat={handleSelectChat}
+            onSelectChat={selectChat}
             onNewChat={onNewChat}
-            onDeleteChat={handleDeleteChat}
-            isLoading={false}
+            onDeleteChat={async (id) => {
+              await deleteChat(workspaceId, id);
+
+              await loadChats();
+            }}
           />
         </div>
 
         <main className={styles.main}>
-          <div ref={messagesContainerRef} className={styles.messagesContainer}>
-            {showEmptyState &&
-            (!currentChat || currentChat.messages.length === 0) ? (
-              <div className={styles.emptyState}>
-                <div className={styles.emptyGlow} />
-                <div className={styles.emptyIcon}>💬</div>
-                <h1>شروع یک گفتگوی جدید</h1>
-                <p>هر سوالی دارید بنویسید</p>
-                {selectedModel && (
-                  <div className={styles.modelHint}>
-                    🤖 {selectedModel.name}
-                  </div>
-                )}
-                <div className={styles.suggestions}>
-                  <div>✨ خلاصه سازی متن</div>
-                  <div>🧠 برنامه نویسی</div>
-                  <div>📊 تحلیل داده</div>
-                </div>
-              </div>
-            ) : (
-              currentChat?.messages.map((msg, index) => (
-                <div
-                  key={`${msg.id}-${index}`}
-                  ref={
-                    index === (currentChat?.messages.length ?? 0) - 1
-                      ? lastMessageRef
-                      : null
-                  }
-                >
-                  <ChatMessage message={msg} />
-                </div>
-              ))
-            )}
-            {loading && (
-              <div className={styles.loadingIndicator}>
-                <div className={styles.dots}>
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </div>
-                <span>در حال دریافت پاسخ...</span>
-              </div>
-            )}
+          <div ref={messagesRef} className={styles.messagesContainer}>
+            {currentChat?.messages?.map((msg: any) => (
+              <ChatMessage key={msg.id} message={msg} />
+            ))}
           </div>
 
           <ChatInput
             value={input}
             onChange={setInput}
-            onSubmit={handleSendMessage}
+            onSubmit={send}
             disabled={loading}
             isStreaming={loading}
-            onCancel={cancelStream}
-            imageFile={imageFile}
-            onImageUpload={setImageFile}
-            onImageRemove={() => setImageFile(null)}
-            inputRef={inputRef}
-            onScrollToBottom={scrollToBottom}
-            attachedFile={attachedFile}
-            onFileUpload={setAttachedFile}
-            onFileRemove={() => setAttachedFile(null)}
+            onCancel={() => {
+              abortRef.current?.abort();
+
+              setLoading(false);
+            }}
           />
         </main>
       </div>

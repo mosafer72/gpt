@@ -1,0 +1,43 @@
+.filters {
+  display: flex;
+  gap: 15px;
+  width: 100%;
+}
+
+.filters select {
+  flex: 1;
+  padding: 14px 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(15px);
+  color: #f8fafc;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  outline: none;
+  appearance: none; /* حذف ظاهر پیش‌فرض مرورگر */
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: left 16px center; /* پیکان در سمت راست یا چپ طبق جهت RTL */
+  background-size: 16px;
+  padding-left: 45px; /* فضای خالی برای پیکان منو */
+}
+
+.filters select:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+  background-color: rgba(255, 255, 255, 0.09);
+}
+
+.filters select:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.25);
+}
+
+/* استایل گزینه‌های داخل سلکت برای مرورگرهایی که پشتیبانی می‌کنند */
+.filters select option {
+  background: #080d1c;
+  color: #f8fafc;
+  padding: 12px;
+}

@@ -2,13 +2,9 @@
 
 namespace App\Application\Pipelines;
 
-
 use App\Application\Context\ChatContext;
 use App\Application\Prompts\SystemPrompt;
 use App\Domain\Prompt\PromptCollection;
-use App\Models\Chat;
-use App\Models\Paper;
-
 
 
 class PromptPipeline
@@ -24,88 +20,124 @@ class PromptPipeline
 
 
 
+        /*
+        |--------------------------------------------------------------------------
+        | 1 - System Instruction
+        |--------------------------------------------------------------------------
+        */
+
         $this->addSystemPrompt(
             $prompt
         );
 
 
-        /**
-         * 2 - Paper Context
-         */
-        $this->addPaperContext(
+
+        /*
+        |--------------------------------------------------------------------------
+        | 2 - Document RAG Context
+        |--------------------------------------------------------------------------
+        */
+
+        $this->addDocuments(
             $prompt,
             $context
         );
 
 
-        /**
-         * 3 - Memory Context
-         */
+
+        /*
+        |--------------------------------------------------------------------------
+        | 3 - Memory Context
+        |--------------------------------------------------------------------------
+        */
+
         $this->addMemories(
             $prompt,
             $context
         );
 
 
-        /**
-         * 4 - Conversation History
-         */
+
+        /*
+        |--------------------------------------------------------------------------
+        | 4 - Conversation History
+        |--------------------------------------------------------------------------
+        */
+
         $this->addConversation(
             $prompt,
             $context
         );
 
 
-        /**
-         * 5 - Current User Message
-         */
+
+        /*
+        |--------------------------------------------------------------------------
+        | 5 - Current User Message
+        |--------------------------------------------------------------------------
+        */
+
         $this->addCurrentMessage(
             $prompt,
             $context
         );
 
-        $messages = $prompt->toArray();
 
 
-        $systemMessages = [];
-        $normalMessages = [];
+        /*
+        |--------------------------------------------------------------------------
+        | Ensure system messages are first
+        |--------------------------------------------------------------------------
+        */
+
+        $messages =
+            $prompt->toArray();
+
+
+
+        $system = [];
+
+        $normal = [];
+
 
 
         foreach ($messages as $message) {
 
+
             if (
-                $message['role'] === 'system'
+                ($message['role'] ?? null)
+                ===
+                'system'
             ) {
 
-                $systemMessages[] = $message;
+                $system[] = $message;
 
             } else {
 
-                $normalMessages[] = $message;
+                $normal[] = $message;
 
             }
 
         }
 
 
+
         $context->setPrompt(
+
             array_merge(
-                $systemMessages,
-                $normalMessages
+                $system,
+                $normal
             )
+
         );
-        $finalMessages = array_merge($systemMessages, $normalMessages);
 
-        $context->setPrompt($finalMessages);
-
-        \Log::info('FINAL PROMPT ORDER', [
-            'messages' => $finalMessages
-        ]);
 
 
         return $context;
 
     }
+
+
 
 
 
@@ -117,11 +149,124 @@ class PromptPipeline
 
 
         $prompt->add(
+
             role: 'system',
-            content: SystemPrompt::default()
+
+            content:
+            SystemPrompt::default()
+
         );
 
     }
+
+
+
+
+
+
+
+    protected function addDocuments(
+        PromptCollection $prompt,
+        ChatContext $context
+    ): void {
+
+        \Log::info('PROMPT DOCUMENT CHECK', [
+            'documents_count' => count($context->documents)
+        ]);
+        if (empty($context->documents)) {
+
+            return;
+
+        }
+
+
+
+        $text =
+            <<<PROMPT
+You are a document-based AI assistant.
+
+The following passages are retrieved from uploaded documents.
+
+Rules:
+- Use only these passages as evidence.
+- Do not invent information.
+- If information is missing, say that the documents do not contain enough information.
+- Answer clearly and concisely.
+
+Retrieved passages:
+PROMPT;
+
+
+
+        $valid = false;
+
+
+
+        foreach (
+            $context->documents
+            as
+            $index => $document
+        ) {
+
+
+            $content =
+                is_array($document)
+
+                ?
+                ($document['content'] ?? '')
+
+                :
+
+                ($document->content ?? '');
+
+
+
+            if (
+                trim($content) === ''
+            ) {
+
+                continue;
+
+            }
+
+
+
+            $valid = true;
+
+
+
+            $number =
+                $index + 1;
+
+
+
+            $text .=
+                "--- Passage {$number} ---\n"
+                .
+                $content
+                .
+                "\n\n";
+
+        }
+
+
+
+
+        if ($valid) {
+
+
+            $prompt->add(
+
+                role: 'system',
+
+                content: $text
+
+            );
+
+        }
+
+    }
+
 
 
 
@@ -135,29 +280,47 @@ class PromptPipeline
 
 
         if (empty($context->memories)) {
+
             return;
+
         }
 
 
 
-        $memoryText = "User memories:\n";
+        $memory =
+            "Relevant user memories:\n\n";
 
 
-        foreach ($context->memories as $memory) {
 
-            $memoryText .=
-                "- " . $memory->text . "\n";
+        foreach (
+            $context->memories
+            as
+            $item
+        ) {
+
+
+            $memory .=
+                "- "
+                .
+                $item->text
+                .
+                "\n";
 
         }
 
 
 
         $prompt->add(
+
             role: 'system',
-            content: $memoryText
+
+            content: $memory
+
         );
 
     }
+
+
 
 
 
@@ -168,104 +331,107 @@ class PromptPipeline
         ChatContext $context
     ): void {
 
-        $lastIndex = count($context->messages) - 1;
 
-        foreach ($context->messages as $index => $message) {
 
-            // آخرین پیام کاربر همان پیام فعلی است
+        $last =
+            count($context->messages) - 1;
+
+
+
+        foreach (
+            $context->messages
+            as
+            $index => $message
+        ) {
+
+
+            /*
+            آخرین user message
+            همان پیام فعلی است
+            */
+
             if (
-                $index === $lastIndex
-                && $message->role === 'user'
+                $index === $last
+                &&
+                $message->role === 'user'
             ) {
+
                 continue;
+
             }
 
+
+
             $prompt->add(
-                role: $message->role,
-                content: $message->content
+
+                role:
+                $message->role,
+
+                content:
+                $message->content
+
             );
+
         }
+
     }
-    protected function addPaperContext(
-        PromptCollection $prompt,
-        ChatContext $context
-    ): void {
 
-        // اول از conversation بخوان، اگر نبود از metadata
-        $chat = Chat::find($context->conversationId);
 
-        if (!$chat) {
-            return;
-        }
 
-        $paper = $chat->papers()
-            ->orderByPivot('created_at', 'desc')
-            ->first();
 
-        if (!$paper || empty($paper->extracted_text)) {
-            return;
-        }
 
-        if (!$paper || empty($paper->extracted_text)) {
-            return;
-        }
 
-        $paperText = mb_substr(
-            $paper->extracted_text,
-            0,
-            12000
-        );
 
-        $prompt->add(
-            role: 'system',
-            content:
-            "کاربر یک مقاله علمی آپلود کرده است. " .
-            "در پاسخ‌های بعدی از محتوای این مقاله استفاده کن.\n\n" .
-            "عنوان مقاله: {$paper->title}\n\n" .
-            "متن مقاله:\n{$paperText}"
-        );
-
-        \Log::info('PAPER PROMPT', [
-            'paper_id' => $paper->id,
-            'title' => $paper->title,
-            'text_length' => mb_strlen($paper->extracted_text),
-        ]);
-    }
     protected function addCurrentMessage(
         PromptCollection $prompt,
         ChatContext $context
     ): void {
 
 
+
         $content = [];
 
 
-        if (!empty($context->currentMessage)) {
+
+        if (
+            !empty($context->currentMessage)
+        ) {
 
             $content[] = [
 
                 'type' => 'text',
 
-                'text' => $context->currentMessage
+                'text' =>
+                    $context->currentMessage
 
             ];
 
         }
 
 
+
+
+
         if (
-            !empty($context->metadata['attachments'])
+            !empty(
+            $context->metadata['attachments']
+        )
         ) {
+
 
             foreach (
                 $context->metadata['attachments']
-                as $attachment
+                as
+                $attachment
             ) {
+
 
                 if (
                     ($attachment['type'] ?? null)
-                    === 'image'
+                    ===
+                    'image'
                 ) {
+
 
                     $content[] = [
 
@@ -273,7 +439,8 @@ class PromptPipeline
 
                         'image_url' => [
 
-                            'url' => $attachment['url']
+                            'url' =>
+                                $attachment['url']
 
                         ]
 
@@ -286,7 +453,9 @@ class PromptPipeline
         }
 
 
-        // هیچ محتوایی نداریم
+
+
+
         if (empty($content)) {
 
             return;
@@ -294,12 +463,15 @@ class PromptPipeline
         }
 
 
-        // فقط متن
+
+
+
         if (
             count($content) === 1
             &&
             $content[0]['type'] === 'text'
         ) {
+
 
             $prompt->add(
 
@@ -309,12 +481,15 @@ class PromptPipeline
 
             );
 
+
             return;
 
         }
 
 
-        // متن + عکس یا فقط عکس
+
+
+
         $prompt->add(
 
             'user',
@@ -324,5 +499,6 @@ class PromptPipeline
         );
 
     }
+
 
 }

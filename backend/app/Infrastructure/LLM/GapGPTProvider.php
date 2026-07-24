@@ -60,9 +60,9 @@ class GapGPTProvider implements LlmProvider
 
             ->firstOrFail();
 
-        \Log::info('AI MODEL DEBUG', [
-            'requested_model' => $request->model,
-        ]);
+        // \Log::info('AI MODEL DEBUG', [
+        //     'requested_model' => $request->model,
+        // ]);
 
 
         $client = $this->client($aiModel);
