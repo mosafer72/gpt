@@ -8,11 +8,12 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceType;
 use App\Models\WorkspacePlan;
-use App\Models\WorkspaceSubscription;
+use App\Application\Services\WorkspaceService;
 
 
 class UserSeeder extends Seeder
 {
+
 
     public function run(): void
     {
@@ -24,19 +25,26 @@ class UserSeeder extends Seeder
         |--------------------------------------------------------------------------
         */
 
+
         $user = User::updateOrCreate(
 
             [
-                'phone' => '09190941931'
+                'phone'=>'09190941931'
             ],
 
-            [
-                'name' => 'محمد',
 
-                'phone_verified_at' => now()
+            [
+                'name'=>'محمد',
+
+                'phone_verified_at'=>now()
+
             ]
 
         );
+
+
+
+
 
 
 
@@ -46,10 +54,16 @@ class UserSeeder extends Seeder
         |--------------------------------------------------------------------------
         */
 
-        $type = WorkspaceType::where(
-            'key',
-            'student'
-        )->firstOrFail();
+
+        $type =
+            WorkspaceType::where(
+                'key',
+                'student'
+            )
+            ->firstOrFail();
+
+
+
 
 
 
@@ -60,62 +74,15 @@ class UserSeeder extends Seeder
         |--------------------------------------------------------------------------
         */
 
-        $plan = WorkspacePlan::where(
-            'name',
-            'student-basic'
-        )->firstOrFail();
+
+        $plan =
+            WorkspacePlan::where(
+                'name',
+                'student-basic'
+            )
+            ->firstOrFail();
 
 
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Workspace
-        |--------------------------------------------------------------------------
-        */
-
-        $workspace = Workspace::firstOrCreate(
-
-            [
-
-                'user_id' => $user->id,
-
-                'workspace_type_id' => $type->id
-
-            ],
-
-
-            [
-
-                'workspace_plan_id' => $plan->id,
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Required field
-                |--------------------------------------------------------------------------
-                */
-
-                'type' => $type->key,
-
-
-                'name' => 'Student Workspace',
-
-
-                'started_at' => now(),
-
-
-                'expires_at' => now()
-                    ->addDays(
-                        $plan->duration_days
-                    ),
-
-
-                'is_active' => true
-
-            ]
-
-        );
 
 
 
@@ -123,50 +90,43 @@ class UserSeeder extends Seeder
 
         /*
         |--------------------------------------------------------------------------
-        | Workspace Subscription
+        | Create Workspace
         |--------------------------------------------------------------------------
         */
 
-        WorkspaceSubscription::updateOrCreate(
 
-            [
-
-                'user_id' => $user->id,
-
-
-                'workspace_id' => $workspace->id,
+        $service =
+            app(
+                WorkspaceService::class
+            );
 
 
-                'workspace_plan_id' => $plan->id
-
-            ],
 
 
-            [
+        $workspace =
+            $service->create(
 
-                'started_at' => now(),
+                user:$user,
 
+                type:$type,
 
-                'expires_at' => now()
-                    ->addDays(
-                        $plan->duration_days
-                    ),
+                plan:$plan
 
-
-                'is_active' => true,
+            );
 
 
-                'transaction_id' => 'free'
 
-            ]
 
-        );
+
 
 
 
         $this->command->info(
-            '✅ User workspace created'
+
+            '✅ User and workspace created'
+
         );
+
 
     }
 

@@ -188,31 +188,67 @@ class TokenWalletService
     ): TokenWallet {
 
 
-        $plan = $workspace->plan;
+        $subscription =
+
+            $workspace
+                ->workspaceSubscriptions()
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->with(
+                    'workspacePlan'
+                )
+                ->first();
+
+
+
+
+
+        $plan =
+            $subscription?->workspacePlan;
+
+
+
 
 
         if (!$plan) {
 
+
             throw new \RuntimeException(
-                'Workspace has no plan'
+                'Workspace has no active plan'
             );
 
+
         }
+
+
+
+
 
 
         return TokenWallet::updateOrCreate(
 
             [
-                'workspace_id' => $workspace->id
+
+                'workspace_id' =>
+                    $workspace->id
+
             ],
+
 
             [
 
-                'total_tokens' => $plan->token_limit,
+                'total_tokens' =>
+                    $plan->token_limit,
 
-                'used_tokens' => 0,
 
-                'remaining_tokens' => $plan->token_limit
+                'used_tokens' =>
+                    0,
+
+
+                'remaining_tokens' =>
+                    $plan->token_limit
 
             ]
 

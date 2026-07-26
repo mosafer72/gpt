@@ -76,7 +76,7 @@ PROMPT;
 
                 [
 
-                    'model'=>'qwen2.5:3b-instruct',
+                    'model'=>'qwen2.5-64k:latest',
 
                     'prompt'=>$prompt,
 

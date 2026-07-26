@@ -16,36 +16,22 @@ class WorkspaceTypeSeeder extends Seeder
         $types = [
 
             [
-                'key' => 'student',
-                'name' => 'student',
-                'display_name' => 'Student AI',
-                'description' => 'دستیار هوشمند دانشجویان',
-                'icon' => '🎓',
-                'features' => [
 
-                    'خلاصه سازی جزوه',
-                    'حل تمرین',
-                    'تحقیق',
-                    'ارائه'
+                'key'=>'personal',
 
-                ]
+                'name'=>'personal',
 
-            ],
+                'display_name'=>'Personal AI',
 
+                'description'=>'دستیار هوشمند عمومی و روزمره',
 
+                'icon'=>'💬',
 
-            [
-                'key' => 'developer',
-                'name' => 'developer',
-                'display_name' => 'Developer AI',
-                'description' => 'محیط برنامه نویسی و امنیت نرم افزار',
-                'icon' => '💻',
-                'features' => [
+                'features'=>[
 
-                    'Code Review',
-                    'Debug',
-                    'Security Analysis',
-                    'Repository'
+                    'Chat',
+                    'Memory',
+                    'General Assistant'
 
                 ]
 
@@ -54,36 +40,23 @@ class WorkspaceTypeSeeder extends Seeder
 
 
             [
-                'key' => 'research',
-                'name' => 'research',
-                'display_name' => 'Research AI',
-                'description' => 'دستیار مقاله و تحقیقات علمی',
-                'icon' => '📚',
-                'features' => [
 
-                    'تحلیل PDF',
-                    'خلاصه سازی مقاله',
-                    'Citation',
-                    'ترجمه علمی'
+                'key'=>'student',
 
-                ]
+                'name'=>'student',
 
-            ],
+                'display_name'=>'Student AI',
 
+                'description'=>'دستیار هوشمند دانشجویان',
 
+                'icon'=>'🎓',
 
-            [
-                'key' => 'creator',
-                'name' => 'creator',
-                'display_name' => 'Creator AI',
-                'description' => 'تولید محتوا و مارکتینگ',
-                'icon' => '🎨',
-                'features' => [
+                'features'=>[
 
-                    'Content Writing',
-                    'SEO',
-                    'Image AI',
-                    'Planner'
+                    'PDF Analysis',
+                    'Research',
+                    'Summarize',
+                    'Study Assistant'
 
                 ]
 
@@ -93,13 +66,18 @@ class WorkspaceTypeSeeder extends Seeder
 
 
 
+
+
         foreach($types as $type)
         {
+
 
             WorkspaceType::updateOrCreate(
 
                 [
+
                     'key'=>$type['key']
+
                 ],
 
                 [
@@ -119,6 +97,7 @@ class WorkspaceTypeSeeder extends Seeder
                 ]
 
             );
+
 
         }
 

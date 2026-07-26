@@ -1,45 +1,82 @@
 "use client";
 
-
-import { DocumentItem } from "../../../components/types/types";
 import styles from "./DocumentHeader.module.css";
 
 interface Props {
-  document: DocumentItem;
+  document: any;
+
+  onBack: () => void;
 }
 
-export default function DocumentHeader({ document }: Props) {
+export default function DocumentHeader({ document, onBack }: Props) {
+  function formatSize(size: number) {
+    if (!size) return "0 KB";
+
+    return (size / 1024).toFixed(1) + " KB";
+  }
+
+  function status() {
+    switch (document.status) {
+      case "completed":
+        return {
+          text: "تحلیل کامل شد",
+          class: "success",
+        };
+
+      case "processing":
+        return {
+          text: "در حال پردازش",
+          class: "warning",
+        };
+
+      case "failed":
+        return {
+          text: "خطا",
+          class: "danger",
+        };
+
+      default:
+        return {
+          text: document.status,
+          class: "default",
+        };
+    }
+  }
+
+  const currentStatus = status();
+
   return (
-    <section className={styles.wrapper}>
-      <div className={styles.icon}>📄</div>
+    <header className={styles.header}>
+      <div className={styles.right}>
+        <button className={styles.back} onClick={onBack}>
+          ←
+        </button>
 
-      <div className={styles.content}>
-        <h1>{document.name}</h1>
+        <div className={styles.icon}>📄</div>
 
-        <div className={styles.meta}>
-          <span>{document.mime_type}</span>
+        <div>
+          <h1 className={`${styles.name}`}>{document.name}</h1>
 
-          <span>{(document.size / 1024 / 1024).toFixed(2)} MB</span>
+          <div className={styles.meta}>
+            <span>PDF</span>
+
+            <span>{formatSize(document.size)}</span>
+
+            <span>
+              {new Date(document.created_at).toLocaleDateString("fa-IR")}
+            </span>
+          </div>
         </div>
       </div>
 
-      <div className={styles.status}>
-        {document.status === "completed" && (
-          <span className={styles.completed}>Completed</span>
-        )}
+      <div
+        className={`${styles.status}
+                ${styles[currentStatus.class]}`}
+      >
+        <span></span>
 
-        {document.status === "processing" && (
-          <span className={styles.processing}>Processing</span>
-        )}
-
-        {document.status === "failed" && (
-          <span className={styles.failed}>Failed</span>
-        )}
-
-        {document.status === "uploaded" && (
-          <span className={styles.uploaded}>Uploaded</span>
-        )}
+        {currentStatus.text}
       </div>
-    </section>
+    </header>
   );
 }

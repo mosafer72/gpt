@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Application\AI\OpenAIEmbeddingProvider;
+use App\Application\Services\Documents\DocumentOverviewService;
 use App\Application\Services\Documents\DocumentRetrieverService;
 use App\Domain\Contracts\ConversationRepository;
 use App\Domain\Contracts\DocumentRetriever;
@@ -82,6 +83,10 @@ class AppServiceProvider extends ServiceProvider
 
             DocumentRetrieverService::class
 
+        );
+
+        $this->app->bind(
+            DocumentOverviewService::class
         );
     }
 

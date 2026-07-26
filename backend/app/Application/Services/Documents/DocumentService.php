@@ -3,6 +3,9 @@
 namespace App\Application\Services\Documents;
 
 
+use App\Infrastructure\Repositories\DocumentSectionPlanRepository;
+use App\Infrastructure\Repositories\DocumentStructureRepository;
+use App\Infrastructure\Repositories\DocumentVectorRepository;
 use App\Models\Document;
 use App\Jobs\ProcessDocumentJob;
 
@@ -14,7 +17,16 @@ use Illuminate\Support\Facades\Storage;
 class DocumentService
 {
 
+    public function __construct(
 
+        protected DocumentStructureRepository $structureRepository,
+
+        protected DocumentSectionPlanRepository $sectionPlanRepository,
+
+        protected DocumentVectorRepository $vectorRepository
+
+    ) {
+    }
     /**
      * Upload Document
      */
@@ -191,9 +203,71 @@ class DocumentService
      */
     public function show(
         Document $document
-    ): Document {
-        return $document->load([
-            // relations
-        ]);
+    ): array {
+
+
+        $structure =
+            $this->structureRepository
+                ->findByDocument(
+                    (string) $document->id
+                );
+
+
+
+        $plans =
+            $this->sectionPlanRepository
+                ->findByDocument(
+                    (string) $document->id
+                );
+
+
+
+        $vectors =
+            $this->vectorRepository
+                ->debugWorkspace(
+                    (string) $document->workspace_id
+                );
+
+
+
+
+        return [
+
+            'id' => $document->id,
+
+            'name' => $document->name,
+
+            'path' => $document->path,
+
+            'mime_type' => $document->mime_type,
+
+            'size' => $document->size,
+
+            'status' => $document->status,
+
+            'error' => $document->error,
+
+
+            'created_at' => $document->created_at,
+
+            'updated_at' => $document->updated_at,
+
+
+
+            'structure' => $structure,
+
+
+            'section_plans' => $plans,
+
+
+
+            'stats' => [
+
+                'vectors' => $vectors
+
+            ]
+
+        ];
+
     }
 }

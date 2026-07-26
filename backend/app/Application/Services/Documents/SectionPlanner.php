@@ -8,8 +8,30 @@ class SectionPlanner
 
 
     public function plan(
-        string $intent
+        array|string $intent
     ): array {
+
+
+
+        if (is_array($intent)) {
+
+            $intent =
+                $intent['intent']
+                ??
+                $intent['type']
+                ??
+                'general';
+
+        }
+
+
+
+        $intent =
+            strtolower(
+                trim($intent)
+            );
+
+
 
 
 
@@ -99,6 +121,19 @@ class SectionPlanner
 
 
 
+            'results'=>[
+
+                'results'=>100,
+
+                'evaluation'=>90,
+
+                'experiment'=>70
+
+            ],
+
+
+
+
             'conclusion'=>[
 
                 'conclusion'=>100,
@@ -136,9 +171,6 @@ class SectionPlanner
             ??
             $plans['general'];
 
-
     }
-
-
 
 }

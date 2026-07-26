@@ -7,7 +7,7 @@ class Chunker
 {
 
     /**
-     * Academic paper sections
+     * Supported academic sections
      */
     protected array $sections = [
 
@@ -55,9 +55,11 @@ class Chunker
 
         'references',
 
+        'bibliography',
+
         'acknowledgement',
 
-        'acknowledgment',
+        'acknowledgments',
 
         'appendix',
 
@@ -66,15 +68,17 @@ class Chunker
 
 
     /**
-     * Never embed these sections
+     * Sections that usually have lower retrieval value
      */
-    protected array $ignoredSections = [
+    protected array $lowPrioritySections = [
 
         'references',
 
+        'bibliography',
+
         'acknowledgement',
 
-        'acknowledgment',
+        'acknowledgments',
 
         'appendix',
 
@@ -82,69 +86,29 @@ class Chunker
 
 
 
-    /**
-     * Dynamic academic chunk sizes
-     */
-    protected array $sectionChunkSizes = [
-
-        'abstract' => 180,
-
-        'introduction' => 300,
-
-        'background' => 350,
-
-        'related work' => 450,
-
-        'literature review' => 450,
-
-        'preliminaries' => 400,
-
-        'method' => 450,
-
-        'methods' => 450,
-
-        'methodology' => 500,
-
-        'approach' => 450,
-
-        'model' => 500,
-
-        'architecture' => 500,
-
-        'implementation' => 400,
-
-        'experiment' => 350,
-
-        'experiments' => 350,
-
-        'evaluation' => 350,
-
-        'results' => 300,
-
-        'discussion' => 300,
-
-        'conclusion' => 220,
-
-        'future work' => 200,
-
-    ];
-
-
-
 
     /**
-     * Split academic document
+     * Main document splitter
+     *
+     * One section = one chunk
      */
     public function split(
-        string $text,
-        int $defaultChunkSize = 300
+        string $text
     ): array {
 
 
-        $text = str_replace("\r", '', trim($text));
+        $text =
+            trim(
+                str_replace(
+                    "\r",
+                    "",
+                    $text
+                )
+            );
 
 
-        if (empty($text)) {
+
+        if (blank($text)) {
 
             return [];
 
@@ -152,28 +116,32 @@ class Chunker
 
 
 
+
         $sections =
-            $this->extractSections($text);
+            $this->extractSections(
+                $text
+            );
 
 
 
         $chunks = [];
 
-        $globalIndex = 1;
+        $index = 1;
+
 
 
 
         foreach ($sections as $section) {
 
 
+            $content =
+                trim(
+                    $section['text']
+                );
 
-            if (
-                in_array(
-                    $section['normalized_name'],
-                    $this->ignoredSections,
-                    true
-                )
-            ) {
+
+
+            if ($content === '') {
 
                 continue;
 
@@ -181,129 +149,120 @@ class Chunker
 
 
 
-            $chunkSize =
-                $this->sectionChunkSizes[
-                    $section['normalized_name']
-                ]
-                ??
-                $defaultChunkSize;
-
-
-
-            $overlap =
-                (int) ($chunkSize * 0.15);
-
-
-
-            $sectionChunks =
-                $this->chunkText(
-                    $section['text'],
-                    $chunkSize,
-                    $overlap
+            $wordCount =
+                count(
+                    preg_split(
+                        '/\s+/u',
+                        $content
+                    )
                 );
 
 
 
+            $chunks[] = [
 
-            foreach ($sectionChunks as $index => $content) {
+                /*
+                |--------------------------------------------------------------------------
+                | Section Metadata
+                |--------------------------------------------------------------------------
+                */
 
-
-                $wordCount =
-                    count(
-                        preg_split(
-                            '/\s+/u',
-                            trim($content)
-                        )
-                    );
-
+                'section' =>
+                    $section['normalized_name'],
 
 
-                $chunks[] = [
-
-                    'section'
-                    =>
-                        (string)
-                        ($section['normalized_name'] ?? ''),
-
-
-                    'section_title'
-                    =>
-                        trim(
-                            (string)
-                            ($section['title'] ?? '')
-                        ),
+                'section_title' =>
+                    $section['title'],
 
 
 
-                    'heading_path'
-                    =>
-                        [
-                            $section['title']
-                        ],
+                'heading_path' =>
+                    [
+                        $section['title']
+                    ],
 
 
 
-                    'chunk_index'
-                    =>
-                        $globalIndex++,
+                /*
+                |--------------------------------------------------------------------------
+                | Chunk Metadata
+                |--------------------------------------------------------------------------
+                */
+
+
+                'chunk_index' =>
+                    $index,
+
+
+                'section_chunk_index' =>
+                    1,
+
+
+                'word_count' =>
+                    $wordCount,
 
 
 
-                    'section_chunk_index'
-                    =>
-                        $index + 1,
+                'importance' =>
+                    $this->sectionImportance(
+                        $section['normalized_name']
+                    ),
 
 
 
-                    'word_count'
-                    =>
-                        $wordCount,
+                /*
+                |--------------------------------------------------------------------------
+                | Processing Status
+                |--------------------------------------------------------------------------
+                */
+
+
+                'translation_status' =>
+                    'pending',
 
 
 
-                    'importance'
-                    =>
-                        $this->sectionImportance(
-                            $section['normalized_name']
-                        ),
+                'embedding_status' =>
+                    'pending',
 
 
 
-                    'content'
-                    =>
-                        trim(
-                            is_string($content)
-                            ? $content
-                            : json_encode(
-                                $content,
-                                JSON_UNESCAPED_UNICODE
-                            )
-                        ),
+                /*
+                |--------------------------------------------------------------------------
+                | Final Content
+                |--------------------------------------------------------------------------
+                */
+
+                'content' =>
+                    "# {$section['title']}\n\n" .
+                    $content,
 
 
-                ];
+            ];
 
-            }
+
+
+            $index++;
+
 
         }
 
 
+
+
         return $chunks;
 
+
     }
-
-
-
-
-
-
     /**
-     * Extract sections from paper
+     * Extract document sections
+     *
+     * Everything before first heading
+     * will become Header section
      */
     protected function extractSections(
         string $text
     ): array {
-
 
 
         $lines =
@@ -313,18 +272,16 @@ class Chunker
             );
 
 
-
         $sections = [];
 
 
 
-        $currentSection =
-            'abstract';
-
+        $currentName =
+            'header';
 
 
         $currentTitle =
-            'Abstract';
+            'Header';
 
 
 
@@ -332,17 +289,40 @@ class Chunker
 
 
 
-
         $pattern =
-            '/^(?:(section|chapter)\s+[\dIVXLCDM]+[:\.\-]?\s*)?
-            ([\d\.]+\s*)?
-            ('
+            '/^
+            (?:
+                section\s*
+                [\dIVXLCDM]+
+                |
+                [\d]+
+                [\.\)]
+            )?
+            \s*
+            (
+                '
             .
-            implode('|', $this->sections)
+            implode(
+                '|',
+                array_map(
+                    fn($item) =>
+                    preg_quote(
+                        $item,
+                        '/'
+                    ),
+                    $this->sections
+                )
+            )
             .
-            ')
-            (\s*[:\.-].*)?
-            $/ix';
+            '
+            )
+            \s*
+            (?:
+                [:\-]
+                .*
+            )?
+            $
+            /ix';
 
 
 
@@ -350,14 +330,18 @@ class Chunker
         foreach ($lines as $line) {
 
 
-
             $trim =
                 trim($line);
 
 
 
-            if ($trim === '') {
+            /*
+            |--------------------------------------------------------------------------
+            | Empty lines
+            |--------------------------------------------------------------------------
+            */
 
+            if ($trim === '') {
 
                 $buffer[] = '';
 
@@ -368,52 +352,64 @@ class Chunker
 
 
 
-            $words =
-                count(
-                    preg_split(
-                        '/\s+/u',
-                        $trim
-                    )
-                );
-
-
+            /*
+            |--------------------------------------------------------------------------
+            | Detect heading
+            |--------------------------------------------------------------------------
+            */
 
             if (
-                $words <= 8 &&
+
+                strlen($trim) <= 100
+
+                &&
+
                 preg_match(
                     $pattern,
                     $trim,
                     $matches
                 )
+
             ) {
 
 
-                if (!empty(array_filter($buffer))) {
 
+                /*
+                |--------------------------------------------------------------------------
+                | Save previous section
+                |--------------------------------------------------------------------------
+                */
+
+
+                if (
+                    !empty(
+                    array_filter(
+                        $buffer
+                    )
+                )
+                ) {
 
 
                     $sections[] = [
 
-                        'normalized_name'
-                        =>
+                        'normalized_name' =>
                             strtolower(
                                 trim(
-                                    $currentSection
+                                    $currentName
                                 )
                             ),
 
 
-                        'title'
-                        =>
+                        'title' =>
                             $currentTitle,
 
 
-                        'text'
-                        =>
+                        'text' =>
                             implode(
                                 "\n",
                                 $buffer
                             ),
+
 
                     ];
 
@@ -422,10 +418,18 @@ class Chunker
 
 
 
-                $currentSection =
+
+                /*
+                |--------------------------------------------------------------------------
+                | Start new section
+                |--------------------------------------------------------------------------
+                */
+
+
+                $currentName =
                     strtolower(
                         trim(
-                            $matches[3]
+                            $matches[1]
                         )
                     );
 
@@ -442,9 +446,17 @@ class Chunker
 
                 continue;
 
+
             }
 
 
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Normal content
+            |--------------------------------------------------------------------------
+            */
 
             $buffer[] = $line;
 
@@ -454,39 +466,55 @@ class Chunker
 
 
 
-        if (!empty(array_filter($buffer))) {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Save last section
+        |--------------------------------------------------------------------------
+        */
+
+
+        if (
+            !empty(
+            array_filter(
+                $buffer
+            )
+        )
+        ) {
 
 
             $sections[] = [
 
-
-                'normalized_name'
-                =>
+                'normalized_name' =>
                     strtolower(
-                        $currentSection
+                        trim(
+                            $currentName
+                        )
                     ),
 
 
-                'title'
-                =>
+                'title' =>
                     $currentTitle,
 
 
-                'text'
-                =>
+                'text' =>
                     implode(
                         "\n",
                         $buffer
                     ),
 
+
             ];
 
+
         }
+
 
 
 
         return $sections;
 
+
     }
 
 
@@ -496,125 +524,7 @@ class Chunker
 
 
     /**
-     * Sentence based chunking
-     */
-    protected function chunkText(
-        string $text,
-        int $chunkSize,
-        int $overlap
-    ): array {
-
-
-
-        $sentences =
-            preg_split(
-                '/(?<=[.!?])\s+/u',
-                $text,
-                -1,
-                PREG_SPLIT_NO_EMPTY
-            );
-
-
-
-        $chunks = [];
-
-        $current = [];
-
-
-
-        foreach ($sentences as $sentence) {
-
-
-
-            $words =
-                preg_split(
-                    '/\s+/u',
-                    trim($sentence)
-                );
-
-
-
-            if (empty($words)) {
-
-                continue;
-
-            }
-
-
-
-
-            if (
-                count($current)
-                +
-                count($words)
-                >
-                $chunkSize
-            ) {
-
-
-
-                if (!empty($current)) {
-
-
-                    $chunks[] =
-                        implode(
-                            ' ',
-                            $current
-                        );
-
-
-
-                    $current =
-                        array_slice(
-                            $current,
-                            -$overlap
-                        );
-
-
-                }
-
-
-            }
-
-
-
-            $current =
-                array_merge(
-                    $current,
-                    $words
-                );
-
-        }
-
-
-
-        if (!empty($current)) {
-
-
-            $chunks[] =
-                implode(
-                    ' ',
-                    $current
-                );
-
-
-        }
-
-
-
-        return array_values(
-            array_filter($chunks)
-        );
-
-    }
-
-
-
-
-
-
-    /**
-     * Academic importance score
+     * Section importance score
      */
     protected function sectionImportance(
         string $section
@@ -624,28 +534,90 @@ class Chunker
         return match ($section) {
 
 
+            'abstract',
+
             'method',
+
             'methods',
+
             'methodology',
+
             'architecture',
-            'model'
+
+            'model',
+
+            'approach'
+
             =>
+
             'very_high',
 
 
 
-            'abstract',
+
+
             'introduction',
-            'results',
+
+            'background',
+
+            'related work',
+
+            'literature review',
+
+            'implementation',
+
+            'experiment',
+
+            'experiments',
+
             'evaluation',
+
+            'results',
+
+            'discussion',
+
             'conclusion'
+
             =>
+
             'high',
 
 
 
-            default
+
+
+            'header'
+
             =>
+
+            'medium',
+
+
+
+
+
+            'references',
+
+            'bibliography',
+
+            'acknowledgement',
+
+            'acknowledgments',
+
+            'appendix'
+
+            =>
+
+            'low',
+
+
+
+
+
+            default
+
+            =>
+
             'medium',
 
         };

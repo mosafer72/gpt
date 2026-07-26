@@ -12,37 +12,44 @@ return new class extends Migration {
     {
         Schema::create('workspace_types', function (Blueprint $table) {
 
+
             $table->id();
 
-            $table->string('key')->unique();
 
-            // Research Workspace
+            $table->string('key')
+                ->unique();
+
+
             $table->string('name');
+
 
 
             $table->string('display_name');
 
 
-            // توضیحات صفحه فروش
+
             $table->text('description')
                 ->nullable();
 
 
-            // آیکون
+
             $table->string('icon')
                 ->nullable();
 
 
-            // امکانات نمایشی
+
             $table->json('features')
                 ->nullable();
+
 
 
             $table->boolean('is_active')
                 ->default(true);
 
 
+
             $table->timestamps();
+
 
         });
     }

@@ -92,10 +92,16 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 
-        Route::get('/workspaces/{workspaceId}/documents/{document}', [DocumentController::class, 'show']);
+    Route::get('/workspaces/{workspaceId}/documents/{document}', [DocumentController::class, 'show']);
 
-        Route::put('/workspaces/{workspaceId}/documents/{document}', [DocumentController::class, 'update']);
-
+    Route::put('/workspaces/{workspaceId}/documents/{document}', [DocumentController::class, 'update']);
+    Route::get(
+        '/workspaces/{workspace}/library/{document}/overview',
+        [
+            DocumentController::class,
+            'overview'
+        ]
+    );
 
 
 
@@ -537,113 +543,4 @@ Route::get(
 |--------------------------------------------------------------------------
 */
 
-
-Route::middleware([
-    'auth:sanctum',
-    'admin'
-])
-    ->prefix('admin')
-    ->group(function () {
-
-
-
-        Route::get(
-            '/dashboard',
-            [
-                \App\Http\Controllers\Admin\DashboardController::class,
-                'index'
-            ]
-        );
-
-
-
-        Route::apiResource(
-            '/plans',
-            \App\Http\Controllers\Admin\PlanController::class
-        );
-
-
-
-        Route::apiResource(
-            '/models',
-            \App\Http\Controllers\Admin\AiModelController::class
-        );
-
-
-
-        Route::apiResource(
-            '/providers',
-            \App\Http\Controllers\Admin\ProviderController::class
-        );
-
-
-
-        Route::get(
-            '/users',
-            [
-                \App\Http\Controllers\Admin\UserController::class,
-                'index'
-            ]
-        );
-
-
-        Route::get(
-            '/transactions',
-            [
-                \App\Http\Controllers\Admin\TransactionController::class,
-                'index'
-            ]
-        );
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Admin Workspace
-        |--------------------------------------------------------------------------
-        */
-
-
-        Route::apiResource(
-            '/workspace-types',
-            \App\Http\Controllers\Admin\WorkspaceTypeController::class
-        );
-        Route::get(
-            '/workspace-types/{id}/plans',
-            [WorkspaceController::class, 'plans']
-        );
-
-
-        Route::apiResource(
-            '/workspace-plans',
-            \App\Http\Controllers\Admin\WorkspacePlanController::class
-        );
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Monitoring
-        |--------------------------------------------------------------------------
-        */
-
-
-        Route::get(
-            '/chats',
-            [
-                ChatController::class,
-                'index'
-            ]
-        );
-
-
-        Route::get(
-            '/memories',
-            [
-                \App\Http\Controllers\Admin\MemoryController::class,
-                'index'
-            ]
-        );
-
-
-    });
+include_once("admin.php");

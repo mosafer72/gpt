@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 class DocumentRetrieverService implements DocumentRetriever
 {
 
+
     public function __construct(
 
         protected EmbeddingService $embeddingService,
@@ -23,11 +24,16 @@ class DocumentRetrieverService implements DocumentRetriever
 
         protected SectionPlanner $planner,
 
-        protected SectionRanker $ranker
+        protected SectionRanker $ranker,
+
+        protected DocumentContextBuilder $contextBuilder
 
     ) {
-
     }
+
+
+
+
 
 
 
@@ -44,51 +50,85 @@ class DocumentRetrieverService implements DocumentRetriever
     ): array {
 
 
-        if (blank($query)) {
+        if (
+            blank($query)
+        ) {
 
-            return [];
+
+            return [
+
+                'chunks' => [],
+
+                'context' => '',
+
+                'text' => ''
+
+            ];
+
 
         }
 
 
 
+
+
+
+
         /*
         |--------------------------------------------------------------------------
-        | Intent + Planner
+        | Query Classification
         |--------------------------------------------------------------------------
         */
 
 
         $intent =
             $this->classifier
-                ->classify($query);
+                ->classify(
+                    $query
+                );
+
+
 
 
 
         $sectionPlan =
             $this->planner
-                ->plan($intent);
+                ->plan(
+                    $intent
+                );
+
+
+
+
 
 
 
         Log::info(
-            'ACADEMIC PLANNER RESULT',
+            'DOCUMENT QUERY PLAN',
             [
-                'intent' => $intent,
-                'sections' => $sectionPlan
+
+                'intent' =>
+                    $intent,
+
+
+                'sections' =>
+                    $sectionPlan,
+
+
+                'workspace' =>
+                    $workspaceId,
+
+
+                'documents' =>
+                    $documentIds
+
             ]
         );
 
 
 
-        Log::info(
-            'ACADEMIC RETRIEVER SEARCH',
-            [
-                'workspace' => $workspaceId,
-                'query' => $query,
-                'documents' => $documentIds
-            ]
-        );
+
+
 
 
 
@@ -99,33 +139,45 @@ class DocumentRetrieverService implements DocumentRetriever
         */
 
 
-        $queryVector =
+        $vector =
             $this->embeddingService
-                ->embedQuery($query);
+                ->embedQuery(
+                    $query
+                );
 
 
 
-        Log::debug(
-            'QUERY VECTOR',
-            [
-                'dimension' => count($queryVector)
-            ]
-        );
 
 
 
-        if (empty($queryVector)) {
+        if (
+            empty($vector)
+        ) {
 
-            return [];
+
+            return [
+
+                'chunks' => [],
+
+                'context' => '',
+
+                'text' => ''
+
+            ];
+
 
         }
 
 
 
 
+
+
+
+
         /*
         |--------------------------------------------------------------------------
-        | Vector Retrieval
+        | Vector Search
         |--------------------------------------------------------------------------
         */
 
@@ -134,46 +186,70 @@ class DocumentRetrieverService implements DocumentRetriever
             $this->vectorRepository
                 ->search(
 
-                    workspaceId: $workspaceId,
+                    workspaceId:
 
-                    vector: $queryVector,
+                    $workspaceId,
 
-                    limit: max(
+
+                    vector:
+
+                    $vector,
+
+
+                    limit:
+
+                    max(
                         $limit * 5,
                         25
                     ),
 
-                    documentIds: $documentIds
+
+                    documentIds:
+
+                    $documentIds
 
                 );
 
 
 
 
+
+
+
         /*
         |--------------------------------------------------------------------------
-        | FIX:
-        | SurrealDB SDK can return nested result arrays
+        | Normalize SurrealDB Result
         |--------------------------------------------------------------------------
         */
 
 
         $candidates =
             collect($candidates)
+
                 ->flatten(1)
+
                 ->filter(
-                    fn($item) => is_array($item)
+                    fn($item) =>
+                    is_array($item)
                 )
+
                 ->values()
+
                 ->all();
 
 
 
+
+
+
+
         Log::info(
-            'VECTOR RESULTS',
+            'DOCUMENT VECTOR SEARCH',
             [
-                'count' => count($candidates),
-                'first' => $candidates[0] ?? null
+
+                'count' =>
+                    count($candidates)
+
             ]
         );
 
@@ -181,50 +257,56 @@ class DocumentRetrieverService implements DocumentRetriever
 
 
 
+
+
+
         /*
         |--------------------------------------------------------------------------
-        | Clean Results
+        | Cleaning + Deduplication
         |--------------------------------------------------------------------------
         */
 
 
         $results =
+
             collect($candidates)
 
                 ->filter(
+
                     function ($item) {
+
 
                         return
 
-                            is_array($item)
+                            !empty($item['content'])
 
                             &&
 
-                            !empty(
-                            trim(
-                                $item['content'] ?? ''
-                            )
-                        );
+                            ($item['score'] ?? 0) >= 0.35;
+
 
                     }
+
                 )
 
 
                 ->unique(
+
                     function ($item) {
 
+
                         return md5(
-                            $item['content']
+
+                            trim(
+                                $item['content']
+                            )
+
                         );
 
+
                     }
+
                 )
-                ->filter(function ($item) {
-
-                    return
-                        ($item['score'] ?? 0) > 0.35;
-
-                })
 
 
                 ->values()
@@ -234,16 +316,6 @@ class DocumentRetrieverService implements DocumentRetriever
 
 
 
-        Log::info(
-            'AFTER CLEAN RESULTS',
-            [
-                'count' => count($results),
-                'sections' => collect($results)
-                    ->pluck('metadata.section')
-                    ->toArray()
-            ]
-        );
-
 
 
 
@@ -251,12 +323,15 @@ class DocumentRetrieverService implements DocumentRetriever
 
         /*
         |--------------------------------------------------------------------------
-        | Planner Ranking
+        | Academic Section Ranking
         |--------------------------------------------------------------------------
         */
 
 
-        if (!empty($results)) {
+        if (
+            !empty($results)
+        ) {
+
 
             $results =
                 $this->ranker
@@ -268,18 +343,10 @@ class DocumentRetrieverService implements DocumentRetriever
 
                     );
 
+
         }
 
 
-
-
-
-        Log::info(
-            'AFTER PLANNER RANKER',
-            [
-                'count' => count($results)
-            ]
-        );
 
 
 
@@ -288,7 +355,7 @@ class DocumentRetrieverService implements DocumentRetriever
 
         /*
         |--------------------------------------------------------------------------
-        | Final Ranking
+        | Final Score
         |--------------------------------------------------------------------------
         */
 
@@ -298,77 +365,143 @@ class DocumentRetrieverService implements DocumentRetriever
             collect($results)
 
                 ->map(
+
                     function ($item) {
 
 
                         $score =
 
                             (float)
+
                             (
+
                                 $item['planner_score']
+
                                 ??
+
                                 $item['score']
+
                                 ??
+
                                 0
+
                             );
+
+
 
 
 
                         $section =
 
                             strtolower(
+
                                 $item['metadata']['section']
+
                                 ??
+
                                 ''
+
                             );
 
 
 
+
+
+
+
                         if (
+
                             in_array(
+
                                 $section,
+
                                 [
+
                                     'reference',
+
                                     'references',
+
                                     'bibliography'
+
                                 ],
+
                                 true
+
                             )
+
                         ) {
+
 
                             $score -= 0.20;
 
+
                         }
+
+
+
 
 
 
                         if (
+
                             in_array(
+
                                 $section,
+
                                 [
+
                                     'abstract',
+
                                     'introduction',
+
                                     'method',
+
                                     'methodology',
+
                                     'experiment',
+
                                     'results',
+
                                     'conclusion'
+
                                 ],
+
                                 true
+
                             )
+
                         ) {
+
 
                             $score += 0.03;
 
+
                         }
+
+
+
+
 
 
 
                         $item['final_score'] =
-                            min(
-                                $score,
-                                1
+
+                            max(
+
+                                0,
+
+                                min(
+
+                                    $score,
+
+                                    1
+
+                                )
+
                             );
+
+
+
 
 
 
@@ -376,20 +509,27 @@ class DocumentRetrieverService implements DocumentRetriever
 
 
                     }
+
                 )
 
 
 
                 ->sortByDesc(
+
                     fn($item) =>
+
                     $item['final_score']
+
                 )
+
 
 
                 ->take($limit)
 
 
+
                 ->values()
+
 
 
                 ->all();
@@ -399,27 +539,91 @@ class DocumentRetrieverService implements DocumentRetriever
 
 
 
+
+
+
         Log::info(
-            'FINAL RETRIEVER RESULT',
+            'FINAL DOCUMENT RESULTS',
             [
-                'count' => count($results),
+
+                'count' =>
+                    count($results),
+
 
                 'sections' =>
                     collect($results)
-                        ->pluck('metadata.section'),
+                        ->pluck(
+                            'metadata.section'
+                        )
+                        ->toArray(),
+
 
                 'scores' =>
                     collect($results)
-                        ->pluck('final_score')
+                        ->pluck(
+                            'final_score'
+                        )
+                        ->toArray()
+
             ]
         );
 
 
 
 
-        return $results;
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Context Build
+        |--------------------------------------------------------------------------
+        */
+
+
+        $context =
+
+            $this->contextBuilder
+
+                ->build(
+
+                    $results
+
+                );
+
+
+
+
+
+
+        return [
+
+            'chunks' =>
+
+                $results,
+
+
+
+            'context' =>
+
+                $context,
+
+
+
+            'text' =>
+
+                $this->contextBuilder
+
+                    ->toText(
+                        $context
+                    )
+
+        ];
 
 
     }
+
 
 }

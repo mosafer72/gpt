@@ -119,51 +119,6 @@ return new class extends Migration {
 
 
         });
-         Schema::create('plan_model', function (Blueprint $table) {
-
-
-            $table->id();
-
-
-
-            $table->foreignId('plan_id')
-                ->constrained()
-                ->cascadeOnDelete();
-
-
-
-            $table->foreignId('ai_model_id')
-                ->constrained()
-                ->cascadeOnDelete();
-
-
-
-            // مدل پیش فرض پلن
-            $table->boolean('is_default')
-                ->default(false);
-
-
-
-            // محدودیت اختصاصی مدل در این پلن
-            // مثلا:
-            // max_tokens:2000
-            // daily_limit:50
-
-            $table->json('settings')
-                ->nullable();
-
-
-
-            $table->timestamps();
-
-
-
-            $table->unique([
-                'plan_id',
-                'ai_model_id'
-            ]);
-
-        });
 
     }
 
@@ -171,8 +126,10 @@ return new class extends Migration {
 
     public function down(): void
     {
+        Schema::dropIfExists(
+            'workspace_model'
+        );
 
-        Schema::dropIfExists('plan_model');
         Schema::dropIfExists('ai_models');
 
     }

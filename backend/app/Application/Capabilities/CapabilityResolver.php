@@ -3,64 +3,25 @@
 namespace App\Application\Capabilities;
 
 use App\Models\User;
+use App\Application\Services\WorkspaceService;
+use App\Application\Services\WorkspaceAccessService;
+
 
 
 class CapabilityResolver
 {
 
 
-    public function enabled(
-        User $user,
-        string $key
-    ): bool {
+    public function __construct(
 
+        protected WorkspaceService $workspaceService,
 
-        return (bool)
-            $this->value(
-                $user,
-                $key,
-                false
-            );
+        protected WorkspaceAccessService $workspaceAccessService
+
+    ) {
 
     }
 
-
-
-
-
-
-
-    public function value(
-        User $user,
-        string $key,
-        mixed $default = null
-    ): mixed {
-
-
-        $plan =
-            $user->currentPlan();
-
-
-
-        if(!$plan){
-
-            return $default;
-
-        }
-
-
-
-        return data_get(
-
-            $plan->capabilities,
-
-            $key,
-
-            $default
-
-        );
-
-    }
 
 
 
@@ -69,20 +30,153 @@ class CapabilityResolver
 
 
     /**
-     * Resolve available AI model
+     * Check capability enabled
+     */
+    public function enabled(
+
+        User $user,
+
+        string $key
+
+    ): bool {
+
+
+        return (bool)
+
+            $this->value(
+
+                $user,
+
+                $key,
+
+                false
+
+            );
+
+
+    }
+
+
+
+
+
+
+
+
+
+    /**
+     * Get capability value
+     */
+    public function value(
+
+        User $user,
+
+        string $key,
+
+        mixed $default = null
+
+    ): mixed {
+
+
+        $capabilities = $this->all(
+            $user
+        );
+
+
+        return data_get(
+
+            $capabilities,
+
+            $key,
+
+            $default
+
+        );
+
+
+    }
+
+
+
+
+
+
+
+
+
+    /**
+     * Get all capabilities
+     */
+    public function all(
+
+        User $user
+
+    ): array {
+
+
+        $workspace =
+
+            $this->workspaceService
+                ->current(
+                    $user
+                );
+
+
+
+
+
+        if(!$workspace){
+
+            return [];
+
+        }
+
+
+
+
+
+
+        return $this->workspaceAccessService
+            ->resolveCapabilities(
+
+                $workspace
+
+            ) ?? [];
+
+    }
+
+
+
+
+
+
+
+
+
+    /**
+     * Resolve current workspace model
      */
     public function model(
+
         User $user,
+
         ?string $requestedModel = null
+
     ): ?string {
 
 
-        $plan =
-            $user->currentPlan();
+        $workspace =
+
+            $this->workspaceService
+                ->current(
+                    $user
+                );
 
 
 
-        if(!$plan){
+
+
+        if(!$workspace){
 
             return null;
 
@@ -90,34 +184,20 @@ class CapabilityResolver
 
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | 1. Requested model from user
-        |--------------------------------------------------------------------------
-        */
-
-
-        if($requestedModel){
-
-
-            $model =
-                $plan
-                ->models()
-                ->where(
-                    'model_key',
-                    $requestedModel
-                )
-                ->first();
 
 
 
-            if($model){
 
-                return $model->model_key;
+        $model =
 
-            }
+            $this->workspaceAccessService
+                ->resolveModel(
 
-        }
+                    workspace:$workspace,
+
+                    requested:$requestedModel
+
+                );
 
 
 
@@ -125,36 +205,10 @@ class CapabilityResolver
 
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | 2. User selected model
-        |--------------------------------------------------------------------------
-        */
+        return $model?->key;
 
 
-        if(
-            $user->selected_model_id
-        ){
-
-
-            $model =
-                $plan
-                ->models()
-                ->where(
-                    'ai_models.id',
-                    $user->selected_model_id
-                )
-                ->first();
-
-
-
-            if($model){
-
-                return $model->model_key;
-
-            }
-
-        }
+    }
 
 
 
@@ -163,29 +217,18 @@ class CapabilityResolver
 
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | 3. Plan default model
-        |--------------------------------------------------------------------------
-        */
+    /**
+     * Get current workspace
+     */
+    public function workspace(
+        User $user
+    ) {
 
 
-        $default =
-            $plan->defaultModel();
-
-
-
-        if($default){
-
-            return $default->model_key;
-
-        }
-
-
-
-
-
-        return null;
+        return $this->workspaceService
+            ->current(
+                $user
+            );
 
     }
 

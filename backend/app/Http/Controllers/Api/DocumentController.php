@@ -2,14 +2,18 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Application\Services\Documents\DocumentOverviewService;
 use App\Application\Services\Documents\DocumentService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Application\Services\Documents\DocumentViewerService;
+
 
 class DocumentController extends Controller
 {
     public function __construct(
-        protected DocumentService $service
+        protected DocumentService $service,
+        protected DocumentOverviewService $overviewService
     ) {
     }
 
@@ -191,5 +195,81 @@ class DocumentController extends Controller
         return response()->json([
             'success' => true
         ]);
+    }
+
+    /**
+     * Document Intelligence Overview
+     */
+    public function overview(
+
+        Request $request,
+
+        $workspaceId,
+
+        $documentId
+
+    ) {
+
+        $workspace =
+            $request->user()
+                ->workspaces()
+                ->findOrFail($workspaceId);
+
+
+
+        $document =
+            $workspace
+                ->documents()
+                ->findOrFail($documentId);
+
+
+
+        return response()->json([
+
+            'success' => true,
+
+
+            'data' =>
+                $this->overviewService
+                    ->overview(
+                        $document
+                    )
+
+        ]);
+
+    }
+
+
+    public function sections(
+
+        string $id,
+
+        DocumentViewerService $viewer
+
+    ) {
+
+
+        $sections =
+            $viewer->sections(
+
+                documentId: $id,
+
+                workspaceId:
+                auth()->user()
+                    ->currentWorkspace()
+                    ->id
+
+            );
+
+
+
+        return response()->json([
+
+            'success' => true,
+
+            'data' => $sections
+
+        ]);
+
     }
 }

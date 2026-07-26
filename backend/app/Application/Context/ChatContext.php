@@ -12,94 +12,51 @@ use App\Models\Workspace;
 class ChatContext
 {
 
-
-    /**
-     * User
-     */
     public string $userId;
 
 
-
-    /**
-     * Conversation
-     */
     public ?string $conversationId;
 
 
-
-    /**
-     * Current user message
-     */
     public string $currentMessage;
 
 
-
-    /**
-     * Selected Model
-     */
     public string $model;
 
 
-
-    /**
-     * Workspace
-     */
     public ?Workspace $workspace = null;
 
 
-
-    /**
-     * Conversation DTO
-     */
     public ?ConversationDTO $conversation = null;
 
 
-
     /**
-     * Chat History
-     *
      * @var MessageDTO[]
      */
     public array $messages = [];
 
 
-
     /**
-     * Memories
-     *
      * @var MemoryDTO[]
      */
     public array $memories = [];
 
 
-
     /**
-     * Retrieved Documents
-     *
-     * نتیجه Search در SurrealDB
-     *
+     * Retrieved RAG chunks
      */
     public array $documents = [];
 
 
-
     /**
-     * Prompt
+     * Final LLM prompt messages
      */
     public array $prompt = [];
 
 
-
-    /**
-     * Assistant Response
-     */
     public ?string $assistantResponse = null;
 
 
-
-    /**
-     * Token Usage
-     */
     public array $tokenUsage = [
 
         'prompt_tokens' => 0,
@@ -113,18 +70,24 @@ class ChatContext
 
 
     /**
-     * Metadata
+     * Pipeline shared state
      */
     public array $metadata = [];
 
 
 
 
+
     public function __construct(
+
         string $userId,
+
         ?string $conversationId,
+
         string $currentMessage,
-        string $model = 'gpt-4o'
+
+        string $model = 'qwen2.5'
+
     ) {
 
         $this->userId = $userId;
@@ -141,6 +104,8 @@ class ChatContext
 
 
 
+
+
     public function setWorkspace(
         ?Workspace $workspace
     ): self {
@@ -150,6 +115,7 @@ class ChatContext
         return $this;
 
     }
+
 
 
 
@@ -191,6 +157,7 @@ class ChatContext
         }
 
 
+
         $this->messages = $messages;
 
 
@@ -203,17 +170,16 @@ class ChatContext
 
 
 
+
     public function addMessage(
         MessageDTO $message
     ): self {
 
         $this->messages[] = $message;
 
-
         return $this;
 
     }
-
 
 
 
@@ -227,10 +193,10 @@ class ChatContext
 
         $this->memories = $memories;
 
-
         return $this;
 
     }
+
 
 
 
@@ -243,7 +209,6 @@ class ChatContext
 
         $this->memories[] = $memory;
 
-
         return $this;
 
     }
@@ -253,28 +218,22 @@ class ChatContext
 
 
 
-    /**
-     * Document Context
-     */
+
     public function setDocuments(
         array $documents
     ): self {
 
         $this->documents = $documents;
 
-
         return $this;
 
     }
-    public function setSelectedDocuments(
-        array $ids
-    ): self {
 
-        $this->metadata['document_ids'] = $ids;
 
-        return $this;
 
-    }
+
+
+
 
     public function addDocument(
         array $document
@@ -282,6 +241,21 @@ class ChatContext
 
         $this->documents[] = $document;
 
+        return $this;
+
+    }
+
+
+
+
+
+
+
+    public function setSelectedDocuments(
+        array $ids
+    ): self {
+
+        $this->metadata['document_ids'] = $ids;
 
         return $this;
 
@@ -299,11 +273,9 @@ class ChatContext
 
         $this->prompt = $prompt;
 
-
         return $this;
 
     }
-
 
 
 
@@ -312,19 +284,57 @@ class ChatContext
 
 
     public function setAssistantResponse(
+
         string $response,
+
         array $tokenUsage = []
+
     ): self {
+
 
         $this->assistantResponse = $response;
 
 
-        $this->tokenUsage = $tokenUsage;
+        if (!empty($tokenUsage)) {
+
+            $this->tokenUsage = array_merge(
+
+                $this->tokenUsage,
+
+                $tokenUsage
+
+            );
+
+        }
 
 
         return $this;
 
     }
+
+
+
+
+
+
+
+    public function setTokenUsage(
+        array $usage
+    ): self {
+
+        $this->tokenUsage = array_merge(
+
+            $this->tokenUsage,
+
+            $usage
+
+        );
+
+
+        return $this;
+
+    }
+
 
 
 
@@ -337,10 +347,10 @@ class ChatContext
 
         $this->metadata = $metadata;
 
-
         return $this;
 
     }
+
 
 
 
@@ -354,11 +364,44 @@ class ChatContext
 
         $this->metadata[$key] = $value;
 
-
         return $this;
 
     }
 
+
+
+
+
+
+
+    public function hasMetadata(
+        string $key
+    ): bool {
+
+        return array_key_exists(
+
+            $key,
+
+            $this->metadata
+
+        );
+
+    }
+
+
+
+
+
+
+
+    public function getMetadata(
+        string $key,
+        mixed $default = null
+    ): mixed {
+
+        return $this->metadata[$key] ?? $default;
+
+    }
 
 
 
@@ -371,13 +414,21 @@ class ChatContext
 
         return [
 
-            'user_id' => $this->userId,
+            'user_id' =>
+                $this->userId,
 
-            'conversation_id' => $this->conversationId,
 
-            'current_message' => $this->currentMessage,
+            'conversation_id' =>
+                $this->conversationId,
 
-            'model' => $this->model,
+
+            'current_message' =>
+                $this->currentMessage,
+
+
+            'model' =>
+                $this->model,
+
 
             'workspace' =>
                 $this->workspace?->toArray(),
@@ -390,30 +441,29 @@ class ChatContext
             'messages' => array_map(
 
                 fn(MessageDTO $m) =>
-                $m->toArray(),
+                    $m->toArray(),
 
                 $this->messages
 
             ),
 
 
-
             'memories' => array_map(
 
                 fn(MemoryDTO $m) =>
-                $m->toArray(),
+                    $m->toArray(),
 
                 $this->memories
 
             ),
 
 
+            'documents' =>
+                $this->documents,
 
-            'documents' => $this->documents,
 
-
-
-            'prompt' => $this->prompt,
+            'prompt' =>
+                $this->prompt,
 
 
             'assistant_response' =>
@@ -437,6 +487,7 @@ class ChatContext
 
 
 
+
     public static function fromArray(
         array $data
     ): self {
@@ -445,22 +496,23 @@ class ChatContext
         $context = new self(
 
             userId:
-            $data['user_id'],
+                $data['user_id'],
 
             conversationId:
-            $data['conversation_id'] ?? null,
+                $data['conversation_id'] ?? null,
 
             currentMessage:
-            $data['current_message'] ?? '',
+                $data['current_message'] ?? '',
 
             model:
-            $data['model'] ?? 'gpt-4o'
+                $data['model'] ?? 'qwen2.5'
 
         );
 
 
 
-        if (isset($data['workspace'])) {
+
+        if (!empty($data['workspace']['id'])) {
 
 
             $context->setWorkspace(
@@ -472,6 +524,8 @@ class ChatContext
             );
 
         }
+
+
 
 
 
@@ -523,9 +577,7 @@ class ChatContext
 
         return $context;
 
-
     }
-
 
 
 }

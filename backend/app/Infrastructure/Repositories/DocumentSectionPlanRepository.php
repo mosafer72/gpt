@@ -2,8 +2,11 @@
 
 namespace App\Infrastructure\Repositories;
 
+
 use SurrealDB\Laravel\Facades\Surreal;
 use SurrealDB\SDK\Query\BoundQuery;
+use Illuminate\Support\Facades\Log;
+
 
 
 class DocumentSectionPlanRepository
@@ -16,99 +19,36 @@ class DocumentSectionPlanRepository
 
 
 
+
+
+
     public function store(
         array $data
     ) {
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Normalize DB Fields
-        |--------------------------------------------------------------------------
-        */
+        $payload = $this->normalizePayload(
+            $data
+        );
 
 
-        $data['document_id'] =
-            (string)
-            ($data['document_id'] ?? '');
-
-
-
-        $data['workspace_id'] =
-            (string)
-            ($data['workspace_id'] ?? '');
-
-
-
-        $data['section'] =
-            (string)
-            ($data['section'] ?? '');
-
-
-
-
-        $data['section_title'] =
-            $this->normalizeString(
-                $data['section_title'] ?? ''
-            );
-
-
-
-        $data['summary'] =
-            $this->normalizeString(
-                $data['summary'] ?? ''
-            );
-
-
-
-        $data['keywords'] =
-            $this->normalizeStringArray(
-                $data['keywords'] ?? []
-            );
-
-
-
-        $data['question_types'] =
-            $this->normalizeStringArray(
-                $data['question_types'] ?? []
-            );
-
-
-        foreach ($data as $key => $value) {
-
-            if (
-                in_array(
-                    $key,
-                    [
-                        'section_title',
-                        'summary',
-                        'section'
-                    ],
-                    true
-                )
-            ) {
-
-                $data[$key] =
-                    (string) $value;
-
-            }
-
-        }
 
         return Surreal::query(
 
             new BoundQuery(
 
-                query:
+                query: "
 
-                "
                 CREATE {$this->table}
+
                 CONTENT \$payload;
+
                 ",
 
                 bindings: [
 
-                    'payload' => $data
+                    'payload' =>
+                        $payload
 
                 ]
 
@@ -125,6 +65,7 @@ class DocumentSectionPlanRepository
 
 
 
+
     public function storeBulk(
         array $sections
     ): void {
@@ -133,9 +74,35 @@ class DocumentSectionPlanRepository
         foreach ($sections as $section) {
 
 
-            $this->store(
-                $section
-            );
+            try {
+
+
+                $this->store(
+                    $section
+                );
+
+
+            } catch (\Throwable $e) {
+
+
+                Log::warning(
+
+                    'SECTION PLAN STORE FAILED',
+
+                    [
+
+                        'error' =>
+                            $e->getMessage(),
+
+                        'section' =>
+                            $section['section'] ?? null
+
+                    ]
+
+                );
+
+
+            }
 
 
         }
@@ -156,110 +123,9 @@ class DocumentSectionPlanRepository
 
         string $documentId,
 
-        int $limit = 3
-
-    ) {
-
-
-        $sql = "
-
-        SELECT *
-
-        FROM {$this->table}
-
-        WHERE
-
-            workspace_id = \$workspace
-
-        AND
-
-            document_id = \$document
-
-
-        ORDER BY
-
-            answer_probability DESC
-
-
-        LIMIT \$limit;
-
-        ";
-
-
-
-
-        return Surreal::query(
-
-            new BoundQuery(
-
-                query: $sql,
-
-                bindings: [
-
-                    'workspace' =>
-                        $workspaceId,
-
-
-                    'document' =>
-                        $documentId,
-
-
-                    'limit' =>
-                        $limit
-
-                ]
-
-            )
-
-        );
-
-
-    }
-
-
-
-
-
-
-
-    public function searchRelevantSections(
-
-        string $workspaceId,
-
-        string $documentId,
-
-        string $question,
-
-        int $limit = 3
+        int $limit = 20
 
     ): array {
-
-
-
-        $sql = "
-
-        SELECT *
-
-        FROM {$this->table}
-
-        WHERE
-
-            workspace_id = \$workspace
-
-        AND
-
-            document_id = \$document
-
-
-        ORDER BY
-
-            answer_probability DESC
-
-
-        LIMIT \$limit;
-
-        ";
-
 
 
 
@@ -268,7 +134,30 @@ class DocumentSectionPlanRepository
 
                 new BoundQuery(
 
-                    query: $sql,
+                    query: "
+
+                    SELECT *
+
+                    FROM {$this->table}
+
+                    WHERE
+
+                        workspace_id = \$workspace
+
+                    AND
+
+                        document_id = \$document
+
+
+                    ORDER BY
+
+                        answer_probability DESC
+
+
+                    LIMIT \$limit;
+
+
+                    ",
 
                     bindings: [
 
@@ -291,13 +180,236 @@ class DocumentSectionPlanRepository
 
 
 
-
         return $this->formatResults(
             $response
         );
 
 
     }
+
+
+
+
+
+
+
+
+
+
+    public function searchRelevantSections(
+
+        string $workspaceId,
+
+        string $documentId,
+
+        string $question,
+
+        int $limit = 5
+
+    ): array {
+
+
+        Log::debug(
+
+            'SECTION PLAN SEARCH',
+
+            [
+
+                'question' => $question
+
+            ]
+
+        );
+
+
+
+        return $this->findTopSections(
+
+            workspaceId:
+            $workspaceId,
+
+            documentId:
+            $documentId,
+
+            limit:
+            $limit
+
+        );
+
+
+    }
+
+
+
+
+
+
+
+
+
+    protected function normalizePayload(
+
+        array $data
+
+    ): array {
+
+
+        $probability =
+            (float)
+            (
+                $data['answer_probability']
+                ??
+                0
+            );
+
+
+
+        if ($probability > 1) {
+
+            $probability =
+                $probability / 100;
+
+        }
+
+
+
+
+        return [
+
+
+
+            'document_id' =>
+
+                (string)
+                (
+                    $data['document_id']
+                    ??
+                    ''
+                ),
+
+
+
+            'workspace_id' =>
+
+                (string)
+                (
+                    $data['workspace_id']
+                    ??
+                    ''
+                ),
+
+
+
+
+            'section' =>
+
+                strtolower(
+                    trim(
+                        (string)
+                        (
+                            $data['section']
+                            ??
+                            ''
+                        )
+                    )
+                ),
+
+
+
+
+            'section_title' =>
+
+                $this->normalizeString(
+                    $data['section_title'] ?? ''
+                ),
+
+
+
+
+            'summary' =>
+
+                $this->normalizeString(
+                    $data['summary'] ?? ''
+                ),
+
+
+
+
+            'keywords' =>
+
+                $this->normalizeStringArray(
+                    $data['keywords'] ?? []
+                ),
+
+
+
+
+            'question_types' =>
+
+                $this->normalizeStringArray(
+                    $data['question_types'] ?? []
+                ),
+
+
+
+
+
+            'answer_probability' =>
+
+                min(
+                    max(
+                        $probability,
+                        0
+                    ),
+                    1
+                ),
+
+
+
+
+            'planner_rank' =>
+
+                (int)
+                (
+                    $data['planner_rank']
+                    ??
+                    0
+                ),
+
+
+
+
+            'selected_count' =>
+
+                (int)
+                (
+                    $data['selected_count']
+                    ??
+                    0
+                ),
+
+
+
+
+            'metadata' =>
+
+                $data['metadata']
+                ??
+                [],
+
+
+
+
+            'created_at' =>
+
+                now()->toISOString()
+
+        ];
+
+
+
+    }
+
 
 
 
@@ -318,31 +430,27 @@ class DocumentSectionPlanRepository
         }
 
 
+        if (
+            is_array($value)
+            ||
+            is_object($value)
+        ) {
 
-        if (is_string($value)) {
-
-            return trim($value);
-
-        }
-
-
-
-        if (is_array($value)) {
-
-            return trim(
-                json_encode(
-                    $value,
-                    JSON_UNESCAPED_UNICODE
-                )
+            return json_encode(
+                $value,
+                JSON_UNESCAPED_UNICODE
             );
 
         }
 
 
+        return trim(
+            (string) $value
+        );
 
-        return (string) $value;
 
     }
+
 
 
 
@@ -383,6 +491,8 @@ class DocumentSectionPlanRepository
 
 
 
+
+
     protected function formatResults(
         $response
     ): array {
@@ -396,33 +506,8 @@ class DocumentSectionPlanRepository
 
 
 
-        if (
-            is_object($response)
-            &&
-            method_exists(
-                $response,
-                'getData'
-            )
-        ) {
-
-            $response =
-                $response->getData();
-
-        }
-
-
-
-        if (!is_array($response)) {
-
-            return [];
-
-        }
-
-
 
         if (
-            isset($response[0])
-            &&
             isset($response[0]['result'])
         ) {
 
@@ -432,10 +517,20 @@ class DocumentSectionPlanRepository
 
 
 
-        return $response;
+        return is_array($response)
+
+            ?
+
+            $response
+
+            :
+
+            [];
 
 
     }
+
+
 
 
 }

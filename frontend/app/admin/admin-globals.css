@@ -1,0 +1,16 @@
+/* app/admin/admin-globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* انیمیشن‌های سفارشی شما */
+@layer utilities {
+  @keyframes gradient {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient 4s ease infinite;
+  }
+}

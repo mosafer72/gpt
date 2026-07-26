@@ -2,52 +2,56 @@
 
 import { useEffect, useState } from "react";
 
-import { useParams,useRouter } from "next/navigation";
-
+import { useParams, useRouter } from "next/navigation";
 
 import styles from "./page.module.css";
 
-import type { DocumentItem } from "../components/types/types";
+import { getDocumentOverview } from "../components/lib/api";
 
-import { getDocument } from "../components/lib/api";
-
-import DocumentPreview from "./components/DocumentPreview/DocumentPreview";
-
-import DocumentAIInsights from "./components/DocumentAIInsights/DocumentAIInsights";
-
-import DocumentActions from "./components/DocumentActions/DocumentActions";
-
-import DocumentInfo from "./components/DocumentInfo/DocumentInfo";
+// Components
 
 import DocumentStats from "./components/DocumentStats/DocumentStats";
 
+import DocumentActions from "./components/DocumentActions/DocumentActions";
+
+import DocumentSections from "./components/DocumentSections/DocumentSections";
+
 import ProcessingStatus from "./components/ProcessingStatus/ProcessingStatus";
+
+import DocumentInfo from "./components/DocumentInfo/DocumentInfo";
+
+import DocumentPreview from "./components/DocumentPreview/DocumentPreview";
 
 import ErrorPanel from "./components/ErrorPanel/ErrorPanel";
 
+import AllInsights from "./components/AIInsights/AIInsights";
+import DocumentHeader from "./components/DocumentHeader/DocumentHeader";
+import DocumentStructure from "./components/DocumentStructure/DocumentStructure";
+
 export default function DocumentPage() {
   const params = useParams();
-  const router=useRouter()
+
+  const router = useRouter();
 
   const workspaceId = params.id as string;
 
   const documentId = params.documentId as string;
 
-  const [document, setDocument] = useState<DocumentItem | null>(null);
+  const [data, setData] = useState<any>(null);
 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadDocument();
+    load();
   }, [workspaceId, documentId]);
 
-  async function loadDocument() {
+  async function load() {
     try {
       setLoading(true);
 
-      const response = await getDocument(workspaceId, documentId);
-
-      setDocument(response.document);
+      const result = await getDocumentOverview(workspaceId, documentId);
+      console.log();
+      setData(result.data);
     } catch (error) {
       console.error(error);
     } finally {
@@ -56,38 +60,46 @@ export default function DocumentPage() {
   }
 
   if (loading) {
-    return <div className={styles.loading}>در حال بارگذاری مقاله...</div>;
+    return <div className={styles.loading}>در حال تحلیل مقاله...</div>;
   }
 
-  if (!document) {
+  if (!data) {
     return <div className={styles.empty}>مقاله پیدا نشد</div>;
   }
 
+  const document = data.document;
+
   return (
     <main className={styles.container}>
-      <header className={styles.header}>
-        <div>
-          <h1>📄 {document.name}</h1>
-          <p>فضای تحقیق و تحلیل مقاله</p>
-        </div>
-        <div>
-          <button onClick={() => router.back()} className={styles.backButton}>
-            ←
-          </button>
-        </div>
-      </header>
+      <DocumentHeader document={document} onBack={() => router.back()} />
+      <section className={styles.grid}>
+        <div className={styles.content}>
+          {/* PDF Preview */}
 
-      <section className={styles.layout}>
-        <div className={styles.main}>
           <DocumentPreview document={document} />
 
-          <DocumentAIInsights document={document} />
+          {/* AI Analysis */}
+
+          <AllInsights sections={data.sections?.[0] ?? []} />
+
+          {/* Paper Structure */}
+
+          <DocumentSections sections={data.sections} />
+
+          {/* Errors */}
 
           <ErrorPanel document={document} />
         </div>
 
+        <DocumentInfo document={document} />
+
+        <DocumentStructure structure={data.structure?.[0]?.sections ?? []} />
         <aside className={styles.sidebar}>
-          <DocumentStats document={document} />
+          <DocumentStats
+            document={document}
+            structure={data.structure?.[0]}
+            sections={data.sections?.[0] ?? []}
+          />
 
           <ProcessingStatus document={document} />
 

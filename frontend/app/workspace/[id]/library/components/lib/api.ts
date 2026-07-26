@@ -72,3 +72,32 @@ export function formatPersianDate(date: string) {
     day: "numeric",
   }).format(new Date(date));
 }
+
+export async function getDocumentOverview(
+  workspaceId: string,
+  documentId: string,
+) {
+  const token = getToken();
+
+  const response = await fetch(
+    `${API_BASE}/workspaces/${workspaceId}/library/${documentId}/overview`,
+    {
+      method: "GET",
+
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+
+    console.error(error);
+
+    throw new Error("Failed to fetch document overview");
+  }
+
+  return await response.json();
+}

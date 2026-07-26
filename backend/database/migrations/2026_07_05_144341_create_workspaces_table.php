@@ -1,4 +1,5 @@
 <?php
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -16,14 +17,15 @@ return new class extends Migration {
             $table->id();
 
 
+
             $table->foreignId('user_id')
                 ->constrained()
                 ->cascadeOnDelete();
 
 
 
-            $table->foreignId('workspace_plan_id')
-                ->constrained('workspace_plans')
+            $table->foreignId('workspace_type_id')
+                ->constrained()
                 ->cascadeOnDelete();
 
 
@@ -31,7 +33,17 @@ return new class extends Migration {
             $table->string('name');
 
 
-            $table->string('type');
+
+            /*
+            |--------------------------------------------------------------------------
+            | Legacy field
+            | فعلا نگه می داریم چون در مدل داری
+            |--------------------------------------------------------------------------
+            */
+
+            $table->string('type')
+                ->nullable();
+
 
 
 
@@ -39,8 +51,18 @@ return new class extends Migration {
                 ->nullable();
 
 
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | حذف نشد برای جلوگیری از migration مشکل
+            | ولی دیگر منبع اعتبار نیست
+            |--------------------------------------------------------------------------
+            */
+
             $table->timestamp('expires_at')
                 ->nullable();
+
 
 
 

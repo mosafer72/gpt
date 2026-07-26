@@ -1,0 +1,3 @@
+FROM qwen2.5-64k:latest
+
+PARAMETER num_ctx 65536

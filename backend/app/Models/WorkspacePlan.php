@@ -1,6 +1,6 @@
 <?php
-namespace App\Models;
 
+namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
@@ -10,60 +10,63 @@ class WorkspacePlan extends Model
 
 
     protected $fillable = [
+
+        'workspace_type_id',
         'name',
         'display_name',
-        'workspace_type_id',
         'description',
         'price',
         'duration_days',
         'token_limit',
-        'features'
+        'features',
+        'capabilities',
+        'is_active'
 
     ];
+
 
 
     protected $casts = [
 
-        'features' => 'array'
+        'features'=>'array',
+        'capabilities'=>'array',
+        'is_active'=>'boolean',
 
     ];
 
 
-    public function workspaces()
+
+
+    public function workspaceType()
     {
-
-        return $this->hasMany(
-            Workspace::class
+        return $this->belongsTo(
+            WorkspaceType::class
         );
-
     }
+
+
+
+
+
     public function models()
     {
-
         return $this->belongsToMany(
             AiModel::class,
             'workspace_plan_models',
             'workspace_plan_id',
             'ai_model_id'
         );
-
     }
-    public function workspaceType()
+
+
+
+
+
+    public function subscriptions()
     {
-
-        return $this->belongsTo(
-            WorkspaceType::class,
-            'workspace_type_id'
+        return $this->hasMany(
+            WorkspaceSubscription::class
         );
-
-    }
-    public function permissions()
-    {
-
-        return $this->belongsToMany(
-            WorkspacePermission::class
-        );
-
     }
 
 

@@ -25,6 +25,9 @@ return [
         // بعداً مدل‌های دیگر را اضافه کنید
         // \App\Domain\Message\Models\Message::class,
         // \App\Domain\Memory\Models\Memory::class,
+         \App\Domain\Documents\Models\DocumentSectionTranslation::class,
+         \App\Domain\Documents\Models\DocumentStructure::class,
+
          \App\Domain\Documents\Models\DocumentSectionPlan::class,
 
         \App\Domain\Documents\Models\DocumentSectionPlan::class,

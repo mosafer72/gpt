@@ -16,8 +16,7 @@ class SectionRanker
     ): array {
 
 
-
-        foreach($chunks as &$chunk){
+        foreach ($chunks as &$chunk) {
 
 
             $section = strtolower(
@@ -30,20 +29,26 @@ class SectionRanker
 
 
 
-            $section = $this->normalizeSection(
+            $normalized = $this->normalizeSection(
                 $section
             );
 
 
 
-            $boost =
+            $plannerWeight =
 
-                $sectionWeights[$section]
-                ??
-                0;
+                (float)
+                (
+                    $sectionWeights[$normalized]
+                    ??
+                    0
+                );
 
 
 
+            /**
+             * Vector similarity
+             */
             $semanticScore =
 
                 (float)
@@ -56,37 +61,32 @@ class SectionRanker
 
 
             /**
-             * Combine semantic similarity
-             * with planner preference
+             * Final score
              *
-             * 70% semantic
-             * 30% planner
+             * Semantic 75%
+             * Planner 25%
              */
 
             $chunk['planner_score'] =
 
-                (
-                    $semanticScore * 0.7
-                )
+                ($semanticScore * 0.75)
 
                 +
 
-                (
-                    ($boost / 100) * 0.3
-                );
+                ($plannerWeight * 0.25);
 
 
 
             $chunk['metadata']['normalized_section']
                 =
-                $section;
+                $normalized;
 
 
         }
 
 
-
         unset($chunk);
+
 
 
 
@@ -94,16 +94,15 @@ class SectionRanker
 
             $chunks,
 
-            function($a,$b){
-
+            function ($a, $b) {
 
                 return
 
-                    $b['planner_score']
+                    ($b['planner_score'] ?? 0)
 
                     <=>
 
-                    $a['planner_score'];
+                    ($a['planner_score'] ?? 0);
 
             }
 
@@ -111,12 +110,14 @@ class SectionRanker
 
 
 
-        return $this->removeDuplicateSections(
+        return $this->diversifySections(
             $chunks
         );
 
 
     }
+
+
 
 
 
@@ -129,49 +130,68 @@ class SectionRanker
     ): string {
 
 
-
-        return match($section){
+        return match ($section) {
 
 
             'method',
             'methods',
-            'methodology'
-                =>
-                'methodology',
+            'methodology',
+            'approach'
+            =>
+            'methodology',
 
 
 
             'model',
-            'models',
             'architecture'
-                =>
-                'methodology',
+            =>
+            'architecture',
+
+
+
+            'experiment',
+            'experiments'
+            =>
+            'experiments',
+
+
+
+            'evaluation'
+            =>
+            'evaluation',
 
 
 
             'intro',
             'introduction'
-                =>
-                'introduction',
+            =>
+            'introduction',
 
 
 
             'abstract'
-                =>
-                'abstract',
+            =>
+            'abstract',
+
+
+
+            'result',
+            'results'
+            =>
+            'results',
 
 
 
             'conclusion',
             'conclusions'
-                =>
-                'conclusion',
+            =>
+            'conclusion',
 
 
 
             default
-                =>
-                $section
+            =>
+            trim($section)
 
         };
 
@@ -182,21 +202,26 @@ class SectionRanker
 
 
 
-    protected function removeDuplicateSections(
+
+
+
+    /**
+     * Keep diversity but avoid flooding
+     */
+    protected function diversifySections(
 
         array $chunks
 
     ): array {
 
 
-
-        $seen = [];
+        $sectionCount = [];
 
         $result = [];
 
 
 
-        foreach($chunks as $chunk){
+        foreach ($chunks as $chunk) {
 
 
             $section =
@@ -207,17 +232,7 @@ class SectionRanker
 
 
 
-            /**
-             * Keep only first
-             * highest ranked chunk
-             * from each section
-             */
-
-            if(
-                isset($seen[$section])
-                &&
-                $section !== ''
-            ){
+            if ($section === '') {
 
                 continue;
 
@@ -225,10 +240,30 @@ class SectionRanker
 
 
 
-            $seen[$section] = true;
+            $sectionCount[$section] =
+                $sectionCount[$section] ?? 0;
+
+
+
+            /**
+             * Maximum 3 chunks
+             * from same section
+             */
+
+            if (
+                $sectionCount[$section] >= 3
+            ) {
+
+                continue;
+
+            }
+
 
 
             $result[] = $chunk;
+
+
+            $sectionCount[$section]++;
 
 
         }
@@ -239,7 +274,6 @@ class SectionRanker
 
 
     }
-
 
 
 }

@@ -20,6 +20,8 @@ class OllamaQwenChatProvider implements SmallChatProvider
             'timeout'         => 300,
             'connect_timeout' => 3,
         ]);
+
+        \Log::info("hiiiiiiiiiiiii");
     }
 
     public function stream(ChatRequest $request): \Generator

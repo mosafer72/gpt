@@ -2,32 +2,21 @@
 
 namespace App\Models;
 
-
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 
 class WorkspaceSubscription extends Model
 {
 
-    use HasFactory;
-
-
     protected $fillable = [
 
         'user_id',
-
         'workspace_id',
-
         'workspace_plan_id',
-
         'started_at',
-
         'expires_at',
-
         'is_active',
-
-        'transaction_id',
+        'transaction_id'
 
     ];
 
@@ -35,39 +24,23 @@ class WorkspaceSubscription extends Model
 
     protected $casts = [
 
-        'started_at' => 'datetime',
-
-        'expires_at' => 'datetime',
-
-        'is_active' => 'boolean',
+        'started_at'=>'datetime',
+        'expires_at'=>'datetime',
+        'is_active'=>'boolean'
 
     ];
 
 
 
-
-    public function user()
+    public function workspace()
     {
-
         return $this->belongsTo(
-            User::class
+            Workspace::class
         );
-
     }
 
 
 
-    public function isValid(): bool
-    {
-
-        return
-            $this->is_active
-            &&
-            $this->expires_at
-            &&
-            $this->expires_at->isFuture();
-
-    }
     public function workspacePlan()
     {
         return $this->belongsTo(
@@ -78,24 +51,11 @@ class WorkspaceSubscription extends Model
 
 
 
-    public function plan()
-    {
-
-        return $this->belongsTo(
-            WorkspacePlan::class,
-            'workspace_plan_id'
-        );
-
-    }
-
-
-    public function workspace()
+    public function user()
     {
         return $this->belongsTo(
-            Workspace::class,
-            'workspace_id'
+            User::class
         );
     }
-
 
 }

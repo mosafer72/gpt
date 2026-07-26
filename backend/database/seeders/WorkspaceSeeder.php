@@ -2,88 +2,138 @@
 
 namespace Database\Seeders;
 
+
 use Illuminate\Database\Seeder;
-use App\Models\Workspace;
+
 use App\Models\User;
 use App\Models\WorkspaceType;
 use App\Models\WorkspacePlan;
-use Carbon\Carbon;
+
+use App\Application\Services\WorkspaceService;
+
 
 
 class WorkspaceSeeder extends Seeder
 {
 
+
     public function run(): void
     {
+
 
         $user = User::first();
 
 
-        if (!$user) {
+
+        if(!$user){
+
             return;
+
         }
 
 
 
-        $workspaceType = WorkspaceType::where(
-            'key',
-            'personal'
-        )->first();
+
+
+        $service =
+            app(
+                WorkspaceService::class
+            );
 
 
 
-        $plan = WorkspacePlan::where(
-            'name',
-            'personal_free'
-        )->first();
 
 
 
-        if (!$workspaceType || !$plan) {
-            return;
+        /*
+        |--------------------------------------------------------------------------
+        | Personal Workspace
+        |--------------------------------------------------------------------------
+        */
+
+
+        $personalType =
+            WorkspaceType::where(
+                'key',
+                'personal'
+            )->first();
+
+
+
+        $personalPlan =
+            WorkspacePlan::where(
+                'name',
+                'personal-basic'
+            )->first();
+
+
+
+
+        if($personalType && $personalPlan)
+        {
+
+
+            $service->create(
+
+                $user,
+
+                $personalType,
+
+                $personalPlan
+
+            );
+
+
         }
 
 
 
-        $startedAt = Carbon::now();
 
 
-        Workspace::updateOrCreate(
-
-            [
-                'user_id' => $user->id,
-
-                'workspace_type_id' => $workspaceType->id,
-            ],
 
 
-            [
-
-                'workspace_plan_id' => $plan->id,
-
-
-                /*
-                 | Required column in DB
-                 */
-                'type' => 'personal',
+        /*
+        |--------------------------------------------------------------------------
+        | Student Workspace
+        |--------------------------------------------------------------------------
+        */
 
 
-                'name' => 'Student Workspace',
+        $studentType =
+            WorkspaceType::where(
+                'key',
+                'student'
+            )->first();
 
 
-                'started_at' => $startedAt,
 
 
-                'expires_at' => $startedAt->copy()
-                    ->addDays($plan->duration_days),
+        $studentPlan =
+            WorkspacePlan::where(
+                'name',
+                'student-basic'
+            )->first();
 
 
-                'is_active' => true,
 
 
-            ]
+        if($studentType && $studentPlan)
+        {
 
-        );
+
+            $service->create(
+
+                $user,
+
+                $studentType,
+
+                $studentPlan
+
+            );
+
+
+        }
+
 
     }
 

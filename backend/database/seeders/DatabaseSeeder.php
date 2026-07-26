@@ -18,7 +18,6 @@ class DatabaseSeeder extends Seeder
         $this->call([
             LlmProviderSeeder::class,
             AiModelSeeder::class,
-            PlanSeeder::class,  // چت طولانی + ۵ چت متوسط
             WorkspaceTypeSeeder::class,
             WorkspacePlanSeeder::class,
             WorkspaceSeeder::class,
@@ -26,7 +25,7 @@ class DatabaseSeeder extends Seeder
             ChatWithMessagesSeeder::class,  // چت طولانی + ۵ چت متوسط
             WorkspaceSeeder::class,
             UserSeeder::class,  // چت طولانی + ۵ چت متوسط
-
+            WorkspacePlanModelSeeder::class,
         ]);
     }
 }

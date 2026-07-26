@@ -4,35 +4,88 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+
 class WorkspaceType extends Model
 {
+
 
     protected $fillable = [
 
         'key',
+
         'name',
+
         'display_name',
+
         'description',
+
         'icon',
+
         'features',
+
         'is_active'
 
     ];
+
+
+
 
 
     protected $casts = [
 
         'features' => 'array',
 
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
 
     ];
 
-    public function features()
+
+
+
+
+
+
+
+    /**
+     * Plans of this workspace type
+     */
+    public function plans()
     {
-        return $this->belongsToMany(
-            WorkspaceFeature::class
+
+        return $this->hasMany(
+
+            WorkspacePlan::class,
+
+            'workspace_type_id'
+
         );
+
     }
+
+
+
+
+
+
+
+
+    /**
+     * Workspaces using this type
+     */
+    public function workspaces()
+    {
+
+        return $this->hasMany(
+
+            Workspace::class,
+
+            'workspace_type_id'
+
+        );
+
+    }
+
+
+
 
 }

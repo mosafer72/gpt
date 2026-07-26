@@ -1,102 +1,83 @@
 "use client";
 
-import { useState } from "react";
-
 import styles from "./DocumentAIInsights.module.css";
-import { DocumentItem } from "../../../components/types/types";
-
 
 interface Props {
-  document: DocumentItem;
+  sections: any[];
 }
 
-export default function DocumentAIInsights({ document }: Props) {
-  const [loading, setLoading] = useState(false);
+export default function DocumentAIInsights({ sections }: Props) {
+  if (!sections || sections.length === 0) {
+    return (
+      <section className={styles.card}>
+        <h2>تحلیل هوشمند</h2>
 
-  const insights = [
-    {
-      icon: "📝",
-      title: "خلاصه هوشمند",
-      desc: "تولید خلاصه علمی و استخراج مفهوم اصلی مقاله",
-    },
-
-    {
-      icon: "🏷️",
-      title: "عنوان پیشنهادی",
-      desc: "پیشنهاد عنوان بهتر بر اساس محتوای مقاله",
-    },
-
-    {
-      icon: "🔑",
-      title: "کلیدواژه‌ها",
-      desc: "استخراج Keywords و موضوعات اصلی",
-    },
-
-    {
-      icon: "❓",
-      title: "سوالات تحقیق",
-      desc: "ساخت سوالات پژوهشی مرتبط",
-    },
-
-    {
-      icon: "💡",
-      title: "نکات مهم",
-      desc: "استخراج نکات کلیدی مقاله",
-    },
-
-    {
-      icon: "📚",
-      title: "ساختار مقاله",
-      desc: "تحلیل بخش‌ها و ساختار علمی",
-    },
-  ];
-
-  function runAI() {
-    setLoading(true);
-
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
+        <p className={styles.empty}>هنوز تحلیل AI موجود نیست</p>
+      </section>
+    );
   }
 
+  const sorted = [...sections].sort(
+    (a, b) => (b.answer_probability ?? 0) - (a.answer_probability ?? 0),
+  );
+
   return (
-    <section className={styles.wrapper}>
+    <section className={styles.card}>
       <div className={styles.header}>
         <div>
-          <h2>🤖 دستیار هوشمند مقاله</h2>
+          <h2>🧠 تحلیل هوشمند مقاله</h2>
 
-          <p>تحلیل مقاله با هوش مصنوعی</p>
+          <p>بخش‌هایی که بیشترین ارزش پاسخ‌دهی دارند</p>
         </div>
 
-        <button onClick={runAI} disabled={loading}>
-          {loading ? "در حال تحلیل..." : "شروع تحلیل"}
-        </button>
+        <div className={styles.count}>
+          {sections.length}
+          بخش
+        </div>
       </div>
 
-      <div className={styles.grid}>
-        {insights.map((item) => (
-          <div key={item.title} className={styles.card}>
-            <div className={styles.icon}>{item.icon}</div>
+      <div className={styles.list}>
+        {sorted.map((section, index) => (
+          <article key={section.id ?? index} className={styles.item}>
+            <div className={styles.top}>
+              <div>
+                <h3>{section.section_title}</h3>
 
-            <div>
-              <h3>{item.title}</h3>
+                <span>رتبه AI: #{section.planner_rank}</span>
+              </div>
 
-              <p>{item.desc}</p>
+              <div className={styles.score}>
+                {Math.round((section.answer_probability ?? 0) * 100)}%
+              </div>
             </div>
-          </div>
+
+            <div className={styles.progress}>
+              <div
+                style={{
+                  width: `${(section.answer_probability ?? 0) * 100}%`,
+                }}
+              />
+            </div>
+
+            <p className={styles.summary}>{section.summary}</p>
+
+            <div className={styles.keywords}>
+              {(section.keywords ?? []).map((keyword: string) => (
+                <span key={keyword}>{keyword}</span>
+              ))}
+            </div>
+
+            <div className={styles.meta}>
+              <span>
+                📄
+                {section.metadata?.word_count || 0}
+                کلمه
+              </span>
+
+              <span>⭐ اهمیت بالا</span>
+            </div>
+          </article>
         ))}
-      </div>
-
-      <div className={styles.future}>
-        <span>🚀</span>
-
-        <div>
-          <strong>آماده اتصال به AI Pipeline</strong>
-
-          <p>
-            بعد از پردازش Document، خروجی‌های هوشمند اینجا نمایش داده می‌شوند.
-          </p>
-        </div>
       </div>
     </section>
   );

@@ -26,6 +26,14 @@ return new class extends Migration
                 ->cascadeOnDelete();
 
 
+            $table->boolean('is_default')
+                ->default(false);
+
+
+            $table->json('settings')
+                ->nullable();
+
+
             $table->timestamps();
 
 

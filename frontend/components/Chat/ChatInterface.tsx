@@ -1,11 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, FormEvent } from "react";
-
 import { useRouter } from "next/navigation";
-
 import { sendMessageStream, getChats, getChat, deleteChat } from "@/lib/api";
-
 import { Chat, AIModel, Workspace } from "@/types";
 
 import Sidebar from "@/components/Sidebar/Sidebar";
@@ -18,65 +15,41 @@ import styles from "./ChatInterface.module.css";
 
 interface Props {
   workspace: Workspace;
-
   workspaceId: number;
-
   models?: AIModel[];
-
   onNewChat?: () => void;
-
   initialChat?: Chat | null;
-
   documents?: any[];
-
   selectedModel?: any;
 }
 
 export default function ChatInterface({
   workspace,
-
   workspaceId,
-
-  models,
-
+  models = [],
   initialChat,
-
   onNewChat,
-
   documents,
-
   selectedModel,
 }: Props) {
   const router = useRouter();
 
   const [chats, setChats] = useState<Chat[]>([]);
-
   const [currentChat, setCurrentChat] = useState<Chat | null>(
     initialChat ?? null,
   );
-
   const [activeModel, setActiveModel] = useState<AIModel | null>(null);
-
   const [input, setInput] = useState("");
-
   const [loading, setLoading] = useState(false);
 
   const messagesRef = useRef<HTMLDivElement | null>(null);
-
   const abortRef = useRef<AbortController | null>(null);
-
-  /*
-|--------------------------------------------------------------------------
-| انتخاب مدل پیش فرض Workspace
-|--------------------------------------------------------------------------
-*/
 
   useEffect(() => {
     if (!models.length) {
       setActiveModel(null);
       return;
     }
-
     const defaultModel =
       models.find((m: any) => m.pivot?.is_default === 1) ?? models[0];
     setActiveModel(defaultModel);
@@ -89,7 +62,6 @@ export default function ChatInterface({
   async function loadChats() {
     try {
       const data = await getChats(workspaceId);
-
       setChats(data);
     } catch (e) {
       console.log(e);
@@ -99,9 +71,7 @@ export default function ChatInterface({
   async function selectChat(chat: Chat) {
     try {
       const data = await getChat(workspaceId, chat.id);
-
       setCurrentChat(data);
-
       router.push(`/workspace/${workspaceId}/chat/${chat.id}`);
     } catch (e) {
       console.log(e);
@@ -109,13 +79,9 @@ export default function ChatInterface({
   }
 
   function scrollBottom() {
-    setTimeout(() => {
-      messagesRef.current?.scrollTo({
-        top: messagesRef.current.scrollHeight,
-
-        behavior: "smooth",
-      });
-    }, 100);
+    if (messagesRef.current) {
+      messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
+    }
   }
 
   async function send(e: FormEvent) {
@@ -168,6 +134,8 @@ export default function ChatInterface({
       };
     });
 
+    scrollBottom();
+
     try {
       await sendMessageStream(
         text,
@@ -178,15 +146,12 @@ export default function ChatInterface({
         (chunk) => {
           let textChunk = chunk;
 
-          // ✅ هندل امن پارس کردن chunk بدون کرش کردن برنامه
           try {
             const json = JSON.parse(chunk);
             if (json && typeof json.content === "string") {
               textChunk = json.content;
             }
-          } catch {
-            // اگر chunk متنی خام باشد، همان textChunk استفاده می‌شود
-          }
+          } catch {}
 
           setCurrentChat((prev) => {
             if (!prev) return prev;
@@ -210,10 +175,11 @@ export default function ChatInterface({
         controller.signal,
       );
 
-      await loadChats();
+      const latestChats = await getChats(workspaceId);
+      setChats(latestChats);
 
-      if (isNewChat) {
-        const created = chats[0];
+      if (isNewChat && latestChats.length > 0) {
+        const created = latestChats[0];
         if (created) {
           router.push(`/workspace/${workspaceId}/chat/${created.id}`);
         }
@@ -229,25 +195,23 @@ export default function ChatInterface({
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <div>
+        <div className={styles.headerLeft}>
           <span className={styles.logo}>✨ اکانتسرا</span>
-
           <span className={styles.modelBadge}>
-            🤖
-            {activeModel?.name ?? "بدون مدل"}
+            🤖 {activeModel?.name ?? "بدون مدل"}
           </span>
         </div>
-        <header className={styles.header}>
-          <h1>{workspace.name}</h1>
 
+        <div className={styles.workspaceInfo}>
+          <h1>{workspace.name}</h1>
           <span>
             {workspace.workspace_type?.icon}{" "}
             {workspace.workspace_type?.display_name}
           </span>
-        </header>
-        <div>
-          <UserMenu />
+        </div>
 
+        <div className={styles.headerRight}>
+          <UserMenu />
           <TokenUsageBadge />
         </div>
       </header>
@@ -261,7 +225,6 @@ export default function ChatInterface({
             onNewChat={onNewChat}
             onDeleteChat={async (id) => {
               await deleteChat(workspaceId, id);
-
               await loadChats();
             }}
           />
@@ -282,7 +245,6 @@ export default function ChatInterface({
             isStreaming={loading}
             onCancel={() => {
               abortRef.current?.abort();
-
               setLoading(false);
             }}
           />

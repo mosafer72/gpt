@@ -18,7 +18,8 @@ class ChatController extends Controller
     public function __construct(
         protected ChatPipeline $chatPipeline,
         protected MessageStore $messageStore
-    ) {}
+    ) {
+    }
 
     /**
      * لیست چت‌ها
@@ -72,9 +73,9 @@ class ChatController extends Controller
                     'data' => $paginator->items(),
                     'pagination' => [
                         'current_page' => $paginator->currentPage(),
-                        'last_page'    => $paginator->lastPage(),
-                        'per_page'     => $paginator->perPage(),
-                        'total'        => $paginator->total(),
+                        'last_page' => $paginator->lastPage(),
+                        'per_page' => $paginator->perPage(),
+                        'total' => $paginator->total(),
                     ]
                 ];
             }
@@ -83,6 +84,9 @@ class ChatController extends Controller
         return response()->json($messages);
     }
 
+    /**
+     * ارسال پیام و پاسخ Stream آنی بدون تاخیر
+     */
     /**
      * ارسال پیام و پاسخ Stream آنی بدون تاخیر
      */
@@ -95,12 +99,12 @@ class ChatController extends Controller
         }
 
         $request->validate([
-            'message'        => 'nullable|string',
-            'chat_id'        => 'nullable|exists:chats,id',
-            'model_id'       => 'required|exists:ai_models,id',
-            'image'          => 'nullable|image|max:5120',
-            'paper_id'       => 'nullable|exists:papers,id',
-            'document_ids'   => 'nullable|array',
+            'message' => 'nullable|string',
+            'chat_id' => 'nullable|exists:chats,id',
+            'model_id' => 'required|exists:ai_models,id',
+            'image' => 'nullable|image|max:5120',
+            'paper_id' => 'nullable|exists:papers,id',
+            'document_ids' => 'nullable|array',
             'document_ids.*' => 'exists:documents,id'
         ]);
 
@@ -145,7 +149,7 @@ class ChatController extends Controller
             ->first();
 
         if (!$aiModel) {
-            return response()->json(['error' => 'Model unavailable'], 403);
+            return response()->json(['error' => 'Model unavailable'.$subscription->workspacePlan], 403);
         }
 
         /*
@@ -161,16 +165,24 @@ class ChatController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | ۵. ساخت یا یافتن چت
+        | ۵. ساخت یا یافتن چت (با اعتبارسنجی تعلق به workspace)
         |--------------------------------------------------------------------------
         */
-        $chat = $request->chat_id
-            ? Chat::where('workspace_id', $workspace->id)->findOrFail($request->chat_id)
-            : Chat::create([
-                'user_id'      => $user->id,
+        if ($request->chat_id) {
+            $chat = Chat::where('id', $request->chat_id)
+                ->where('workspace_id', $workspace->id)
+                ->first();
+
+            if (!$chat) {
+                return response()->json(['error' => 'Chat not found in this workspace'], 404);
+            }
+        } else {
+            $chat = Chat::create([
+                'user_id' => $user->id,
                 'workspace_id' => $workspace->id,
-                'title'        => mb_substr($request->message ?? 'New Chat', 0, 50)
+                'title' => mb_substr($request->message ?? 'New Chat', 0, 50)
             ]);
+        }
 
         Cache::forget("user:{$user->id}:chats:last20");
 
@@ -182,19 +194,19 @@ class ChatController extends Controller
         |--------------------------------------------------------------------------
         */
         StoreMessageJob::dispatch([
-            'id'           => uniqid(),
+            'id' => uniqid(),
             'conversation' => (string) $chat->id,
-            'user_id'      => (string) $user->id,
+            'user_id' => (string) $user->id,
             'workspace_id' => $workspace->id,
-            'role'         => 'user',
-            'content'      => $content,
-            'token_count'  => 0,
-            'metadata'     => [
-                'model_id'     => $aiModel->id,
+            'role' => 'user',
+            'content' => $content,
+            'token_count' => 0,
+            'metadata' => [
+                'model_id' => $aiModel->id,
                 'document_ids' => $request->document_ids ?? [],
-                'attachments'  => $imagePath ? [['type' => 'image', 'url' => $imageUrl]] : []
+                'attachments' => $imagePath ? [['type' => 'image', 'url' => $imageUrl]] : []
             ],
-            'created_at'   => now()->toDateTimeString()
+            'created_at' => now()->toDateTimeString()
         ]);
 
         /*
@@ -211,95 +223,112 @@ class ChatController extends Controller
 
         $context->setMetadata([
             'workspace_id' => $workspace->id,
-            'model_id'     => $aiModel->id,
+            'model_id' => $aiModel->id,
             'document_ids' => $request->document_ids ?? [],
-            'attachments'  => $imagePath ? [['type' => 'image', 'url' => $imageUrl]] : []
+            'attachments' => $imagePath ? [['type' => 'image', 'url' => $imageUrl]] : []
         ]);
 
         /*
         |--------------------------------------------------------------------------
-        | ۸. ارسال Response Stream بهینه شده (بدون کاراکتر و نویز اضافی)
+        | بستن سشن برای جلوگیری از قفل شدن درخواست‌های همزمان کاربر
+        |--------------------------------------------------------------------------
+        */
+        if (request()->hasSession()) {
+            session()->writeClose();
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | ۸. ارسال Response Stream بهینه شده و مقاوم
         |--------------------------------------------------------------------------
         */
         return response()->stream(
             function () use ($context, $workspace) {
-
-                // غیرفعال کردن بافرهای وب‌سرور برای خروج آنی اطلاعات
-                if (function_exists('apache_setenv')) {
-                    @apache_setenv('no-gzip', 1);
-                }
+                // تنظیمات برای خاموش کردن کامل بافرینگ سرور
                 @ini_set('zlib.output_compression', 'Off');
+                @ini_set('output_buffering', 'Off');
                 @ini_set('implicit_flush', '1');
 
-                // پاکسازی کامل بافر‌های احتمالی PHP قبلی
                 while (ob_get_level() > 0) {
-                    ob_end_clean();
+                    @ob_end_clean();
                 }
 
-                // اجرای Pipeline و دریافت پاسخ تکه به تکه
-                $result = $this->chatPipeline->stream($context);
-                $fullResponse = '';
+                set_time_limit(0); // جلوگیری از Timeout شدن اسکریپت در استریم‌های طولانی
 
-                foreach ($result as $chunk) {
-                    $text = '';
+                try {
+                    $result = $this->chatPipeline->stream($context);
+                    $fullResponse = '';
 
-                    if (isset($chunk['content'])) {
-                        $text = $chunk['content'];
-                    } elseif (isset($chunk['choices'][0]['delta']['content'])) {
-                        $text = $chunk['choices'][0]['delta']['content'];
+                    foreach ($result as $chunk) {
+                        // بررسی قطع اتصال کاربر (Abort شدن کلاینت)
+                        if (connection_aborted()) {
+                            break;
+                        }
+
+                        $text = '';
+
+                        if (isset($chunk['content'])) {
+                            $text = $chunk['content'];
+                        } elseif (isset($chunk['choices'][0]['delta']['content'])) {
+                            $text = $chunk['choices'][0]['delta']['content'];
+                        }
+
+                        if ($text === '') {
+                            continue;
+                        }
+
+                        $fullResponse .= $text;
+
+                        // ارسال استاندارد SSE
+                        echo "data: " . json_encode(['content' => $text], JSON_UNESCAPED_UNICODE) . "\n\n";
+
+                        if (ob_get_level() > 0) {
+                            @ob_flush();
+                        }
+                        @flush();
                     }
 
-                    if ($text === '') {
-                        continue;
+                    /*
+                    |--------------------------------------------------------------------------
+                    | ذخیره پیام نهایی هوش مصنوعی پس از اتمام استریم
+                    |--------------------------------------------------------------------------
+                    */
+                    if ($fullResponse !== '') {
+                        StoreMessageJob::dispatch([
+                            'id' => uniqid(),
+                            'conversation' => (string) $context->conversationId,
+                            'user_id' => (string) $context->userId,
+                            'workspace_id' => $workspace->id,
+                            'role' => 'assistant',
+                            'content' => $fullResponse,
+                            'token_count' => 0,
+                            'metadata' => [
+                                'model' => $context->model,
+                                'document_ids' => $context->metadata['document_ids'] ?? []
+                            ],
+                            'created_at' => now()->toDateTimeString()
+                        ]);
                     }
 
-                    $fullResponse .= $text;
-
-                    // ⚠️ خروجی فقط فرمت استاندارد SSE به همراه خط جدید
-                    echo "data: " . json_encode(['content' => $text], JSON_UNESCAPED_UNICODE) . "\n\n";
-
+                    echo "data: [DONE]\n\n";
                     if (ob_get_level() > 0) {
-                        ob_flush();
+                        @ob_flush();
                     }
-                    flush();
-                }
+                    @flush();
 
-                /*
-                |--------------------------------------------------------------------------
-                | ذخیره پیام نهایی هوش مصنوعی پس از اتمام استریم
-                |--------------------------------------------------------------------------
-                */
-                if ($fullResponse !== '') {
-                    StoreMessageJob::dispatch([
-                        'id'           => uniqid(),
-                        'conversation' => (string) $context->conversationId,
-                        'user_id'      => (string) $context->userId,
-                        'workspace_id' => $workspace->id,
-                        'role'         => 'assistant',
-                        'content'      => $fullResponse,
-                        'token_count'  => 0,
-                        'metadata'     => [
-                            'model'        => $context->model,
-                            'document_ids' => $context->metadata['document_ids'] ?? []
-                        ],
-                        'created_at'   => now()->toDateTimeString()
-                    ]);
+                } catch (\Exception $e) {
+                    \Log::error("Chat Stream Error: " . $e->getMessage());
+                    echo "data: " . json_encode(['error' => 'Stream failed'], JSON_UNESCAPED_UNICODE) . "\n\n";
+                    @flush();
                 }
-
-                echo "data: [DONE]\n\n";
-
-                if (ob_get_level() > 0) {
-                    ob_flush();
-                }
-                flush();
             },
             200,
             [
-                'Content-Type'      => 'text/event-stream',
-                'Cache-Control'     => 'no-cache, no-store, must-revalidate',
-                'Connection'        => 'keep-alive',
-                'X-Accel-Buffering' => 'no',
-                'Content-Encoding'  => 'none',
+                'Content-Type' => 'text/event-stream',
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Connection' => 'keep-alive',
+                'X-Accel-Buffering' => 'no', // حیاتی برای Nginx جهت جلوگیری از بافرینگ
+                'Content-Encoding' => 'none',
             ]
         );
     }
@@ -318,7 +347,7 @@ class ChatController extends Controller
 
         return response()->json([
             'success' => true,
-            'chat'    => $chat->load('messages')
+            'chat' => $chat->load('messages')
         ]);
     }
 

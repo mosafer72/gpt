@@ -117,7 +117,7 @@ class WorkspaceController extends Controller
 
                 'wallet',
 
-                'workspaceSubscriptions.workspacePlan.models.provider'
+                'plan.models.provider'
 
             ])
             ->where(

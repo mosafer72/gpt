@@ -1,160 +1,169 @@
-/* --- Wrapper Box --- */
-.wrapper {
+.card {
   background: rgba(255, 255, 255, 0.06);
-  border-radius: 28px;
-  padding: 28px;
+
   border: 1px solid rgba(255, 255, 255, 0.12);
+
+  border-radius: 28px;
+
+  padding: 28px;
+
+  direction: rtl;
+
   backdrop-filter: blur(20px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
 }
 
-/* --- Header --- */
 .header {
   display: flex;
+
   justify-content: space-between;
+
   align-items: center;
+
   margin-bottom: 25px;
 }
 
 .header h2 {
   margin: 0;
-  font-size: 22px;
+
+  font-size: 23px;
+
   color: #f8fafc;
-  font-weight: 700;
 }
 
 .header p {
   margin-top: 8px;
+
   color: #94a3b8;
-  font-size: 14px;
 }
 
-.header button {
-  background: linear-gradient(135deg, #2563eb, #7c3aed);
-  color: white;
-  border: none;
-  padding: 12px 22px;
-  border-radius: 14px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
-}
+.count {
+  background: rgba(37, 99, 235, 0.2);
 
-.header button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 15px 30px rgba(124, 58, 237, 0.4);
-}
+  color: #93c5fd;
 
-.header button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
+  padding: 8px 15px;
 
-/* --- Grid System --- */
-.grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 18px;
-}
-
-/* --- Cards inside Grid --- */
-.card {
-  background: rgba(255, 255, 255, 0.04);
   border-radius: 20px;
-  padding: 20px;
+}
+
+.list {
   display: flex;
-  gap: 15px;
-  align-items: flex-start;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  transition: all 0.3s ease;
+
+  flex-direction: column;
+
+  gap: 20px;
 }
 
-.card:hover {
-  background: rgba(255, 255, 255, 0.09);
-  border-color: rgba(255, 255, 255, 0.2);
-  transform: translateY(-4px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-}
+.item {
+  background: rgba(255, 255, 255, 0.04);
 
-/* --- Icon inside Card --- */
-.icon {
-  width: 50px;
-  height: 50px;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(124, 58, 237, 0.2));
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
+
+  border-radius: 22px;
+
+  padding: 22px;
+}
+
+.top {
   display: flex;
+
+  justify-content: space-between;
+
   align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  flex-shrink: 0;
 }
 
-.card h3 {
-  margin: 0 0 6px;
-  font-size: 16px;
-  color: #f8fafc;
-  font-weight: 600;
-}
-
-.card p {
+.top h3 {
   margin: 0;
-  font-size: 13px;
+
+  font-size: 18px;
+
+  color: white;
+}
+
+.top span {
+  display: block;
+
+  margin-top: 6px;
+
   color: #94a3b8;
-  line-height: 1.7;
-}
 
-/* --- Future Banner/Box --- */
-.future {
-  margin-top: 25px;
-  background: rgba(37, 99, 235, 0.1);
-  border: 1px solid rgba(37, 99, 235, 0.25);
-  border-radius: 18px;
-  padding: 18px;
-  display: flex;
-  gap: 15px;
-  align-items: center;
-  backdrop-filter: blur(10px);
-}
-
-.future span {
-  font-size: 30px;
-}
-
-.future strong {
-  color: #60a5fa;
-  font-size: 15px;
-}
-
-.future p {
-  margin: 5px 0 0;
   font-size: 13px;
+}
+
+.score {
+  font-size: 24px;
+
+  font-weight: 800;
+
+  color: #a78bfa;
+}
+
+.progress {
+  height: 8px;
+
+  margin: 18px 0;
+
+  border-radius: 10px;
+
+  background: rgba(255, 255, 255, 0.1);
+
+  overflow: hidden;
+}
+
+.progress div {
+  height: 100%;
+
+  background: linear-gradient(90deg, #7c3aed, #2563eb);
+
+  border-radius: 10px;
+}
+
+.summary {
   color: #cbd5e1;
+
+  line-height: 1.9;
+
+  font-size: 14px;
 }
 
-/* --- Responsive Media Queries --- */
-@media (max-width: 900px) {
-  .grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
+.keywords {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 8px;
+
+  margin-top: 15px;
 }
 
-@media (max-width: 600px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
+.keywords span {
+  background: rgba(124, 58, 237, 0.18);
 
-  .header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 15px;
-  }
-  
-  .header button {
-    width: 100%;
-  }
+  color: #ddd6fe;
+
+  padding: 6px 12px;
+
+  border-radius: 14px;
+
+  font-size: 12px;
+}
+
+.meta {
+  margin-top: 18px;
+
+  display: flex;
+
+  gap: 15px;
+
+  color: #94a3b8;
+
+  font-size: 13px;
+}
+
+.empty {
+  color: #94a3b8;
+
+  text-align: center;
+
+  padding: 40px;
 }

@@ -7,8 +7,11 @@ use App\Application\Intent\RuleIntentDetector;
 use App\Application\DTOs\IntentResult;
 use App\Domain\Contracts\PlannerProvider;
 
+
+
 class IntentPipeline
 {
+
 
     public function __construct(
 
@@ -16,7 +19,12 @@ class IntentPipeline
 
         protected PlannerProvider $planner
 
-    ) {}
+    ) {
+    }
+
+
+
+
 
 
 
@@ -28,61 +36,238 @@ class IntentPipeline
 
         /*
         |--------------------------------------------------------------------------
-        | Rule Based Detection
+        | Rule Detection First
         |--------------------------------------------------------------------------
         */
 
-        $result =
-            $this->rules->detect(
-                $context->currentMessage
-            );
+
+        $ruleResult =
+            $this->rules
+                ->detect(
+
+                    $context->currentMessage
+
+                );
 
 
 
-        if ($result instanceof IntentResult) {
+
+
+        if (
+            $ruleResult instanceof IntentResult
+        ) {
+
 
             return $this->applyResult(
+
                 $context,
-                $result
+
+                $ruleResult
+
             );
 
+
         }
+
+
+
+
+
 
 
 
         /*
         |--------------------------------------------------------------------------
-        | Planner Detection
+        | Planner Only For Complex Requests
         |--------------------------------------------------------------------------
         */
 
-        if ($usePlanner) {
 
+        if (
+            !$usePlanner
+        ) {
 
-            $result =
-                $this->planner->analyze(
-                    $context
-                );
-
-
-
-            if ($result instanceof IntentResult) {
-
-
-                return $this->applyResult(
-                    $context,
-                    $result
-                );
-
-            }
+            return $context;
 
         }
 
 
 
+
+
+
+
+        if (
+            !$this->shouldUsePlanner(
+                $context
+            )
+        ) {
+
+
+            return $context;
+
+
+        }
+
+
+
+
+
+
+
+        $plannerResult =
+            $this->planner
+                ->analyze(
+
+                    $context
+
+                );
+
+
+
+
+
+
+        if (
+            $plannerResult instanceof IntentResult
+        ) {
+
+
+            return $this->applyResult(
+
+                $context,
+
+                $plannerResult
+
+            );
+
+
+        }
+
+
+
+
+
+
         return $context;
 
+
     }
+
+
+
+
+
+
+
+
+
+    protected function shouldUsePlanner(
+        ChatContext $context
+    ): bool {
+
+
+        $message =
+            mb_strtolower(
+                trim(
+                    $context->currentMessage
+                )
+            );
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Short casual messages
+        |--------------------------------------------------------------------------
+        */
+
+
+        if (
+            mb_strlen($message) < 20
+        ) {
+
+
+            return false;
+
+
+        }
+
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Document / Academic Requests
+        |--------------------------------------------------------------------------
+        */
+
+
+        $keywords = [
+
+            'مقاله',
+
+            'paper',
+
+            'document',
+
+            'pdf',
+
+            'تحقیق',
+
+            'research',
+
+            'summary',
+
+            'abstract',
+
+            'methodology',
+
+            'نتیجه',
+
+            'بخش'
+
+        ];
+
+
+
+
+
+
+        foreach ($keywords as $keyword) {
+
+
+            if (
+                str_contains(
+                    $message,
+                    $keyword
+                )
+            ) {
+
+
+                return true;
+
+
+            }
+
+
+        }
+
+
+
+
+
+
+        return false;
+
+
+    }
+
+
 
 
 
@@ -97,26 +282,35 @@ class IntentPipeline
 
 
         $context->addMetadata(
+
             'intent',
+
             $result->intent
+
         );
 
 
+
+
+
         $context->addMetadata(
+
             'confidence',
+
             $result->confidence
+
         );
 
 
+
+
+
         $context->addMetadata(
+
             'needs_clarification',
+
             $result->needsClarification
-        );
 
-
-        $context->addMetadata(
-            'rewritten_message',
-            $result->rewrite
         );
 
 
@@ -126,38 +320,93 @@ class IntentPipeline
         );
 
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Stop pipeline if clarification needed
-        |--------------------------------------------------------------------------
-        */
-
-        if ($result->needsClarification) {
+        $context->addMetadata(
+            'use_documents',
+            $result->useDocuments
+        );
 
 
-            $context->setAssistantResponse(
+        if (
+            !empty(
+            $result->rewrite
+        )
+        ) {
 
-                response:
-                    $result->rewrite,
 
-                tokenUsage:
-                [
-                    'prompt_tokens'=>0,
+            $context->addMetadata(
 
-                    'completion_tokens'=>0,
+                'rewritten_message',
 
-                    'total_tokens'=>0,
-                ]
+                $result->rewrite
 
             );
+
 
         }
 
 
 
+
+
+
+        $context->addMetadata(
+
+            'use_main_model',
+
+            $result->useMainModel
+
+        );
+
+
+
+
+
+
+
+        if (
+            $result->needsClarification
+        ) {
+
+
+
+            $context->setAssistantResponse(
+
+                response:
+
+                $result->rewrite
+                ??
+                'لطفاً درخواست خود را واضح‌تر بیان کنید.',
+
+
+
+                tokenUsage:
+
+                [
+
+                    'prompt_tokens' => 0,
+
+                    'completion_tokens' => 0,
+
+                    'total_tokens' => 0
+
+                ]
+
+            );
+
+
+
+        }
+
+
+
+
+
+
+
         return $context;
 
+
     }
+
 
 }

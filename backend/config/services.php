@@ -71,7 +71,7 @@ return [
 
         'model' => env(
             'PLANNER_MODEL',
-            'qwen2.5:3b-instruct'
+            'qwen2.5-64k:latest'
         ),
 
     ],

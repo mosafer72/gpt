@@ -2,6 +2,7 @@
 
 namespace App\Application\DTOs;
 
+
 class IntentResult
 {
 
@@ -16,6 +17,8 @@ class IntentResult
         public bool $needsClarification = false,
 
         public bool $useMainModel = true,
+
+        public bool $useDocuments = false,
 
     ) {}
 

@@ -6,6 +6,8 @@ namespace App\Application\Services;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\AiModel;
+use App\Models\WorkspacePlan;
+
 use RuntimeException;
 
 
@@ -30,21 +32,18 @@ class WorkspaceAccessService
 
 
 
-    /**
-     * بررسی کامل دسترسی Chat
-     */
+
+
     public function check(
+
         User $user,
+
         ?string $modelKey = null,
+
         int $estimatedTokens = 0
+
     ): Workspace {
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Workspace
-        |--------------------------------------------------------------------------
-        */
 
         $workspace =
             $this->workspaceService
@@ -63,64 +62,27 @@ class WorkspaceAccessService
 
 
 
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Subscription
-        |--------------------------------------------------------------------------
-        */
-
-        $subscription =
-            $this->subscriptionService
-                ->active($workspace);
-
-
-
-        if (!$subscription) {
-
-            throw new RuntimeException(
-                'No active subscription'
+        $plan =
+            $this->resolvePlan(
+                $workspace
             );
 
-        }
 
 
-
-
-
-        if (
-            !$subscription->expires_at
-            ||
-            $subscription->expires_at->isPast()
-        ) {
-
-            throw new RuntimeException(
-                'Workspace subscription expired'
-            );
-
-        }
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Model Permission
-        |--------------------------------------------------------------------------
-        */
 
         if ($modelKey) {
 
 
             $allowed =
-                $subscription
-                    ->workspacePlan
+                $plan
                     ->models()
                     ->where(
                         'key',
                         $modelKey
+                    )
+                    ->where(
+                        'is_active',
+                        true
                     )
                     ->exists();
 
@@ -134,19 +96,11 @@ class WorkspaceAccessService
 
             }
 
+
         }
 
 
 
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Token Balance
-        |--------------------------------------------------------------------------
-        */
 
 
         if ($estimatedTokens > 0) {
@@ -160,29 +114,44 @@ class WorkspaceAccessService
                     )
             ) {
 
+
                 throw new RuntimeException(
                     'Insufficient tokens'
                 );
 
-            }
 
+            }
 
         }
 
 
+
+
+
         return $workspace;
+
 
     }
 
-    public function resolveModel(
-        Workspace $workspace,
-        ?string $requested = null
-    ): AiModel {
+
+
+
+
+
+
+
+
+    public function resolvePlan(
+        Workspace $workspace
+    ): WorkspacePlan {
+
 
 
         $subscription =
             $this->subscriptionService
-                ->active($workspace);
+                ->active(
+                    $workspace
+                );
 
 
 
@@ -196,9 +165,57 @@ class WorkspaceAccessService
 
 
 
-        $query =
-            $subscription
-                ->workspacePlan
+
+        if (
+            $subscription->expires_at
+            &&
+            $subscription->expires_at->isPast()
+        ) {
+
+
+            throw new RuntimeException(
+                'Workspace subscription expired'
+            );
+
+
+        }
+
+
+
+
+        return $subscription->workspacePlan;
+
+
+    }
+
+
+
+
+
+
+
+
+
+    public function resolveModel(
+
+        Workspace $workspace,
+
+        ?string $requested = null
+
+    ): AiModel {
+
+
+
+        $plan =
+            $this->resolvePlan(
+                $workspace
+            );
+
+
+
+
+        $models =
+            $plan
                 ->models()
                 ->where(
                     'is_active',
@@ -207,11 +224,13 @@ class WorkspaceAccessService
 
 
 
+
+
         if ($requested) {
 
 
             $model =
-                $query
+                (clone $models)
                     ->where(
                         'key',
                         $requested
@@ -223,11 +242,35 @@ class WorkspaceAccessService
             if (!$model) {
 
                 throw new RuntimeException(
-                    'Model not allowed'
+                    'Requested model is not allowed'
                 );
 
             }
 
+
+
+            return $model;
+
+
+        }
+
+
+
+
+
+
+        $model =
+            (clone $models)
+                ->where(
+                    'is_default',
+                    true
+                )
+                ->first();
+
+
+
+
+        if ($model) {
 
             return $model;
 
@@ -235,8 +278,142 @@ class WorkspaceAccessService
 
 
 
-        return $query->firstOrFail();
+
+
+        $model =
+            $models->first();
+
+
+
+
+        if (!$model) {
+
+            throw new RuntimeException(
+                'No model assigned to plan'
+            );
+
+        }
+
+
+
+
+
+        return $model;
+
 
     }
+
+
+
+
+
+
+
+
+
+    public function resolveCapabilities(
+        Workspace $workspace
+    ): array {
+
+
+        $plan =
+            $this->resolvePlan(
+                $workspace
+            );
+
+
+
+        $typeCapabilities =
+
+            data_get(
+
+                $workspace->type,
+
+                'capabilities',
+
+                []
+
+            );
+
+
+
+
+
+        $planCapabilities =
+
+            $plan->capabilities
+            ??
+            [];
+
+
+
+
+
+        return array_merge(
+
+            [
+
+                'planner' => false,
+
+                'memory' => false,
+
+                'documents' => false,
+
+                'image' => false,
+
+                'max_tokens' => 1000
+
+            ],
+
+            $typeCapabilities,
+
+            $planCapabilities
+
+        );
+
+
+    }
+
+
+
+
+
+
+
+
+
+    public function canUseModel(
+
+        Workspace $workspace,
+
+        string $modelKey
+
+    ): bool {
+
+
+
+        $plan =
+            $this->resolvePlan(
+                $workspace
+            );
+
+
+
+
+        return $plan
+            ->models()
+            ->where(
+                'key',
+                $modelKey
+            )
+            ->where(
+                'is_active',
+                true
+            )
+            ->exists();
+
+
+    }
+
 
 }

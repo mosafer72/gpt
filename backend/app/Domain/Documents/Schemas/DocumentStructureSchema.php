@@ -2,9 +2,7 @@
 
 namespace App\Domain\Documents\Schemas;
 
-
 use Surqlize\Model\SchemaContract;
-
 
 
 class DocumentStructureSchema implements SchemaContract
@@ -17,60 +15,167 @@ class DocumentStructureSchema implements SchemaContract
         return [
 
 
-            "DEFINE TABLE IF NOT EXISTS document_structure SCHEMAFULL;",
+            /*
+            |--------------------------------------------------------------------------
+            | Table
+            |--------------------------------------------------------------------------
+            */
+
+            "
+            DEFINE TABLE IF NOT EXISTS document_structure
+            SCHEMAFULL;
+            ",
 
 
 
-            "DEFINE FIELD IF NOT EXISTS document_id
+
+            /*
+            |--------------------------------------------------------------------------
+            | Core Fields
+            |--------------------------------------------------------------------------
+            */
+
+
+            "
+            DEFINE FIELD IF NOT EXISTS document_id
+
             ON document_structure
-            TYPE string;",
+
+            TYPE string;
+            ",
 
 
 
-            "DEFINE FIELD IF NOT EXISTS workspace_id
+            "
+            DEFINE FIELD IF NOT EXISTS workspace_id
+
             ON document_structure
-            TYPE string;",
+
+            TYPE string;
+            ",
 
 
 
 
-            "DEFINE FIELD IF NOT EXISTS title
+            /*
+            |--------------------------------------------------------------------------
+            | Document Metadata
+            |--------------------------------------------------------------------------
+            */
+
+
+            "
+            DEFINE FIELD IF NOT EXISTS title
+
             ON document_structure
+
             TYPE object
-            FLEXIBLE;",
+            FLEXIBLE;
+            ",
 
 
 
 
-            "DEFINE FIELD IF NOT EXISTS sections
+
+            /*
+            |--------------------------------------------------------------------------
+            | Sections
+            |--------------------------------------------------------------------------
+            */
+
+
+            "
+            DEFINE FIELD IF NOT EXISTS sections
+
             ON document_structure
-            TYPE array;",
+
+            TYPE array;
+            ",
 
 
 
+            "
+            DEFINE FIELD IF NOT EXISTS sections.*
 
-
-            "DEFINE FIELD IF NOT EXISTS created_at
             ON document_structure
+
+            TYPE object
+            FLEXIBLE;
+            ",
+
+
+
+
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Timestamps
+            |--------------------------------------------------------------------------
+            */
+
+
+            "
+            DEFINE FIELD IF NOT EXISTS created_at
+
+            ON document_structure
+
             TYPE datetime
-            DEFAULT time::now();",
+
+            DEFAULT time::now();
+            ",
 
 
 
-
-
-
-            "DEFINE INDEX IF NOT EXISTS
-            idx_structure_document
+            "
+            DEFINE FIELD IF NOT EXISTS updated_at
 
             ON document_structure
 
-            COLUMNS document_id;"
+            TYPE datetime
+
+            DEFAULT time::now();
+            ",
+
+
+
+
+
+
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Indexes
+            |--------------------------------------------------------------------------
+            */
+
+
+            "
+            DEFINE INDEX IF NOT EXISTS idx_structure_document_unique
+
+            ON document_structure
+
+            COLUMNS document_id
+
+            UNIQUE;
+            ",
+
+
+
+            "
+            DEFINE INDEX IF NOT EXISTS idx_structure_workspace
+
+            ON document_structure
+
+            COLUMNS workspace_id;
+            ",
+
+
 
         ];
 
     }
-
 
 
 

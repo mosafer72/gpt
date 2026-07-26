@@ -7,22 +7,27 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspacePlan;
 use App\Models\WorkspaceType;
-use App\Application\Services\TokenWalletService;
 
 
 
 class WorkspaceService
 {
 
+
     public function __construct(
 
         protected TokenWalletService $walletService
 
     ) {
+
     }
-    /**
-     * Workspace فعال کاربر
-     */
+
+
+
+
+
+
+
     public function current(
         User $user
     ): ?Workspace {
@@ -31,22 +36,32 @@ class WorkspaceService
         return $user
             ->workspaces()
             ->with([
+
                 'workspaceType',
+
                 'wallet',
+
                 'workspaceSubscriptions' => function ($query) {
 
+
                     $query
-                        ->where('is_active', true)
+                        ->where(
+                            'is_active',
+                            true
+                        )
                         ->where(
                             'expires_at',
                             '>',
                             now()
                         )
                         ->with([
+
                             'workspacePlan.models'
+
                         ]);
 
                 }
+
             ])
             ->where(
                 'is_active',
@@ -59,71 +74,156 @@ class WorkspaceService
 
 
 
-    /**
-     * ساخت Workspace جدید
-     */
+
+
+
+
+
     public function create(
+
         User $user,
+
         WorkspaceType $type,
+
         WorkspacePlan $plan
+
     ): Workspace {
 
 
-        $existing = Workspace::where(
 
-            'user_id',
+        $workspace =
 
-            $user->id
+            Workspace::firstOrCreate(
 
-        )
-            ->where(
+                [
 
-                'workspace_type_id',
-
-                $type->id
-
-            )
-            ->first();
+                    'user_id' =>
+                        $user->id,
 
 
+                    'workspace_type_id' =>
+                        $type->id,
 
-        if ($existing) {
+                ],
 
-            return $existing;
+
+                [
+
+                    'name' =>
+                        $type->display_name,
+
+
+                    'type' =>
+                        $type->key,
+
+
+                    'started_at' =>
+                        now(),
+
+
+                    'is_active' =>
+                        true,
+
+                ]
+
+            );
+
+
+
+
+
+
+
+        $subscription =
+
+            $workspace
+                ->workspaceSubscriptions()
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->first();
+
+
+
+
+
+
+
+        if (!$subscription) {
+
+
+            $workspace
+                ->workspaceSubscriptions()
+                ->create([
+
+
+                    'user_id' =>
+                        $user->id,
+
+
+                    'workspace_plan_id' =>
+                        $plan->id,
+
+
+                    'started_at' =>
+                        now(),
+
+
+                    'expires_at' =>
+                        now()->addDays(
+                            $plan->duration_days
+                        ),
+
+
+                    'is_active' =>
+                        true,
+
+
+                    'transaction_id' =>
+                        'free'
+
+
+                ]);
+
 
         }
 
 
 
-        $workspace = Workspace::create([
-
-            'user_id' => $user->id,
-
-            'workspace_type_id' => $type->id,
-
-            'workspace_plan_id' => $plan->id,
-
-            'name' => $plan->display_name,
-
-            'started_at' => now(),
-
-            'expires_at' => now()
-                ->addDays(
-                    $plan->duration_days
-                ),
-
-            'is_active' => true
-
-        ]);
 
 
-        $this->walletService
-            ->createFromPlan(
-                $workspace
-            );
 
 
-        return $workspace;
+        $workspace->load(
+                'workspaceSubscriptions.workspacePlan.models'
+        );
+
+
+
+
+
+
+
+        if (!$workspace->wallet) {
+
+
+            $this->walletService
+                ->createFromPlan(
+                    $workspace
+                );
+
+
+        }
+
+
+
+
+
+
+
+        return $workspace->refresh();
+
 
     }
 
@@ -131,79 +231,199 @@ class WorkspaceService
 
 
 
-    /**
-     * تغییر پلن Workspace
-     */
+
+
+
+
+    public function createByType(
+
+        User $user,
+
+        string $typeKey
+
+    ): ?Workspace {
+
+
+        $type =
+
+            WorkspaceType::where(
+                'key',
+                $typeKey
+            )
+                ->first();
+
+
+
+
+
+        if (!$type) {
+
+            return null;
+
+        }
+
+
+
+
+
+
+        $plan =
+
+            WorkspacePlan::where(
+                'workspace_type_id',
+                $type->id
+            )
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->orderBy(
+                    'price'
+                )
+                ->first();
+
+
+
+
+
+
+        if (!$plan) {
+
+            return null;
+
+        }
+
+
+
+
+
+
+        return $this->create(
+
+            user: $user,
+
+            type: $type,
+
+            plan: $plan
+
+        );
+
+
+    }
+
+
+
+
+
+
+
+
+
     public function changePlan(
+
         Workspace $workspace,
+
         WorkspacePlan $plan
+
     ): Workspace {
 
 
-        $workspace->update([
 
-            'workspace_plan_id' => $plan->id,
+        $workspace
+            ->workspaceSubscriptions()
+            ->where(
+                'is_active',
+                true
+            )
+            ->update([
+
+                'is_active' => false
+
+            ]);
 
 
-            'expires_at' => now()
-                ->addDays(
-                    $plan->duration_days
-                )
 
-        ]);
+
+
+
+
+
+        $workspace
+            ->workspaceSubscriptions()
+            ->create([
+
+
+                'user_id' =>
+                    $workspace->user_id,
+
+
+                'workspace_plan_id' =>
+                    $plan->id,
+
+
+                'started_at' =>
+                    now(),
+
+
+                'expires_at' =>
+                    now()->addDays(
+                        $plan->duration_days
+                    ),
+
+
+                'is_active' =>
+                    true,
+
+
+                'transaction_id' =>
+                    'plan_change'
+
+
+            ]);
+
+
+
+
+
 
 
         return $workspace->refresh();
 
+
     }
 
 
 
 
 
-    /**
-     * بررسی فعال بودن Workspace
-     */
+
+
+
+
     public function hasAccess(
         Workspace $workspace
     ): bool {
 
 
         return
+
             $workspace->is_active
+
             &&
-            $workspace->expires_at
-                ->isFuture();
 
-    }
-
-
-
-
-
-    /**
-     * گرفتن مدل‌های مجاز Workspace
-     */
-    public function models(
-        Workspace $workspace
-    ) {
-
-        $subscription =
             $workspace
-                ->workspaceSubscriptions
-                ->first();
+                ->workspaceSubscriptions()
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->where(
+                    'expires_at',
+                    '>',
+                    now()
+                )
+                ->exists();
 
-
-        if (!$subscription) {
-
-            return collect();
-
-        }
-
-
-        return $subscription
-            ->workspacePlan
-            ->models;
 
     }
 
@@ -211,20 +431,85 @@ class WorkspaceService
 
 
 
-    /**
-     * گرفتن Plan فعلی
-     */
+
+
+
+
     public function plan(
         Workspace $workspace
     ): ?WorkspacePlan {
 
-        return $workspace
-            ->workspaceSubscriptions
-            ->first()
-                ?->workspacePlan;
+
+        return
+
+            $workspace
+                ->workspaceSubscriptions()
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->with(
+                    'workspacePlan'
+                )
+                ->first()
+                    ?->workspacePlan;
+
 
     }
 
+
+
+
+
+
+
+
+
+    public function models(
+        Workspace $workspace
+    ) {
+
+
+        return
+
+            $this->plan(
+                $workspace
+            )
+                    ?->models
+
+            ??
+
+            collect();
+
+
+    }
+
+
+
+
+
+
+
+
+
+    public function all(
+        User $user
+    ) {
+
+
+        return $user
+            ->workspaces()
+            ->with([
+
+                'workspaceType',
+
+                'workspaceSubscriptions.workspacePlan'
+
+            ])
+            ->get();
+
+
+    }
 
 
 }

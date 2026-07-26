@@ -9,12 +9,12 @@ class QueryIntentClassifier
 
     public function classify(
         string $query
-    ): string {
+    ): array {
 
 
         $query =
             strtolower(
-                $query
+                trim($query)
             );
 
 
@@ -27,7 +27,8 @@ class QueryIntentClassifier
                 'title',
                 'name of article',
                 'paper name',
-                'article name'
+                'article name',
+                'what is this paper'
 
             ],
 
@@ -37,7 +38,8 @@ class QueryIntentClassifier
 
                 'abstract',
                 'summary',
-                'overview'
+                'overview',
+                'brief'
 
             ],
 
@@ -49,7 +51,9 @@ class QueryIntentClassifier
                 'methodology',
                 'approach',
                 'architecture',
-                'model'
+                'model',
+                'framework',
+                'algorithm'
 
             ],
 
@@ -60,7 +64,9 @@ class QueryIntentClassifier
                 'dataset',
                 'data',
                 'training data',
-                'test data'
+                'test data',
+                'benchmark',
+                'corpus'
 
             ],
 
@@ -69,8 +75,10 @@ class QueryIntentClassifier
             'experiment' => [
 
                 'experiment',
+                'experimental setup',
                 'setup',
-                'configuration'
+                'configuration',
+                'environment'
 
             ],
 
@@ -79,9 +87,13 @@ class QueryIntentClassifier
             'result' => [
 
                 'result',
+                'results',
                 'accuracy',
                 'performance',
-                'evaluation'
+                'evaluation',
+                'comparison',
+                'score',
+                'metric'
 
             ],
 
@@ -91,13 +103,19 @@ class QueryIntentClassifier
 
                 'conclusion',
                 'future work',
-                'limitation'
+                'limitation',
+                'limitation',
+                'discussion'
 
             ]
 
         ];
 
 
+
+
+
+        $matched = [];
 
 
 
@@ -109,6 +127,7 @@ class QueryIntentClassifier
             foreach ($words as $word) {
 
 
+
                 if (
                     str_contains(
                         $query,
@@ -116,7 +135,12 @@ class QueryIntentClassifier
                     )
                 ) {
 
-                    return $intent;
+
+                    $matched[] = $intent;
+
+
+                    break;
+
 
                 }
 
@@ -129,7 +153,179 @@ class QueryIntentClassifier
 
 
 
-        return 'general';
+
+
+        if(empty($matched)){
+
+
+            return [
+
+                'primary' => 'general',
+
+                'sections' => [
+
+                    'abstract',
+
+                    'introduction',
+
+                    'methodology',
+
+                    'results',
+
+                    'conclusion'
+
+                ]
+
+            ];
+
+
+        }
+
+
+
+
+
+
+        return [
+
+            /**
+             * First matched intent
+             */
+            'primary' =>
+                $matched[0],
+
+
+
+            /**
+             * All relevant sections
+             */
+            'sections' =>
+                $this->mapSections(
+                    $matched
+                )
+
+        ];
+
+
+
+    }
+
+
+
+
+
+
+
+    protected function mapSections(
+
+        array $intents
+
+    ): array {
+
+
+        $map = [
+
+
+            'title' => [
+
+                'abstract'
+
+            ],
+
+
+
+            'abstract' => [
+
+                'abstract'
+
+            ],
+
+
+
+            'methodology' => [
+
+                'methodology',
+
+                'architecture',
+
+                'model'
+
+            ],
+
+
+
+            'dataset' => [
+
+                'dataset',
+
+                'implementation'
+
+            ],
+
+
+
+            'experiment' => [
+
+                'experiment',
+
+                'experiments'
+
+            ],
+
+
+
+            'result' => [
+
+                'results',
+
+                'evaluation'
+
+            ],
+
+
+
+            'conclusion' => [
+
+                'discussion',
+
+                'conclusion',
+
+                'future work'
+
+            ]
+
+        ];
+
+
+
+
+
+        $sections = [];
+
+
+
+        foreach($intents as $intent){
+
+
+            foreach(
+                $map[$intent] ?? []
+                as $section
+            ){
+
+                $sections[] = $section;
+
+            }
+
+        }
+
+
+
+
+        return array_values(
+            array_unique(
+                $sections
+            )
+        );
 
 
     }

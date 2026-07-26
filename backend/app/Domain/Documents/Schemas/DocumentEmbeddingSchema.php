@@ -15,15 +15,16 @@ class DocumentEmbeddingSchema implements SchemaContract
 
         return [
 
-
-
             /*
             |--------------------------------------------------------------------------
             | Table
             |--------------------------------------------------------------------------
             */
 
-            "DEFINE TABLE IF NOT EXISTS document_embedding SCHEMAFULL;",
+            "
+            DEFINE TABLE IF NOT EXISTS document_embedding
+            SCHEMAFULL;
+            ",
 
 
 
@@ -35,37 +36,51 @@ class DocumentEmbeddingSchema implements SchemaContract
             */
 
 
-            "DEFINE FIELD IF NOT EXISTS document_id
+            "
+            DEFINE FIELD IF NOT EXISTS document_id
             ON document_embedding
-            TYPE string;",
+            TYPE string;
+            ",
 
 
 
-            "DEFINE FIELD IF NOT EXISTS workspace_id
+            "
+            DEFINE FIELD IF NOT EXISTS workspace_id
             ON document_embedding
-            TYPE string;",
+            TYPE string;
+            ",
 
 
 
-            "DEFINE FIELD IF NOT EXISTS chunk_id
+            "
+            DEFINE FIELD IF NOT EXISTS chunk_id
             ON document_embedding
-            TYPE string;",
+            TYPE string;
+            ",
 
 
 
-
-            "DEFINE FIELD IF NOT EXISTS content
+            "
+            DEFINE FIELD IF NOT EXISTS content
             ON document_embedding
-            TYPE string;",
+            TYPE string;
+            ",
 
 
 
+            /*
+            |--------------------------------------------------------------------------
+            | Vector
+            |--------------------------------------------------------------------------
+            */
 
-            "DEFINE FIELD IF NOT EXISTS embedding
+
+            "
+            DEFINE FIELD IF NOT EXISTS embedding
             ON document_embedding
-            TYPE array;"
+            TYPE array;
+            ",
 
-            ,
 
 
 
@@ -77,18 +92,40 @@ class DocumentEmbeddingSchema implements SchemaContract
             */
 
 
-            "DEFINE FIELD IF NOT EXISTS metadata
+            "
+            DEFINE FIELD IF NOT EXISTS metadata
             ON document_embedding
             TYPE object
-            FLEXIBLE;",
+            FLEXIBLE;
+            ",
 
 
 
 
-            "DEFINE FIELD IF NOT EXISTS created_at
+
+            /*
+            |--------------------------------------------------------------------------
+            | Dates
+            |--------------------------------------------------------------------------
+            */
+
+
+            "
+            DEFINE FIELD IF NOT EXISTS created_at
             ON document_embedding
             TYPE datetime
-            DEFAULT time::now();",
+            DEFAULT time::now();
+            ",
+
+
+
+            "
+            DEFINE FIELD IF NOT EXISTS updated_at
+            ON document_embedding
+            TYPE datetime
+            DEFAULT time::now();
+            ",
+
 
 
 
@@ -97,45 +134,62 @@ class DocumentEmbeddingSchema implements SchemaContract
 
             /*
             |--------------------------------------------------------------------------
-            | Search Indexes
+            | Normal Indexes
             |--------------------------------------------------------------------------
             */
 
 
-
-            "DEFINE INDEX IF NOT EXISTS
+            "
+            DEFINE INDEX IF NOT EXISTS
             idx_embedding_workspace
 
             ON document_embedding
 
-            COLUMNS workspace_id;",
+            COLUMNS workspace_id;
+            ",
 
 
 
-
-
-
-            "DEFINE INDEX IF NOT EXISTS
+            "
+            DEFINE INDEX IF NOT EXISTS
             idx_embedding_document
 
             ON document_embedding
 
-            COLUMNS document_id;",
+            COLUMNS document_id;
+            ",
 
 
 
-
-
-
-            "DEFINE INDEX IF NOT EXISTS
+            "
+            DEFINE INDEX IF NOT EXISTS
             idx_embedding_chunk
 
             ON document_embedding
 
-            COLUMNS chunk_id;",
+            COLUMNS chunk_id;
+            ",
 
 
 
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Duplicate Protection
+            |--------------------------------------------------------------------------
+            */
+
+
+            "
+            DEFINE INDEX IF NOT EXISTS
+            idx_document_chunk_unique
+
+            ON document_embedding
+
+            COLUMNS document_id, chunk_id
+            UNIQUE;
+            ",
 
 
 

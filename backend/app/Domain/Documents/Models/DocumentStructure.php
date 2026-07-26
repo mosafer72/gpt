@@ -9,7 +9,6 @@ use Surqlize\Attributes\Table;
 use Surqlize\Model\Model;
 
 
-
 #[Table('document_structure')]
 #[Schema(DocumentStructureSchema::class)]
 class DocumentStructure extends Model
@@ -27,8 +26,6 @@ class DocumentStructure extends Model
     private array $sections = [];
 
     private ?string $createdAt = null;
-
-
 
 
 
@@ -75,7 +72,17 @@ class DocumentStructure extends Model
             ??
             null;
 
+    }
 
+
+
+
+
+
+
+    public function getId(): string
+    {
+        return $this->id;
     }
 
 
@@ -86,9 +93,7 @@ class DocumentStructure extends Model
 
     public function getDocumentId(): string
     {
-
         return $this->documentId;
-
     }
 
 
@@ -99,22 +104,7 @@ class DocumentStructure extends Model
 
     public function getWorkspaceId(): string
     {
-
         return $this->workspaceId;
-
-    }
-
-
-
-
-
-
-
-    public function getSections(): array
-    {
-
-        return $this->sections;
-
     }
 
 
@@ -125,10 +115,86 @@ class DocumentStructure extends Model
 
     public function getTitle(): array
     {
-
         return $this->title;
+    }
+
+
+
+
+
+
+
+    public function getSections(): array
+    {
+        return $this->sections;
+    }
+
+
+
+
+
+
+
+    public function getCreatedAt(): ?string
+    {
+        return $this->createdAt;
+    }
+
+
+
+
+
+
+
+    /**
+     * Get important sections only
+     */
+    public function getImportantSections(): array
+    {
+
+        return array_values(
+            array_filter(
+                $this->sections,
+                fn(array $section) =>
+                    ($section['importance'] ?? null) === 'high'
+            )
+        );
 
     }
+
+
+
+
+
+
+
+    /**
+     * Find section by name
+     */
+    public function findSection(
+        string $name
+    ): ?array {
+
+
+        foreach($this->sections as $section)
+        {
+
+            if(
+                ($section['name'] ?? null)
+                ===
+                $name
+            )
+            {
+                return $section;
+            }
+
+        }
+
+
+        return null;
+
+    }
+
 
 
 }

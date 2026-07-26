@@ -2,36 +2,37 @@
 
 namespace App\Application\Pipelines;
 
-
+use App\Application\AI\ImageGenerationService;
+use App\Application\AI\ImageIntentDetector;
+use App\Application\Capabilities\CapabilityResolver;
 use App\Application\Context\ChatContext;
-use App\Application\Services\TokenWalletService;
-use App\Application\Services\UsageService;
+use App\Application\Services\TokenUsageService;
+use App\Application\Services\WorkspaceAccessService;
 use App\Application\Services\WorkspaceService;
+
+use App\Domain\Contracts\ConversationLoader;
 use App\Domain\Contracts\ConversationRepository;
 use App\Domain\Contracts\DocumentRetriever;
 use App\Domain\Contracts\LlmProvider;
-use App\Domain\Contracts\ConversationLoader;
 use App\Domain\Contracts\MessageStore;
 use App\Domain\Contracts\SmallChatProvider;
+
 use App\Domain\LLM\ChatMessage;
 use App\Domain\LLM\ChatRequest;
+use App\Domain\LLM\ChatResponse;
+
+use App\Domain\LLM\Usage;
 use App\Domain\Message\DTOs\MessageDTO;
-use App\Application\Capabilities\CapabilityResolver;
+
 use App\Jobs\StoreMemoryJob;
 use App\Jobs\StoreMessageJob;
+
 use App\Models\AiModel;
-use App\Models\Paper;
 use App\Models\User;
-use App\Http\Services\TokenService;
-use App\Application\AI\ImageIntentDetector;
-use App\Application\AI\ImageGenerationService;
-use App\Application\Services\WorkspaceAccessService;
-use App\Application\Services\TokenUsageService;
 
 
 class ChatPipeline
 {
-
 
     public function __construct(
 
@@ -45,107 +46,134 @@ class ChatPipeline
 
         protected PromptPipeline $promptPipeline,
 
-        protected LlmProvider $LlmProvider,
+        protected LlmProvider $llmProvider,
 
-        protected CapabilityResolver $capability,
+        protected SmallChatProvider $smallChatProvider,
+
+        protected CapabilityResolver $capabilityResolver,
 
         protected MessageStore $messageStore,
 
-        protected TokenWalletService $walletService,
-
-        protected SmallChatProvider $smallChat,
-
-
-        protected WorkspaceService $workspaceService,
-
-
-        protected ImageIntentDetector $imageIntentDetector,
-
-        protected ImageGenerationService $imageGenerationService,
-
         protected WorkspaceAccessService $workspaceAccessService,
-
 
         protected TokenUsageService $tokenUsageService,
 
         protected DocumentRetriever $documentRetriever,
 
+        protected ImageIntentDetector $imageIntentDetector,
 
+        protected ImageGenerationService $imageGenerationService,
+
+        protected WorkspaceService $workspaceService,
 
     ) {
     }
 
-    public function stream(ChatContext $context)
-    {
-        $originalUserMessage = $context->currentMessage;
 
 
-        $user = $this->prepareContext($context);
+    protected bool $useSmallModel = true;
 
 
 
-        $workspace = $this->workspaceAccessService
-            ->check(
-                $user,
-                $context->model,
-                1000
+    public function handle(
+        ChatContext $context
+    ): ChatContext {
+
+
+        $user =
+            $this->prepareContext(
+                $context
             );
 
 
-        $context->setWorkspace($workspace);
+        $this->checkWorkspaceAccess(
+            $context,
+            $user
+        );
+
+
+        $this->runPreProcessing(
+            $context,
+            $user
+        );
 
 
 
         if (
-            $this->capability->enabled(
-                $user,
-                'planner'
-            )
+            $this->isImageRequest($context)
         ) {
 
-            $this->intentPipeline
-                ->process(
-                    $context,
-                    true
-                );
-
-        }
-        \Log::info('DOCUMENT CAPABILITY', [
-            'enabled' => $this->capability->enabled($user, 'documents'),
-            'workspace' => $context->workspace->id,
-        ]);
-
-
-        if (
-            $this->capability->enabled(
-                $user,
-                'memory'
-            )
-        ) {
-
-            StoreMemoryJob::dispatch(
-                userId: $context->userId,
-                message: $originalUserMessage
+            return $this->generateImageResponse(
+                $context
             );
 
         }
 
 
 
-        $imageRequest =
-            $this->imageIntentDetector
-                ->detect(
-                    $context->currentMessage
-                );
+        $this->retrieveContext(
+            $context,
+            $user
+        );
 
 
-        if ($imageRequest) {
 
-            $result =
-                $this->generateImageResponse(
-                    $context,
-                    $imageRequest
-                );
+        $this->promptPipeline
+            ->build(
+                $context
+            );
+
+
+
+        $response =
+            $this->generateResponse(
+                $context,
+                $user
+            );
+
+
+
+        $this->afterResponse(
+            $context,
+            $user,
+            $response
+        );
+
+
+        return $context;
+
+    }
+
+
+
+
+    public function stream(
+        ChatContext $context
+    ): iterable {
+
+
+        $user =
+            $this->prepareContext(
+                $context
+            );
+
+
+        $this->checkWorkspaceAccess(
+            $context,
+            $user
+        );
+
+
+        $this->runPreProcessing(
+            $context,
+            $user
+        );
+
+
+
+        if (
+            $this->isImageRequest($context)
+        ) {
 
 
             return collect([
@@ -155,7 +183,8 @@ class ChatPipeline
                     'type' => 'image',
 
                     'image_url' =>
-                        $result->metadata['image_url']
+                        $this->generateImageResponse($context)
+                            ->metadata['image_url']
 
                 ]
 
@@ -165,49 +194,16 @@ class ChatPipeline
 
 
 
-
-        if (
-            !empty(
-            $context->metadata['rewritten_message']
-        )
-            &&
-            empty(
-            $context->metadata['needs_clarification']
-        )
-        ) {
-
-            $context->currentMessage =
-                $context->metadata['rewritten_message'];
-
-        }
-        /**
-         * Retrieve Documents
-         */
-
-        if (
-            $this->capability->enabled(
-                $user,
-                'documents'
-            )
-        ) {
-
-            $documents =
-                $this->documentRetriever
-                    ->retrieve(
-                        workspaceId: (string) $context->workspace->id,
-                        query: $context->currentMessage,
-                        limit: 5
-                    );
-
-            $context->setDocuments($documents);
-
-        }
+        $this->retrieveContext(
+            $context,
+            $user
+        );
 
 
         $this->promptPipeline
-            ->build($context);
-
-
+            ->build(
+                $context
+            );
 
 
 
@@ -217,7 +213,6 @@ class ChatPipeline
                     $context->workspace,
                     $context->model
                 );
-
 
 
 
@@ -230,210 +225,105 @@ class ChatPipeline
 
 
 
-
-
         $stream =
-            $this->smallChat->stream(
+            $this->useSmallModel
 
-                new ChatRequest(
+            ?
 
-                    messages:
-                    $request->messages,
-
-
-                    model:
-                    $model->key,
-
-
-                    temperature:
-                    $request->temperature,
-
-
-                    maxTokens:
-                    $request->maxTokens
-
+            $this->smallChatProvider
+                ->stream(
+                    $request
                 )
 
-            );
+            :
 
-
-
-
-
-
-        return (function () use ($stream, $context, $model, $request) {
-
-
-            $fullResponse = '';
-
-
-
-            foreach ($stream as $chunk) {
-
-
-                if (isset($chunk['content'])) {
-
-
-                    $content =
-                        $chunk['content'];
-
-
-                    $fullResponse .= $content;
-
-
-
-                    yield [
-
-                        'choices' => [
-
-                            [
-
-                                'delta' => [
-
-                                    'content' => $content
-
-                                ]
-
-                            ]
-
-                        ]
-
-                    ];
-
-                }
-
-
-
-                if (isset($chunk['error'])) {
-
-
-                    yield [
-
-                        'error' => $chunk['error']
-
-                    ];
-
-                    return;
-
-                }
-
-            }
-
-
-
-
-            if ($fullResponse !== '') {
-
-
-                $response =
-                    new \App\Domain\LLM\ChatResponse(
-
-                        content: $fullResponse,
-
-                        usage:
-                        $this->estimateUsage(
-                            $request,
-                            $fullResponse
-                        )
-
-                    );
-
-
-
-
-                $this->tokenUsageService
-                    ->consume(
-
-                        workspace: $context->workspace,
-
-                        model: $model,
-
-                        response: $response,
-
-                        conversationId:
-                        $context->conversationId
-
-                    );
-
-
-
-
-                $this->storeAssistantMessage(
-                    $context,
-                    $model,
-                    $response
+            $this->llmProvider
+                ->stream(
+                    $request
                 );
 
 
-            }
 
-
-
-
-            yield [
-
-                'done' => true
-
-            ];
-
-
-        })();
+        return $this->streamResponse(
+            $stream,
+            $context,
+            $model,
+            $request
+        );
 
     }
 
-    /**
-     * اجرای کامل چرخه Chat
-     */
-    public function handle(
-        ChatContext $context
-    ): ChatContext {
 
 
-        /**
-         * Step 1
-         *
-         * Load Conversation History
-         *
-         */
-        $user = $this->prepareContext($context);
 
-        if (!$user->canSendMessage()) {
+    protected function checkWorkspaceAccess(
+        ChatContext $context,
+        User $user
+    ): void {
 
-            throw new \Exception(
-                'تعداد پیام روزانه پلن شما تمام شده است'
+
+        $this->workspaceAccessService
+            ->check(
+                user:
+                $user,
+
+                modelKey:
+                $context->model
             );
 
-        }
+    }
+
+
+
+
+    protected function runPreProcessing(
+        ChatContext $context,
+        User $user
+    ): void {
+
+
+        $capabilities =
+            $this->capabilityResolver
+                ->all($user);
+
+
+
+        $context->addMetadata(
+            'capabilities',
+            $capabilities
+        );
+
+
 
         if (
-            $this->capability->enabled(
-                $user,
-                'planner'
-            )
+            $capabilities['planner'] ?? false
         ) {
 
-            $context =
-                $this->intentPipeline
-                    ->process($context, true);
+
+            $this->intentPipeline
+                ->process(
+                    $context,
+                    true
+                );
 
         }
 
 
 
-        /**
-         * Step 2
-         *
-         * Retrieve Memory
-         *
-         */
         if (
-            $this->capability->enabled(
-                $user,
-                'memory'
-            )
+
+            ($capabilities['memory'] ?? false)
+
             &&
-            mb_strlen($context->currentMessage) > 50
+
+            mb_strlen(
+                trim(
+                    $context->currentMessage
+                )
+            ) > 50
+
         ) {
+
 
             $this->loadMemory(
                 $context
@@ -443,101 +333,106 @@ class ChatPipeline
 
 
 
-        /**
-         * Step 3
-         *
-         * Build Prompt
-         *
-         */
-
-        $imageRequest = $this->imageIntentDetector->detect(
-            $context->currentMessage
-        );
-
-        if ($imageRequest) {
-
-            $result = $this->generateImageResponse(
-                $context,
-                $imageRequest
-            );
-
-
-            return collect([
-                [
-                    'type' => 'image',
-                    'image_url' => $result->metadata['image_url']
-                ]
-            ]);
-
-        }
-
         if (
-            !empty($context->metadata['rewritten_message'])
-            &&
-            empty($context->metadata['needs_clarification'])
+            !empty(
+            $context->metadata['rewritten_message']
+        )
         ) {
+
+
             $context->currentMessage =
+
                 $context->metadata['rewritten_message'];
+
         }
-        $this->promptPipeline
-            ->build(
-                $context
-            );
 
-        // =============================
-// Image Generation Detection
-// =============================
+
+    }
 
 
 
+    protected function retrieveContext(
+        ChatContext $context,
+        User $user
+    ): void {
 
 
-
-        /**
-         * Step 4
-         *
-         * Send To LLM
-         *
-         */
-        $this->generateResponse(
-            $context,
-            $user
-        );
-
-
-
-
-        $originalUserMessage = $context->currentMessage;
-
-
-
-        /**
-         * Step 5
-         *
-         * Store Memory
-         *
-         */
         if (
-            $this->capability->enabled(
-                $user,
-                'memory'
+            !$this->shouldUseDocuments(
+                $context,
+                $user
             )
         ) {
 
-            StoreMemoryJob::dispatch(
-                userId: $context->userId,
-                message: $originalUserMessage
-            );
+            return;
 
         }
 
 
 
+        $result =
+            $this->documentRetriever
+                ->retrieve(
+
+                    workspaceId:
+                    (string)
+                    $context->workspace->id,
+
+                    query:
+                    $context->currentMessage,
+
+                    limit:
+                    5
+                );
 
 
-        return $context;
+
+        $context->setDocuments(
+            $result['chunks'] ?? []
+        );
+
+
+
+        $context->addMetadata(
+            'document_context',
+            $result['text'] ?? ''
+        );
+
 
     }
+    protected function shouldUseDocuments(
+        ChatContext $context,
+        User $user
+    ): bool {
+
+
+        if (
+            !$this->capabilityResolver
+                ->enabled(
+                    $user,
+                    'documents'
+                )
+        ) {
+
+            return false;
+
+        }
+
+
+
+        return (bool)
+
+            $context->getMetadata(
+                'use_documents',
+                true
+            );
+
+
+    }
+
+
+
+
 
     protected function loadMemory(
         ChatContext $context
@@ -547,438 +442,289 @@ class ChatPipeline
         $memories =
             $this->memoryPipeline
                 ->retrieveMemories(
-                    userId: $context->userId,
-                    query: $context->currentMessage
+
+                    userId:
+                    $context->userId,
+
+                    query:
+                    $context->currentMessage
+
                 );
+
 
 
         $context->setMemories(
             $memories
         );
 
+
     }
 
 
 
+
+
+    protected function isImageRequest(
+        ChatContext $context
+    ): bool {
+
+
+        return (bool)
+
+            $this->imageIntentDetector
+                ->detect(
+                    $context->currentMessage
+                );
+
+    }
+
+
+
+
+
     protected function generateImageResponse(
-        ChatContext $context,
-        array $request
+        ChatContext $context
     ): ChatContext {
 
 
-        $imageModel = $this->resolveImageModel();
+        $intent =
+            $this->imageIntentDetector
+                ->detect(
+                    $context->currentMessage
+                );
+
+
+
+        $model =
+            AiModel::where(
+                'type',
+                'image'
+            )
+                ->where(
+                    'is_active',
+                    true
+                )
+                ->firstOrFail();
+
 
 
         $result =
-            $this->imageGenerationService->generate(
-                prompt: $request['prompt'],
-                size: $request['size'],
-                model: $imageModel
-            );
+            $this->imageGenerationService
+                ->generate(
 
+                    prompt:
+                    $intent['prompt'],
 
+                    size:
+                    $intent['size'],
 
-        $messageDTO = new MessageDTO(
+                    model:
+                    $model
 
-            id: uniqid(),
+                );
 
-            conversation:
-            (string) $context->conversationId,
-
-            user_id:
-            $context->userId,
-
-            role:
-            'assistant',
-
-            type:
-            'image',
-
-            content:
-            'عکس ایجاد شد',
-
-            image_url:
-            $result['url'],
-
-            token_count:
-            0,
-
-            metadata: [
-
-                'type' => 'image',
-
-                'size' =>
-                    $result['size'],
-
-                'model' =>
-                    $result['model'],
-            ],
-
-            created_at:
-            now()->toDateTimeString(),
-        );
-
-
-        $this->messageStore->store(
-            $messageDTO
-        );
 
 
         $context->setAssistantResponse(
-
-            response:
-            'عکس ایجاد شد',
-
-            tokenUsage: [
-
+            'تصویر ایجاد شد',
+            [
                 'prompt_tokens' => 0,
-
                 'completion_tokens' => 0,
-
-                'total_tokens' => 0,
+                'total_tokens' => 0
             ]
         );
 
 
-        $context->metadata = [
 
-            'type' =>
-                'image',
+        $context->addMetadata(
+            'type',
+            'image'
+        );
 
-            'image_url' =>
-                $result['url'],
 
-            'model' =>
-                $result['model'],
-        ];
+
+        $context->addMetadata(
+            'image_url',
+            $result['url']
+        );
+
+
+
+        $context->addMetadata(
+            'model',
+            $model->key
+        );
+
+
+
+        $this->messageStore
+            ->store(
+
+                new MessageDTO(
+
+                    id:
+                    uniqid(),
+
+                    conversation:
+                    (string)
+                    $context->conversationId,
+
+                    user_id:
+                    $context->userId,
+
+                    role:
+                    'assistant',
+
+                    type:
+                    'image',
+
+                    content:
+                    'تصویر ایجاد شد',
+
+                    image_url:
+                    $result['url'],
+
+                    token_count:
+                    0,
+
+                    metadata:
+                    [
+                        'model' =>
+                            $model->key
+                    ],
+
+                    created_at:
+                    now()
+                        ->toDateTimeString()
+
+                )
+
+            );
+
 
 
         return $context;
 
     }
 
-    protected function resolveImageModel()
-    {
-        return AiModel::where(
-            'type',
-            'image'
-        )
-            ->where(
-                'is_active',
-                true
-            )
-            ->firstOrFail();
-    }
-    /**
-     * گرفتن تاریخچه گفتگو
-     */
-    protected function loadConversation(
-        ChatContext $context
-    ): void {
-
-
-        $messages =
-            $this->conversationLoader
-                ->load(
-
-                    conversationId:
-                    $context->conversationId,
-
-                    limit: 8
-
-                );
-
-        $messages = collect($messages)
-            ->map(function ($message) {
-
-                return new MessageDTO(
-
-                    id: (string) ($message->id ?? uniqid()),
-
-                    conversation: (string) (
-                        $message->chat_id
-                        ??
-                        $message->conversation_id
-                        ??
-                        ''
-                    ),
-
-                    user_id: isset($message->user_id)
-                    ? (string) $message->user_id
-                    : null,
-
-                    role: $message->role,
-
-                    content: $message->content,
-
-                    type: $message->type ?? 'text',
-                    token_count: (int) ($message->token_count ?? 0),
-
-                    metadata:
-                    is_string($message->metadata ?? null)
-                    ? json_decode($message->metadata, true)
-                    : ($message->metadata ?? null),
-
-                    created_at: (string) (
-                        $message->created_at
-                        ?? now()
-                    )
-
-                );
-
-            })
-            ->toArray();
-
-
-        $context->setMessages(
-            $messages
-        );
-
-    }
 
 
 
 
-
-
-
-
-
-    /**
-     * ارتباط با LLM
-     */
     protected function generateResponse(
         ChatContext $context,
         User $user
-    ): void {
+    ): ChatResponse {
 
 
         $model =
             $this->workspaceAccessService
                 ->resolveModel(
+
                     $context->workspace,
+
                     $context->model
+
                 );
 
 
-        $request = $this->createRequest(
-            $context,
-            $user,
-            $model
-        );
+
+        $request =
+            $this->createRequest(
+                $context,
+                $user,
+                $model
+            );
 
 
 
         $response =
-            $this->LlmProvider
+            $this->useSmallModel
+
+            ?
+
+            $this->smallChatProvider
+                ->chat(
+                    $request
+                )
+
+            :
+
+            $this->llmProvider
                 ->chat(
                     $request
                 );
 
 
+
         $context->setAssistantResponse(
-            response: $response->content,
-            tokenUsage: [
-                'prompt_tokens' => $response->usage->inputTokens,
-                'completion_tokens' => $response->usage->outputTokens,
-                'total_tokens' => $response->usage->totalTokens,
+
+            $response->content,
+
+            [
+
+                'prompt_tokens' =>
+                    $response
+                        ->usage
+                        ->inputTokens,
+
+
+                'completion_tokens' =>
+                    $response
+                        ->usage
+                        ->outputTokens,
+
+
+                'total_tokens' =>
+                    $response
+                        ->usage
+                        ->totalTokens
+
             ]
+
         );
+
 
 
         $this->tokenUsageService
             ->consume(
 
-                workspace: $context->workspace,
+                workspace:
+                $context->workspace,
 
-                model: $model,
+                model:
+                $model,
 
-                response: $response,
+                response:
+                $response,
 
-                conversationId: $context->conversationId
+                conversationId:
+                $context->conversationId
 
             );
 
-    }
-
-    protected function loadConversationEntity(
-        ChatContext $context
-    ): void {
-
-        $conversation =
-            $this->conversationRepository
-                ->find(
-                    $context->conversationId
-                );
 
 
-        $context->setConversation(
-            $conversation
-        );
-
-    }
-
-    protected function ensureConversation(
-        ChatContext $context
-    ): void {
-
-
-        if ($context->conversationId) {
-
-            return;
-
-        }
-
-
-        $conversation =
-            $this->conversationRepository
-                ->create(
-
-                    userId:
-                    $context->userId,
-
-                    title:
-                    mb_substr(
-                        $context->currentMessage,
-                        0,
-                        100
-                    )
-
-                );
-
-
-        $context->conversationId =
-            $conversation->id;
-
-
-        $context->setConversation(
-            $conversation
-        );
+        return $response;
 
     }
 
 
-    protected function prepareContext(
-        ChatContext $context
-    ): User {
-
-        $this->ensureConversation($context);
-
-        $this->loadConversationEntity($context);
-
-        $this->loadConversation($context);
-
-
-        $user = User::findOrFail(
-            $context->userId
-        );
-
-
-        $workspace =
-            $this->workspaceService
-                ->current($user);
 
 
 
-        if (!$workspace) {
-
-            throw new \Exception(
-                'Workspace فعال وجود ندارد'
-            );
-
-        }
-
-
-
-        $context->setWorkspace(
-            $workspace
-        );
-
-
-
-        return $user;
-
-    }
-
-    protected function createRequest(
+    protected function afterResponse(
         ChatContext $context,
         User $user,
-        AiModel $model
-    ): ChatRequest {
-        return new ChatRequest(
-
-            messages:
-
-            collect($context->prompt)
-                ->map(function ($message) {
-
-                    return new ChatMessage(
-                        role: $message['role'],
-                        content: $message['content']
-                    );
-
-                })
-                ->values()
-                ->all(),
-
-            model:
-            $model->key,
-
-            temperature:
-            0.7,
-
-            maxTokens:
-            $this->capability->value(
-                $user,
-                'max_tokens',
-                700
-            )
-
-        );
-
-    }
-
-
-    protected function estimateUsage(
-        ChatRequest $request,
-        string $response
-    ) {
-
-        $input =
-            strlen(
-                json_encode($request->messages)
-            ) / 4;
-
-
-        $output =
-            strlen($response) / 4;
-
-
-
-        return new \App\Domain\LLM\Usage(
-
-            inputTokens: (int) $input,
-
-            outputTokens: (int) $output,
-
-            totalTokens:
-            (int) $input + (int) $output
-
-        );
-
-    }
-
-    protected function storeAssistantMessage(
-        ChatContext $context,
-        AiModel $model,
-        $response
+        ChatResponse $response
     ): void {
+
 
 
         StoreMessageJob::dispatch([
 
-
-            'id' => uniqid(),
+            'id' =>
+                uniqid(),
 
 
             'conversation' =>
@@ -987,7 +733,6 @@ class ChatPipeline
 
 
             'user_id' =>
-                (string)
                 $context->userId,
 
 
@@ -1009,42 +754,562 @@ class ChatPipeline
                     ->totalTokens,
 
 
-            'metadata' => [
-
-                'model' =>
-                    $model->key,
-
-
-                'token_usage' => [
-
-                    'prompt_tokens' =>
-                        $response
-                            ->usage
-                            ->inputTokens,
-
-
-                    'completion_tokens' =>
-                        $response
-                            ->usage
-                            ->outputTokens,
-
-
-                    'total_tokens' =>
-                        $response
-                            ->usage
-                            ->totalTokens
-
-                ]
-
-            ],
+            'metadata' =>
+                [
+                    'model' =>
+                        $context->model
+                ],
 
 
             'created_at' =>
                 now()
                     ->toDateTimeString()
 
-
         ]);
 
+
+
+
+        if (
+
+            $this->capabilityResolver
+                ->enabled(
+                    $user,
+                    'memory'
+                )
+
+        ) {
+
+
+            StoreMemoryJob::dispatch(
+
+                userId:
+                $context->userId,
+
+
+                message:
+                $context->currentMessage
+
+            );
+
+        }
+
+
+    }
+    protected function streamResponse(
+        iterable $stream,
+        ChatContext $context,
+        AiModel $model,
+        ChatRequest $request
+    ): iterable {
+
+
+        return (function () use ($stream, $context, $model, $request) {
+
+
+            $full = '';
+
+
+
+            foreach ($stream as $chunk) {
+
+
+
+                if (
+                    isset($chunk['content'])
+                ) {
+
+
+                    $content =
+                        $chunk['content'];
+
+
+
+                    $full .= $content;
+
+
+
+                    yield [
+
+                        'choices' => [
+
+                            [
+
+                                'delta' => [
+
+                                    'content' =>
+                                        $content
+
+                                ]
+
+                            ]
+
+                        ]
+
+                    ];
+
+                }
+
+
+
+
+
+                if (
+                    isset($chunk['error'])
+                ) {
+
+
+                    yield [
+
+                        'error' =>
+                            $chunk['error']
+
+                    ];
+
+
+                    return;
+
+                }
+
+
+            }
+
+
+
+
+
+            if ($full !== '') {
+
+
+                $response =
+                    new ChatResponse(
+
+                        content:
+                        $full,
+
+
+                        usage:
+                        $this->estimateUsage(
+
+                            $request,
+
+                            $full
+
+                        )
+
+                    );
+
+
+
+
+                $this->tokenUsageService
+                    ->consume(
+
+                        workspace:
+                        $context->workspace,
+
+
+                        model:
+                        $model,
+
+
+                        response:
+                        $response,
+
+
+                        conversationId:
+                        $context->conversationId
+
+                    );
+
+
+
+
+
+                $this->afterResponse(
+
+                    $context,
+
+
+                    User::findOrFail(
+                        $context->userId
+                    ),
+
+
+                    $response
+
+                );
+
+
+            }
+
+
+
+
+            yield [
+
+                'done' => true
+
+            ];
+
+
+
+
+        })();
+
+
+    }
+
+
+
+
+
+    protected function prepareContext(
+        ChatContext $context
+    ): User {
+
+
+
+        $this->ensureConversation(
+            $context
+        );
+
+
+
+        $this->loadConversationEntity(
+            $context
+        );
+
+
+
+        $this->loadConversation(
+            $context
+        );
+
+
+
+        $user =
+            User::findOrFail(
+                $context->userId
+            );
+
+
+
+        $workspace =
+            $this->workspaceService
+                ->current(
+                    $user
+                );
+
+
+
+        if (!$workspace) {
+
+
+            throw new \RuntimeException(
+                'Workspace not found'
+            );
+
+
+        }
+
+
+
+
+        $context->setWorkspace(
+            $workspace
+        );
+
+
+
+        return $user;
+
+
+    }
+
+
+
+
+
+    protected function ensureConversation(
+        ChatContext $context
+    ): void {
+
+
+        if (
+            $context->conversationId
+        ) {
+
+            return;
+
+        }
+
+
+
+
+        $conversation =
+            $this->conversationRepository
+                ->create(
+
+                    userId:
+                    $context->userId,
+
+
+                    title:
+                    mb_substr(
+
+                        $context->currentMessage,
+
+                        0,
+
+                        100
+
+                    )
+
+                );
+
+
+
+
+
+        $context->conversationId =
+            $conversation->id;
+
+
+
+        $context->setConversation(
+            $conversation
+        );
+
+
+    }
+
+
+
+
+
+    protected function loadConversationEntity(
+        ChatContext $context
+    ): void {
+
+
+
+        $conversation =
+            $this->conversationRepository
+                ->find(
+
+                    $context->conversationId
+
+                );
+
+
+
+        $context->setConversation(
+            $conversation
+        );
+
+
+    }
+
+
+
+
+
+    protected function loadConversation(
+        ChatContext $context
+    ): void {
+
+
+
+        $messages =
+            $this->conversationLoader
+                ->load(
+
+                    conversationId:
+                    $context->conversationId,
+
+
+                    limit:
+                    10
+
+                );
+
+
+
+
+
+        $context->setMessages(
+
+            collect($messages)
+
+                ->map(
+
+                    function ($message) {
+
+
+                        return new MessageDTO(
+
+                            id:
+                            (string)
+                            (
+                                $message->id
+                                ??
+                                uniqid()
+                            ),
+
+
+                            conversation:
+                            (string)
+                            (
+                                $message->conversation_id
+                                ??
+                                ''
+                            ),
+
+
+                            user_id:
+                            $message->user_id
+                            ??
+                            null,
+
+
+                            role:
+                            $message->role,
+
+
+                            content:
+                            $message->content,
+
+
+                            type:
+                            $message->type
+                            ??
+                            'text',
+
+
+                            token_count:
+                            (int)
+                            (
+                                $message->token_count
+                                ??
+                                0
+                            ),
+
+
+                            metadata:
+                            is_array(
+                                $message->metadata
+                            )
+                            ?
+                            $message->metadata
+                            :
+                            [],
+
+
+                            created_at:
+                            (string)
+                            (
+                                $message->created_at
+                                ??
+                                now()
+                            )
+
+                        );
+
+
+                    }
+
+                )
+
+                ->toArray()
+
+        );
+
+
+    }
+
+    protected function createRequest(
+        ChatContext $context,
+        User $user,
+        $model
+    ): ChatRequest {
+
+
+        $messages = [];
+
+
+
+        foreach ($context->prompt as $message) {
+
+
+            $messages[] = new ChatMessage(
+
+                role: $message['role'],
+
+                content: $message['content']
+
+            );
+
+        }
+
+
+
+        $subscription =
+            $context->workspace
+                ->currentSubscription;
+
+
+
+        $plan =
+            $subscription
+                    ?->workspacePlan;
+
+
+
+        return new ChatRequest(
+
+            messages: $messages,
+
+            model: $model->model_name,
+
+            temperature: 0.7,
+
+            maxTokens:
+
+            data_get(
+
+                $plan?->capabilities,
+
+                'max_tokens',
+
+                4000
+
+            )
+
+        );
+
+
+    }
+
+    protected function estimateUsage(
+        ChatRequest $request,
+        string $response
+    ): Usage {
+
+        $prompt = '';
+
+        foreach ($request->messages as $message) {
+            $prompt .= $message->content . "\n";
+        }
+
+        // تخمین تقریبی: هر ۴ کاراکتر ≈ ۱ توکن
+        $inputTokens = (int) ceil(mb_strlen($prompt) / 4);
+        $outputTokens = (int) ceil(mb_strlen($response) / 4);
+
+        return new Usage(
+            inputTokens: $inputTokens,
+            outputTokens: $outputTokens,
+            totalTokens: $inputTokens + $outputTokens,
+        );
     }
 }

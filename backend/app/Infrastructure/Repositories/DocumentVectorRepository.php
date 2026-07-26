@@ -6,6 +6,7 @@ use SurrealDB\Laravel\Facades\Surreal;
 use SurrealDB\SDK\Query\BoundQuery;
 
 
+
 class DocumentVectorRepository
 {
 
@@ -16,31 +17,25 @@ class DocumentVectorRepository
 
 
 
-
-
     public function debugWorkspace(
         string $workspaceId
     ) {
-
-        $sql = "
-
-            SELECT count() AS total
-
-            FROM {$this->table}
-
-            WHERE workspace_id = \$workspace_id
-
-            GROUP ALL;
-
-        ";
-
-
 
         return Surreal::query(
 
             new BoundQuery(
 
-                query: $sql,
+                query: "
+
+                    SELECT count() AS total
+
+                    FROM {$this->table}
+
+                    WHERE workspace_id = \$workspace_id
+
+                    GROUP ALL;
+
+                ",
 
                 bindings: [
 
@@ -62,147 +57,61 @@ class DocumentVectorRepository
 
 
 
-    protected function preparePayload(
-        array $data
-    ): array {
-
-
-        return [
-
-            'document_id' =>
-                (string) (
-                    $data['document_id'] ?? ''
-                ),
-
-
-            'workspace_id' =>
-                (string) (
-                    $data['workspace_id'] ?? ''
-                ),
-
-
-            'chunk_id' =>
-                (string) (
-                    $data['chunk_id']
-                    ??
-                    uniqid('chunk_')
-                ),
-
-
-            'content' =>
-                (string)
-                $this->normalizeContent(
-                    $data['content'] ?? ''
-                ),
-
-
-
-            'embedding' =>
-                array_values(
-
-                    array_map(
-
-                        'floatval',
-
-                        $data['embedding'] ?? []
-
-                    )
-
-                ),
-
-
-
-            'metadata' =>
-                is_array(
-                    $data['metadata'] ?? null
-                )
-
-                ?
-                $data['metadata']
-
-                :
-
-                [],
-
-
-
-            'created_at' =>
-                now()->toIso8601String()
-
-        ];
-
-    }
-
-
-
-
-
-
-
-
-
     public function store(
         array $data
     ) {
-
-
-        $payload =
-            $this->preparePayload(
-                $data
-            );
-
-
-
-        $sql = "
-
-            CREATE {$this->table} SET
-
-
-            document_id =
-                <string> \$document_id,
-
-
-            workspace_id =
-                <string> \$workspace_id,
-
-
-            chunk_id =
-                <string> \$chunk_id,
-
-
-            content =
-                <string> \$content,
-
-
-            embedding =
-                \$embedding,
-
-
-            metadata =
-                \$metadata,
-
-
-            created_at =
-                type::datetime(
-                    \$created_at
-                );
-
-        ";
-
-
 
 
         return Surreal::query(
 
             new BoundQuery(
 
-                query: $sql,
+                query: "
 
-                bindings: $payload
+                    CREATE {$this->table} SET
+
+
+                        document_id =
+                        <string>\$document_id,
+
+
+                        workspace_id =
+                        <string>\$workspace_id,
+
+
+                        chunk_id =
+                        <string>\$chunk_id,
+
+
+                        content =
+                        <string>\$content,
+
+
+                        embedding =
+                        \$embedding,
+
+
+                        metadata =
+                        \$metadata,
+
+
+                        created_at =
+                        type::datetime(
+                            \$created_at
+                        );
+
+                ",
+
+                bindings:
+
+                $this->preparePayload(
+                    $data
+                )
 
             )
 
         );
+
 
     }
 
@@ -219,15 +128,16 @@ class DocumentVectorRepository
     ): void {
 
 
-        foreach (
-            $vectors
-            as
-            $vector
-        ) {
+        foreach ($vectors as $vector) {
 
-            $this->store($vector);
+
+            $this->store(
+                $vector
+            );
+
 
         }
+
 
     }
 
@@ -240,11 +150,17 @@ class DocumentVectorRepository
 
 
     public function search(
+
         string $workspaceId,
+
         array $vector,
+
         int $limit = 10,
+
         array $documentIds = [],
+
         array $filters = []
+
     ): array {
 
 
@@ -256,10 +172,16 @@ class DocumentVectorRepository
 
 
 
+
+
+
         $bindings = [
 
+
             'workspace_id' =>
-                (string) $workspaceId,
+                (string)
+                $workspaceId,
+
 
 
             'vector' =>
@@ -276,10 +198,13 @@ class DocumentVectorRepository
                 ),
 
 
+
             'limit' =>
                 $limit
 
+
         ];
+
 
 
 
@@ -297,14 +222,6 @@ class DocumentVectorRepository
 
 
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Specific documents
-        |--------------------------------------------------------------------------
-        */
-
-
         if (!empty($documentIds)) {
 
 
@@ -313,6 +230,7 @@ class DocumentVectorRepository
                 AND document_id IN \$document_ids
 
             ";
+
 
 
             $bindings['document_ids'] =
@@ -325,6 +243,7 @@ class DocumentVectorRepository
 
                 );
 
+
         }
 
 
@@ -334,22 +253,10 @@ class DocumentVectorRepository
 
 
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Metadata filters
-        |--------------------------------------------------------------------------
-        */
-
-
         if (!empty($filters)) {
 
 
-            foreach (
-                $filters
-                as
-                $key => $value
-            ) {
+            foreach ($filters as $key => $value) {
 
 
                 $binding =
@@ -369,17 +276,11 @@ class DocumentVectorRepository
                 $bindings[$binding] =
                     $value;
 
+
             }
 
+
         }
-
-
-
-
-
-
-
-
         $sql = "
 
             SELECT
@@ -437,20 +338,22 @@ class DocumentVectorRepository
 
 
 
-
-
         $response =
+
             Surreal::query(
 
                 new BoundQuery(
 
-                    query: $sql,
+                    query:
+                    $sql,
 
-                    bindings: $bindings
+                    bindings:
+                    $bindings
 
                 )
 
             );
+
 
 
 
@@ -462,20 +365,13 @@ class DocumentVectorRepository
             );
 
 
-        \Log::info(
-            'VECTOR SEARCH DEBUG',
-            [
-                'workspace' => $workspaceId,
-                'vector_size' => count($vector),
-                'result_count' => count($results),
-                'first_result' => $results[0] ?? null
-            ]
-        );
+
 
 
         return $this->rankResults(
             $results
         );
+
 
     }
 
@@ -492,29 +388,50 @@ class DocumentVectorRepository
     ): array {
 
 
-        foreach (
-            $results
-            as
-            &$item
-        ) {
+        foreach ($results as &$item) {
 
 
             $score =
+
                 (float)
-                ($item['score'] ?? 0);
-
-
-
-            $section =
-                strtolower(
-                    $item['metadata']['section']
+                (
+                    $item['score']
                     ??
-                    ''
+                    0
                 );
 
 
 
+            $metadata =
+                $item['metadata']
+                ??
+                [];
+
+
+
+            $section =
+
+                strtolower(
+
+                    $metadata['section']
+                    ??
+                    ''
+
+                );
+
+
+
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Academic section boost
+            |--------------------------------------------------------------------------
+            */
+
+
             if (
+
                 in_array(
 
                     $section,
@@ -529,32 +446,78 @@ class DocumentVectorRepository
 
                         'implementation',
 
+                        'model',
+
                         'experiment',
 
                         'evaluation',
 
-                        'results'
+                        'results',
+
+                        'conclusion'
 
                     ],
 
                     true
 
                 )
+
             ) {
 
+
                 $score += 0.05;
+
 
             }
 
 
 
+
+
+
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Title boost
+            |--------------------------------------------------------------------------
+            */
+
+
+            if (
+
+                !empty(
+                $metadata['title']
+            )
+
+            ) {
+
+
+                $score += 0.02;
+
+
+            }
+
+
+
+
+
+
+
             $item['score'] =
+
                 min(
+
                     $score,
+
                     1
+
                 );
 
+
+
         }
+
 
 
 
@@ -565,21 +528,151 @@ class DocumentVectorRepository
 
             $results,
 
-            fn($a, $b) =>
+            function ($a, $b) {
 
-            ($b['score'] ?? 0)
 
-            <=>
+                return
 
-            ($a['score'] ?? 0)
+                    ($b['score'] ?? 0)
+
+                    <=>
+
+                    ($a['score'] ?? 0);
+
+
+            }
 
         );
+
+
+
 
 
 
         return array_values(
             $results
         );
+
+
+    }
+
+
+
+
+
+
+
+
+
+    protected function preparePayload(
+        array $data
+    ): array {
+
+
+        return [
+
+
+            'document_id' =>
+
+                (string)
+                (
+                    $data['document_id']
+                    ??
+                    ''
+                ),
+
+
+
+
+            'workspace_id' =>
+
+                (string)
+                (
+                    $data['workspace_id']
+                    ??
+                    ''
+                ),
+
+
+
+
+
+            'chunk_id' =>
+
+                (string)
+                (
+                    $data['chunk_id']
+                    ??
+                    uniqid('chunk_')
+                ),
+
+
+
+
+
+            'content' =>
+
+                $this->normalizeContent(
+
+                    $data['content']
+                    ??
+                    ''
+
+                ),
+
+
+
+
+
+            'embedding' =>
+
+                array_values(
+
+                    array_map(
+
+                        'floatval',
+
+                        $data['embedding']
+                        ??
+                        []
+
+                    )
+
+                ),
+
+
+
+
+
+            'metadata' =>
+
+                is_array(
+                    $data['metadata']
+                    ??
+                    null
+                )
+
+                ?
+
+                $data['metadata']
+
+                :
+
+                [],
+
+
+
+
+
+
+            'created_at' =>
+
+                now()
+                    ->toIso8601String()
+
+
+        ];
+
 
     }
 
@@ -604,16 +697,25 @@ class DocumentVectorRepository
 
 
 
+
+
         if (is_array($content)) {
 
 
             $content =
+
                 json_encode(
+
                     $content,
+
                     JSON_UNESCAPED_UNICODE
+
                 );
 
+
         }
+
+
 
 
 
@@ -629,14 +731,19 @@ class DocumentVectorRepository
                 str_replace(
 
                     [
+
                         "\r",
+
                         "\n",
+
                         "\t"
+
                     ],
 
                     ' ',
 
-                    (string) $content
+                    (string)
+                    $content
 
                 )
 
@@ -644,16 +751,8 @@ class DocumentVectorRepository
 
         );
 
+
     }
-
-
-
-
-
-
-
-
-
     protected function formatResults(
         mixed $response
     ): array {
@@ -667,19 +766,31 @@ class DocumentVectorRepository
 
 
 
+
+
+
         if (
+
             is_object($response)
+
             &&
+
             method_exists(
                 $response,
                 'getData'
             )
+
         ) {
 
+
             $response =
+
                 $response->getData();
 
+
         }
+
+
 
 
 
@@ -695,25 +806,91 @@ class DocumentVectorRepository
 
 
 
+
+
         if (
-            isset($response[0]['result'])
+
+            isset(
+            $response[0]['result']
+        )
+
             &&
+
             is_array(
                 $response[0]['result']
             )
+
         ) {
 
+
             return
-                $response[0]['result'];
+
+                collect(
+                    $response[0]['result']
+                )
+
+                    ->map(
+
+                        function ($item) {
+
+
+                            $item['metadata'] =
+
+                                $item['metadata']
+                                ??
+                                [];
+
+
+
+                            return $item;
+
+
+                        }
+
+                    )
+
+                    ->values()
+
+                    ->all();
+
 
         }
 
 
 
 
-        return $response;
+
+
+
+        return collect($response)
+
+            ->map(
+
+                function ($item) {
+
+
+                    $item['metadata'] =
+
+                        $item['metadata']
+                        ??
+                        [];
+
+
+
+                    return $item;
+
+
+                }
+
+            )
+
+            ->values()
+
+            ->all();
+
 
     }
+
 
 
 
@@ -742,8 +919,12 @@ class DocumentVectorRepository
 
                 bindings: [
 
+
                     'document_id' =>
-                        (string) $documentId
+
+                        (string)
+                        $documentId
+
 
                 ]
 
@@ -751,7 +932,88 @@ class DocumentVectorRepository
 
         );
 
+
     }
 
+    public function searchMetadata(
+        string $workspaceId,
+        string $field,
+        string $value,
+        int $limit = 5
+    ): array {
 
+
+        $response =
+            Surreal::query(
+
+                new BoundQuery(
+
+                    query: "
+
+                    SELECT
+
+                        id,
+
+                        document_id,
+
+                        workspace_id,
+
+                        content,
+
+                        metadata
+
+
+                    FROM {$this->table}
+
+
+                    WHERE
+
+                        workspace_id =
+                        \$workspace_id
+
+
+                    AND
+
+                        string::lowercase(
+                            metadata.$field
+                        )
+
+                        CONTAINS
+
+                        string::lowercase(
+                            \$value
+                        )
+
+
+                    LIMIT \$limit;
+
+                ",
+
+                    bindings: [
+
+
+                        'workspace_id' =>
+                            (string) $workspaceId,
+
+
+                        'value' =>
+                            $value,
+
+
+                        'limit' =>
+                            $limit
+
+
+                    ]
+
+                )
+
+            );
+
+
+        return $this->formatResults(
+            $response
+        );
+
+    }
 }

@@ -19,12 +19,6 @@ class DocumentSectionPlanSchema implements SchemaContract
 
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | Table
-            |--------------------------------------------------------------------------
-            */
-
             "
             DEFINE TABLE IF NOT EXISTS document_section_plan
             SCHEMAFULL;
@@ -77,7 +71,7 @@ class DocumentSectionPlanSchema implements SchemaContract
 
             /*
             |--------------------------------------------------------------------------
-            | Planner Knowledge
+            | AI Planner Data
             |--------------------------------------------------------------------------
             */
 
@@ -109,7 +103,8 @@ class DocumentSectionPlanSchema implements SchemaContract
             "
             DEFINE FIELD IF NOT EXISTS answer_probability
             ON document_section_plan
-            TYPE float;
+            TYPE float
+            DEFAULT 0;
             ",
 
 
@@ -117,7 +112,8 @@ class DocumentSectionPlanSchema implements SchemaContract
             "
             DEFINE FIELD IF NOT EXISTS planner_rank
             ON document_section_plan
-            TYPE int;
+            TYPE int
+            DEFAULT 0;
             ",
 
 
@@ -128,6 +124,8 @@ class DocumentSectionPlanSchema implements SchemaContract
             TYPE int
             DEFAULT 0;
             ",
+
+
 
 
 
@@ -147,6 +145,16 @@ class DocumentSectionPlanSchema implements SchemaContract
             FLEXIBLE;
             ",
 
+
+
+
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Dates
+            |--------------------------------------------------------------------------
+            */
 
 
             "
@@ -170,6 +178,7 @@ class DocumentSectionPlanSchema implements SchemaContract
 
 
 
+
             /*
             |--------------------------------------------------------------------------
             | Indexes
@@ -179,22 +188,11 @@ class DocumentSectionPlanSchema implements SchemaContract
 
             "
             DEFINE INDEX IF NOT EXISTS
-            idx_section_plan_workspace
+            idx_section_plan_document_workspace
 
             ON document_section_plan
 
-            COLUMNS workspace_id;
-            ",
-
-
-
-            "
-            DEFINE INDEX IF NOT EXISTS
-            idx_section_plan_document
-
-            ON document_section_plan
-
-            COLUMNS document_id;
+            COLUMNS document_id, workspace_id;
             ",
 
 
@@ -219,6 +217,18 @@ class DocumentSectionPlanSchema implements SchemaContract
             COLUMNS planner_rank;
             ",
 
+
+
+            "
+            DEFINE INDEX IF NOT EXISTS
+            idx_section_plan_unique_section
+
+            ON document_section_plan
+
+            COLUMNS document_id, section
+
+            UNIQUE;
+            ",
 
 
         ];

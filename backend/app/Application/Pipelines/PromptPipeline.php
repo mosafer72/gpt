@@ -7,6 +7,7 @@ use App\Application\Prompts\SystemPrompt;
 use App\Domain\Prompt\PromptCollection;
 
 
+
 class PromptPipeline
 {
 
@@ -16,27 +17,19 @@ class PromptPipeline
     ): ChatContext {
 
 
-        $prompt = new PromptCollection();
+        $prompt =
+            new PromptCollection();
 
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | 1 - System Instruction
-        |--------------------------------------------------------------------------
-        */
 
         $this->addSystemPrompt(
-            $prompt
+            $prompt,
+            $context
         );
 
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | 2 - Document RAG Context
-        |--------------------------------------------------------------------------
-        */
 
         $this->addDocuments(
             $prompt,
@@ -45,11 +38,6 @@ class PromptPipeline
 
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | 3 - Memory Context
-        |--------------------------------------------------------------------------
-        */
 
         $this->addMemories(
             $prompt,
@@ -58,11 +46,6 @@ class PromptPipeline
 
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | 4 - Conversation History
-        |--------------------------------------------------------------------------
-        */
 
         $this->addConversation(
             $prompt,
@@ -71,11 +54,6 @@ class PromptPipeline
 
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | 5 - Current User Message
-        |--------------------------------------------------------------------------
-        */
 
         $this->addCurrentMessage(
             $prompt,
@@ -84,52 +62,18 @@ class PromptPipeline
 
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Ensure system messages are first
-        |--------------------------------------------------------------------------
-        */
-
-        $messages =
-            $prompt->toArray();
-
-
-
-        $system = [];
-
-        $normal = [];
-
-
-
-        foreach ($messages as $message) {
-
-
-            if (
-                ($message['role'] ?? null)
-                ===
-                'system'
-            ) {
-
-                $system[] = $message;
-
-            } else {
-
-                $normal[] = $message;
-
-            }
-
-        }
-
 
 
         $context->setPrompt(
 
-            array_merge(
-                $system,
-                $normal
+            $this->normalizeMessages(
+
+                $prompt->toArray()
+
             )
 
         );
+
 
 
 
@@ -143,21 +87,30 @@ class PromptPipeline
 
 
 
+
     protected function addSystemPrompt(
-        PromptCollection $prompt
+        PromptCollection $prompt,
+        ChatContext $context
     ): void {
 
 
         $prompt->add(
 
-            role: 'system',
+            role:
+
+            'system',
+
 
             content:
+
             SystemPrompt::default()
 
         );
 
+
     }
+
+
 
 
 
@@ -170,10 +123,10 @@ class PromptPipeline
         ChatContext $context
     ): void {
 
-        \Log::info('PROMPT DOCUMENT CHECK', [
-            'documents_count' => count($context->documents)
-        ]);
-        if (empty($context->documents)) {
+
+        if (
+            empty($context->documents)
+        ) {
 
             return;
 
@@ -181,24 +134,26 @@ class PromptPipeline
 
 
 
-        $text =
-            <<<PROMPT
-You are a document-based AI assistant.
-
-The following passages are retrieved from uploaded documents.
+        $content = <<<TEXT
+You are answering using uploaded document context.
 
 Rules:
-- Use only these passages as evidence.
+- Use only provided document passages.
 - Do not invent information.
-- If information is missing, say that the documents do not contain enough information.
-- Answer clearly and concisely.
+- If the answer is not available in the documents, say:
+اطلاعات کافی در اسناد پیدا نشد.
 
-Retrieved passages:
-PROMPT;
+Retrieved document passages:
+
+TEXT;
 
 
 
-        $valid = false;
+
+
+        $hasContent = false;
+
+
 
 
 
@@ -209,20 +164,34 @@ PROMPT;
         ) {
 
 
-            $content =
+            $data =
                 is_array($document)
 
                 ?
-                ($document['content'] ?? '')
+
+                $document
 
                 :
 
-                ($document->content ?? '');
+                $document->toArray();
+
+
+
+
+
+            $text =
+                trim(
+                    $data['content']
+                    ??
+                    ''
+                );
+
+
 
 
 
             if (
-                trim($content) === ''
+                $text === ''
             ) {
 
                 continue;
@@ -231,7 +200,36 @@ PROMPT;
 
 
 
-            $valid = true;
+
+
+            $hasContent = true;
+
+
+
+
+            $metadata =
+                $data['metadata']
+                ??
+                [];
+
+
+
+
+
+            $title =
+                $metadata['title']
+                ??
+                'Unknown';
+
+
+
+
+            $section =
+                $metadata['section']
+                ??
+                '';
+
+
 
 
 
@@ -240,32 +238,55 @@ PROMPT;
 
 
 
-            $text .=
-                "--- Passage {$number} ---\n"
-                .
-                $content
-                .
-                "\n\n";
+
+
+            $content .= <<<TEXT
+
+--- Passage {$number} ---
+
+Title:
+{$title}
+
+Section:
+{$section}
+
+Content:
+{$text}
+
+
+TEXT;
+
 
         }
 
 
 
 
-        if ($valid) {
+
+
+        if ($hasContent) {
 
 
             $prompt->add(
 
-                role: 'system',
+                role:
 
-                content: $text
+                'system',
+
+
+                content:
+
+                $content
 
             );
 
+
         }
 
+
     }
+
+
 
 
 
@@ -279,7 +300,9 @@ PROMPT;
     ): void {
 
 
-        if (empty($context->memories)) {
+        if (
+            empty($context->memories)
+        ) {
 
             return;
 
@@ -287,38 +310,58 @@ PROMPT;
 
 
 
-        $memory =
-            "Relevant user memories:\n\n";
+
+
+        $content =
+            "Relevant user context:\n\n";
+
+
 
 
 
         foreach (
             $context->memories
             as
-            $item
+            $memory
         ) {
 
 
-            $memory .=
+            $content .=
+
                 "- "
+
                 .
-                $item->text
+
+                $memory->text
+
                 .
+
                 "\n";
+
 
         }
 
 
 
+
+
         $prompt->add(
 
-            role: 'system',
+            role:
 
-            content: $memory
+            'system',
+
+
+            content:
+
+            $content
 
         );
 
+
     }
+
+
 
 
 
@@ -332,9 +375,21 @@ PROMPT;
     ): void {
 
 
+        if (
+            empty($context->messages)
+        ) {
 
-        $last =
+            return;
+
+        }
+
+
+
+
+        $lastUserIndex =
             count($context->messages) - 1;
+
+
 
 
 
@@ -345,15 +400,15 @@ PROMPT;
         ) {
 
 
-            /*
-            آخرین user message
-            همان پیام فعلی است
-            */
 
             if (
-                $index === $last
+
+                $index === $lastUserIndex
+
                 &&
+
                 $message->role === 'user'
+
             ) {
 
                 continue;
@@ -362,19 +417,28 @@ PROMPT;
 
 
 
+
+
             $prompt->add(
 
                 role:
+
                 $message->role,
 
+
                 content:
+
                 $message->content
 
             );
 
+
         }
 
+
     }
+
+
 
 
 
@@ -388,23 +452,11 @@ PROMPT;
     ): void {
 
 
-
-        $content = [];
-
-
-
         if (
-            !empty($context->currentMessage)
+            empty($context->currentMessage)
         ) {
 
-            $content[] = [
-
-                'type' => 'text',
-
-                'text' =>
-                    $context->currentMessage
-
-            ];
+            return;
 
         }
 
@@ -412,10 +464,32 @@ PROMPT;
 
 
 
+        $content = [];
+
+
+
+
+
+        $content[] = [
+
+            'type' => 'text',
+
+            'text' =>
+                $context->currentMessage
+
+        ];
+
+
+
+
+
+
+
+
         if (
             !empty(
-            $context->metadata['attachments']
-        )
+                $context->metadata['attachments']
+            )
         ) {
 
 
@@ -426,6 +500,7 @@ PROMPT;
             ) {
 
 
+
                 if (
                     ($attachment['type'] ?? null)
                     ===
@@ -433,34 +508,33 @@ PROMPT;
                 ) {
 
 
+
                     $content[] = [
 
-                        'type' => 'image_url',
+                        'type' =>
+                        'image_url',
+
 
                         'image_url' => [
 
                             'url' =>
-                                $attachment['url']
+                            $attachment['url']
 
                         ]
 
                     ];
 
+
+
                 }
+
 
             }
 
-        }
-
-
-
-
-
-        if (empty($content)) {
-
-            return;
 
         }
+
+
 
 
 
@@ -468,21 +542,26 @@ PROMPT;
 
         if (
             count($content) === 1
-            &&
-            $content[0]['type'] === 'text'
         ) {
+
 
 
             $prompt->add(
 
+                role:
+
                 'user',
 
-                $content[0]['text']
+
+                content:
+
+                $context->currentMessage
 
             );
 
 
             return;
+
 
         }
 
@@ -490,13 +569,85 @@ PROMPT;
 
 
 
+
         $prompt->add(
 
+            role:
+
             'user',
+
+
+            content:
 
             $content
 
         );
+
+
+    }
+
+
+
+
+
+
+
+
+
+    protected function normalizeMessages(
+        array $messages
+    ): array {
+
+
+        $system = [];
+
+        $conversation = [];
+
+
+
+
+
+        foreach (
+            $messages
+            as
+            $message
+        ) {
+
+
+
+            if (
+                ($message['role'] ?? null)
+                ===
+                'system'
+            ) {
+
+
+                $system[] = $message;
+
+
+            } else {
+
+
+                $conversation[] = $message;
+
+
+            }
+
+
+        }
+
+
+
+
+
+        return array_merge(
+
+            $system,
+
+            $conversation
+
+        );
+
 
     }
 

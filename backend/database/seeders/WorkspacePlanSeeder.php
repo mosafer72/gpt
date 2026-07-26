@@ -5,170 +5,265 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\WorkspacePlan;
 use App\Models\WorkspaceType;
-use App\Models\AiModel;
 
 
 class WorkspacePlanSeeder extends Seeder
 {
 
+
     public function run(): void
     {
 
 
+        $personal =
+            WorkspaceType::where(
+                'key',
+                'personal'
+            )->first();
+
+
+
         $student =
             WorkspaceType::where(
-                'name',
+                'key',
                 'student'
             )->first();
 
 
 
-        $studentPlan =
+
+        if(!$personal || !$student){
+
+            return;
+
+        }
+
+
+
+
+
+        $plans = [
+
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Personal Plans
+            |--------------------------------------------------------------------------
+            */
+
+
+            [
+
+                'type'=>$personal,
+
+                'name'=>'personal-basic',
+
+                'display_name'=>'Personal Basic',
+
+                'price'=>0,
+
+                'tokens'=>50000,
+
+                'planner'=>false,
+
+                'documents'=>false,
+
+            ],
+
+
+
+            [
+
+                'type'=>$personal,
+
+                'name'=>'personal-pro',
+
+                'display_name'=>'Personal Pro',
+
+                'price'=>199000,
+
+                'tokens'=>500000,
+
+                'planner'=>true,
+
+                'documents'=>true,
+
+            ],
+
+
+
+
+            [
+
+                'type'=>$personal,
+
+                'name'=>'personal-advanced',
+
+                'display_name'=>'Personal Advanced',
+
+                'price'=>499000,
+
+                'tokens'=>2000000,
+
+                'planner'=>true,
+
+                'documents'=>true,
+
+            ],
+
+
+
+
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Student Plans
+            |--------------------------------------------------------------------------
+            */
+
+
+            [
+
+                'type'=>$student,
+
+                'name'=>'student-basic',
+
+                'display_name'=>'Student Basic',
+
+                'price'=>0,
+
+                'tokens'=>100000,
+
+                'planner'=>false,
+
+                'documents'=>true,
+
+            ],
+
+
+
+
+
+            [
+
+                'type'=>$student,
+
+                'name'=>'student-pro',
+
+                'display_name'=>'Student Pro',
+
+                'price'=>199000,
+
+                'tokens'=>1000000,
+
+                'planner'=>true,
+
+                'documents'=>true,
+
+            ],
+
+
+
+
+
+            [
+
+                'type'=>$student,
+
+                'name'=>'student-advanced',
+
+                'display_name'=>'Student Advanced',
+
+                'price'=>499000,
+
+                'tokens'=>3000000,
+
+                'planner'=>true,
+
+                'documents'=>true,
+
+            ],
+
+
+        ];
+
+
+
+
+
+
+
+
+        foreach($plans as $plan)
+        {
+
+
             WorkspacePlan::updateOrCreate(
 
                 [
-                    'name'=>'student-basic'
+
+                    'name'=>$plan['name']
+
                 ],
 
                 [
 
-                    'workspace_type_id'=>$student->id,
-
-                    'display_name'=>'Student Basic',
-
-                    'price'=>0,
-
-                    'token_limit'=>50000,
-
-                    'duration_days'=>365,
+                    'workspace_type_id'=>
+                        $plan['type']->id,
 
 
-                    'features'=>[
-
-                        'تحلیل PDF',
-
-                        'خلاصه سازی',
-
-                        'حل تمرین',
-
-                        'تحقیق'
-
-                    ]
-
-                ]
-
-            );
+                    'display_name'=>
+                        $plan['display_name'],
 
 
+                    'price'=>
+                        $plan['price'],
 
-
-
-        $developer =
-            WorkspaceType::where(
-                'name',
-                'developer'
-            )->first();
-
-
-
-
-        $developerPlan =
-            WorkspacePlan::updateOrCreate(
-
-                [
-
-                    'name'=>'developer-pro'
-
-                ],
-
-                [
-
-                    'workspace_type_id'=>$developer->id,
-
-                    'display_name'=>'Developer Pro',
-
-                    'price'=>199000,
-
-                    'token_limit'=>200000,
 
                     'duration_days'=>30,
 
 
+                    'token_limit'=>
+                        $plan['tokens'],
+
+
+
                     'features'=>[
 
-                        'Code Review',
+                    ],
 
-                        'Security Analysis',
 
-                        'Debug'
 
-                    ]
+                    'capabilities'=>[
+
+                        'memory'=>true,
+
+                        'planner'=>
+                            $plan['planner'],
+
+                        'documents'=>
+                            $plan['documents'],
+
+                        'file_upload'=>
+                            $plan['documents'],
+
+                        'max_tokens'=>4000
+
+                    ],
+
+
+
+                    'is_active'=>true
+
 
                 ]
 
             );
 
 
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Attach Models
-        |--------------------------------------------------------------------------
-        */
-
-
-        $studentModels = AiModel::whereIn(
-
-            'key',
-
-            [
-
-                'gpt-5-mini',
-
-                'gemini-flash'
-
-            ]
-
-        )
-        ->pluck('id');
-
-
-
-        $developerModels = AiModel::whereIn(
-
-            'key',
-
-            [
-
-                'gpt-5',
-
-                'gpt-5-mini'
-
-            ]
-
-        )
-        ->pluck('id');
-
-
-
-
-
-        $studentPlan
-            ->models()
-            ->sync(
-                $studentModels
-            );
-
-
-
-        $developerPlan
-            ->models()
-            ->sync(
-                $developerModels
-            );
+        }
 
 
     }

@@ -8,9 +8,9 @@ use App\Models\AiModel;
 use App\Models\LlmProvider;
 
 
-
 class AiModelSeeder extends Seeder
 {
+
 
     public function run(): void
     {
@@ -19,230 +19,206 @@ class AiModelSeeder extends Seeder
         $providers = [
 
             'openai' =>
-                LlmProvider::where('key','openai')->first(),
+                LlmProvider::where(
+                    'key',
+                    'openai'
+                )->first(),
+
 
             'openrouter' =>
-                LlmProvider::where('key','openrouter')->first(),
+                LlmProvider::where(
+                    'key',
+                    'openrouter'
+                )->first(),
+
 
             'deepseek' =>
-                LlmProvider::where('key','deepseek')->first(),
+                LlmProvider::where(
+                    'key',
+                    'deepseek'
+                )->first(),
+
 
             'anthropic' =>
-                LlmProvider::where('key','anthropic')->first(),
+                LlmProvider::where(
+                    'key',
+                    'anthropic'
+                )->first(),
+
 
             'qwen' =>
-                LlmProvider::where('key','qwen')->first(),
+                LlmProvider::where(
+                    'key',
+                    'qwen'
+                )->first(),
 
         ];
 
 
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | OpenAI Models
-        |--------------------------------------------------------------------------
-        */
 
 
-        AiModel::updateOrCreate(
+        $models = [
+
 
             [
-                'key'=>'gpt-4.1-mini'
-            ],
-
-            [
+                'key'=>'gpt-4.1-mini',
 
                 'name'=>'GPT 4.1 Mini',
 
                 'model_name'=>'gpt-4.1-mini',
 
-                'provider_id'=>$providers['openai']->id,
+                'provider'=>'openai',
 
-                'input_cost'=>0,
+                'type'=>'chat'
 
-                'output_cost'=>0,
-
-                'is_active'=>true,
-
-            ]
-
-        );
-
-
-
-
-        AiModel::updateOrCreate(
-
-            [
-                'key'=>'gpt-5'
             ],
 
+
+
+
             [
+                'key'=>'gpt-5',
 
                 'name'=>'GPT 5',
 
                 'model_name'=>'gpt-5',
 
-                'provider_id'=>$providers['openai']->id,
+                'provider'=>'openai',
 
-                'input_cost'=>0,
+                'type'=>'chat'
 
-                'output_cost'=>0,
-
-                'is_active'=>true,
-
-            ]
-
-        );
-
-
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | OpenRouter / GapGPT
-        |--------------------------------------------------------------------------
-        */
-
-
-        AiModel::updateOrCreate(
-
-            [
-                'key'=>'gapgpt-qwen-3.6'
             ],
 
-            [
-
-                'name'=>'GapGPT Qwen 3.6',
-
-                'model_name'=>'gapgpt-qwen-3.6',
-
-                'provider_id'=>$providers['openrouter']->id,
-
-                'input_cost'=>0,
-
-                'output_cost'=>0,
-
-                'is_active'=>true,
-
-            ]
-
-        );
 
 
 
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | DeepSeek
-        |--------------------------------------------------------------------------
-        */
-
-
-        AiModel::updateOrCreate(
 
             [
-                'key'=>'deepseek-chat'
+                'key'=>'qwen2.5-64k:latest',
+
+                'name'=>'Qwen 2.5 64K',
+
+                'model_name'=>'qwen2.5-64k:latest',
+
+                'provider'=>'openrouter',
+
+                'type'=>'chat'
+
             ],
 
+
+
+
+
             [
+                'key'=>'deepseek-chat',
 
                 'name'=>'DeepSeek Chat',
 
                 'model_name'=>'deepseek-chat',
 
-                'provider_id'=>$providers['deepseek']->id,
+                'provider'=>'deepseek',
 
-                'input_cost'=>0,
+                'type'=>'chat'
 
-                'output_cost'=>0,
-
-                'is_active'=>true,
-
-            ]
-
-        );
-
-
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Anthropic
-        |--------------------------------------------------------------------------
-        */
-
-
-        AiModel::updateOrCreate(
-
-            [
-                'key'=>'claude-sonnet-4'
             ],
 
+
+
+
+
             [
+                'key'=>'claude-sonnet-4',
 
                 'name'=>'Claude Sonnet 4',
 
                 'model_name'=>'claude-sonnet-4',
 
-                'provider_id'=>$providers['anthropic']->id,
+                'provider'=>'anthropic',
 
-                'input_cost'=>0,
+                'type'=>'chat'
 
-                'output_cost'=>0,
-
-                'is_active'=>true,
-
-            ]
-
-        );
-
-
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Qwen
-        |--------------------------------------------------------------------------
-        */
-
-
-        AiModel::updateOrCreate(
-
-            [
-                'key'=>'qwen-3'
             ],
 
+
+
+
+
             [
+                'key'=>'qwen-3',
 
                 'name'=>'Qwen 3',
 
                 'model_name'=>'qwen-3',
 
-                'provider_id'=>$providers['qwen']->id,
+                'provider'=>'qwen',
 
-                'input_cost'=>0,
+                'type'=>'chat'
 
-                'output_cost'=>0,
+            ],
 
-                'is_active'=>true,
 
-            ]
+        ];
 
-        );
+
+
+
+
+
+
+        foreach($models as $model)
+        {
+
+
+            $provider =
+                $providers[$model['provider']] ?? null;
+
+
+
+            if(!$provider){
+
+                continue;
+
+            }
+
+
+
+
+            AiModel::updateOrCreate(
+
+                [
+
+                    'key'=>$model['key']
+
+                ],
+
+                [
+
+                    'name'=>$model['name'],
+
+                    'model_name'=>$model['model_name'],
+
+                    'provider_id'=>$provider->id,
+
+                    'input_cost'=>0,
+
+                    'output_cost'=>0,
+
+                    'type'=>$model['type'],
+
+                    'is_active'=>true
+
+                ]
+
+            );
+
+
+        }
+
+
+
 
 
 
