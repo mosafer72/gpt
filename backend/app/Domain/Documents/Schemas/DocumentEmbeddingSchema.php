@@ -8,10 +8,8 @@ use Surqlize\Model\SchemaContract;
 class DocumentEmbeddingSchema implements SchemaContract
 {
 
-
     public function definitions(): array
     {
-
 
         return [
 
@@ -28,20 +26,17 @@ class DocumentEmbeddingSchema implements SchemaContract
 
 
 
-
             /*
             |--------------------------------------------------------------------------
             | Core Fields
             |--------------------------------------------------------------------------
             */
 
-
             "
             DEFINE FIELD IF NOT EXISTS document_id
             ON document_embedding
             TYPE string;
             ",
-
 
 
             "
@@ -51,13 +46,11 @@ class DocumentEmbeddingSchema implements SchemaContract
             ",
 
 
-
             "
             DEFINE FIELD IF NOT EXISTS chunk_id
             ON document_embedding
             TYPE string;
             ",
-
 
 
             "
@@ -70,10 +63,9 @@ class DocumentEmbeddingSchema implements SchemaContract
 
             /*
             |--------------------------------------------------------------------------
-            | Vector
+            | Vector Data
             |--------------------------------------------------------------------------
             */
-
 
             "
             DEFINE FIELD IF NOT EXISTS embedding
@@ -83,14 +75,11 @@ class DocumentEmbeddingSchema implements SchemaContract
 
 
 
-
-
             /*
             |--------------------------------------------------------------------------
-            | Academic Metadata
+            | Retrieval Metadata
             |--------------------------------------------------------------------------
             */
-
 
             "
             DEFINE FIELD IF NOT EXISTS metadata
@@ -101,14 +90,11 @@ class DocumentEmbeddingSchema implements SchemaContract
 
 
 
-
-
             /*
             |--------------------------------------------------------------------------
             | Dates
             |--------------------------------------------------------------------------
             */
-
 
             "
             DEFINE FIELD IF NOT EXISTS created_at
@@ -116,7 +102,6 @@ class DocumentEmbeddingSchema implements SchemaContract
             TYPE datetime
             DEFAULT time::now();
             ",
-
 
 
             "
@@ -128,49 +113,39 @@ class DocumentEmbeddingSchema implements SchemaContract
 
 
 
-
-
-
-
             /*
             |--------------------------------------------------------------------------
-            | Normal Indexes
+            | Indexes
             |--------------------------------------------------------------------------
             */
 
 
             "
-            DEFINE INDEX IF NOT EXISTS
-            idx_embedding_workspace
-
+            DEFINE INDEX IF NOT EXISTS idx_embedding_workspace
             ON document_embedding
-
             COLUMNS workspace_id;
             ",
 
 
-
             "
-            DEFINE INDEX IF NOT EXISTS
-            idx_embedding_document
-
+            DEFINE INDEX IF NOT EXISTS idx_embedding_document
             ON document_embedding
-
             COLUMNS document_id;
             ",
 
 
-
             "
-            DEFINE INDEX IF NOT EXISTS
-            idx_embedding_chunk
-
+            DEFINE INDEX IF NOT EXISTS idx_embedding_chunk
             ON document_embedding
-
             COLUMNS chunk_id;
             ",
 
 
+            "
+            DEFINE INDEX IF NOT EXISTS idx_embedding_workspace_document
+            ON document_embedding
+            COLUMNS workspace_id, document_id;
+            ",
 
 
 
@@ -182,15 +157,11 @@ class DocumentEmbeddingSchema implements SchemaContract
 
 
             "
-            DEFINE INDEX IF NOT EXISTS
-            idx_document_chunk_unique
-
+            DEFINE INDEX IF NOT EXISTS idx_document_chunk_unique
             ON document_embedding
-
             COLUMNS document_id, chunk_id
             UNIQUE;
             ",
-
 
 
         ];
@@ -199,14 +170,9 @@ class DocumentEmbeddingSchema implements SchemaContract
 
 
 
-
-
     public function rules(): array
     {
-
         return [];
-
     }
-
 
 }

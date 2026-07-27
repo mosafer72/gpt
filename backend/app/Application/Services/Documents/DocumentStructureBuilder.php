@@ -15,7 +15,6 @@ class DocumentStructureBuilder
     public function __construct(
         protected DocumentStructureRepository $repository
     ) {
-
     }
 
 
@@ -24,11 +23,22 @@ class DocumentStructureBuilder
 
 
 
+    /**
+     * Build document structure
+     *
+     * Input:
+     *  - Sections from DocumentSectionDetector
+     *
+     * Output:
+     *  - Document structure metadata
+     */
     public function build(
-        Document $document,
-        array $sections
-    ): array {
 
+        Document $document,
+
+        array $sections
+
+    ): array {
 
 
         if (empty($sections)) {
@@ -41,164 +51,6 @@ class DocumentStructureBuilder
 
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Group chunks into real sections
-        |--------------------------------------------------------------------------
-        */
-
-
-        $grouped = [];
-
-
-
-
-
-        foreach ($sections as $section) {
-
-
-
-            $name =
-                $this->normalizeSection(
-                    $section['section']
-                    ??
-                    ''
-                );
-
-
-
-            if ($name === '') {
-
-                continue;
-
-            }
-
-
-
-
-
-
-            if (!isset($grouped[$name])) {
-
-
-
-                $grouped[$name] = [
-
-
-                    'name' =>
-                        $name,
-
-
-
-                    'title' =>
-                        trim(
-                            $section['section_title']
-                            ??
-                            ucfirst($name)
-                        ),
-
-
-
-                    'contents' => [],
-
-
-
-                    'word_count' => 0,
-
-
-
-                    'importance' =>
-                        $section['importance']
-                        ??
-                        'medium',
-
-
-
-                    'first_index' =>
-                        $section['chunk_index']
-                        ??
-                        9999,
-
-
-                ];
-
-
-            }
-
-
-
-
-
-            $content =
-                trim(
-                    $section['content']
-                    ??
-                    ''
-                );
-
-
-
-
-            if ($content !== '') {
-
-
-                $grouped[$name]['contents'][] =
-                    $content;
-
-
-            }
-
-
-
-
-
-            $grouped[$name]['word_count']
-                +=
-                (int)
-                (
-                    $section['word_count']
-                    ??
-                    0
-                );
-
-
-
-        }
-
-
-
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Sort by original document order
-        |--------------------------------------------------------------------------
-        */
-
-
-        usort(
-            $grouped,
-            fn($a, $b) =>
-            $a['first_index']
-            <=>
-            $b['first_index']
-        );
-
-
-
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Create Structure
-        |--------------------------------------------------------------------------
-        */
 
 
         $structureSections = [];
@@ -210,15 +62,66 @@ class DocumentStructureBuilder
 
 
 
-        foreach ($grouped as $section) {
+
+
+        foreach ($sections as $section) {
 
 
 
-            $fullText =
-                implode(
-                    " ",
-                    $section['contents']
+            $title =
+
+                trim(
+
+                    $section['title']
+                    ??
+                    'Untitled Section'
+
                 );
+
+
+
+
+
+
+            /**
+             * Compatible with DocumentSectionDetector
+             */
+            $text =
+
+                trim(
+
+                    $section['content']
+                    ??
+                    ''
+
+                );
+
+
+
+
+
+
+
+            if ($text === '') {
+
+                continue;
+
+            }
+
+
+
+
+
+
+
+
+            $name =
+
+                $this->normalizeSection(
+                    $title
+                );
+
+
 
 
 
@@ -228,38 +131,99 @@ class DocumentStructureBuilder
             $structureSections[] = [
 
 
+                /*
+                |--------------------------------------------------------------------------
+                | Identity
+                |--------------------------------------------------------------------------
+                */
+
 
                 'name' =>
-                    $section['name'],
+
+                    $name,
+
+
+
+                'normalized' =>
+
+                    $name,
 
 
 
                 'title' =>
-                    $section['title'],
+
+                    $title,
 
 
 
                 'order' =>
+
                     $order++,
 
 
 
+
+
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Content Information
+                |--------------------------------------------------------------------------
+                */
+
+
                 'summary' =>
+
                     mb_substr(
-                        $fullText,
+
+                        $text,
+
                         0,
-                        500
+
+                        700
+
                     ),
 
 
 
-                'importance' =>
-                    $section['importance'],
-
-
 
                 'word_count' =>
-                    $section['word_count'],
+
+                    $this->wordCount(
+                        $text
+                    ),
+
+
+
+
+
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Retrieval Metadata
+                |--------------------------------------------------------------------------
+                */
+
+
+                'importance' =>
+
+                    $this->detectImportance(
+                        $title
+                    ),
+
+
+
+
+                'keywords' =>
+
+                    $this->extractKeywords(
+                        $text
+                    ),
+
+
+
 
 
 
@@ -271,23 +235,43 @@ class DocumentStructureBuilder
                 */
 
 
-                'translation' =>
+                'translation' => [
 
-                    [
-
-                        'status' =>
-                            'pending',
+                    'status' =>
+                        'pending',
 
 
-                        'title_fa' =>
-                            null,
+                    'title_fa' =>
+                        null,
 
 
-                        'summary_fa' =>
-                            null,
+                    'summary_fa' =>
+                        null,
 
-                    ]
+                ],
 
+
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Source Position
+                |--------------------------------------------------------------------------
+                */
+
+
+                'start_line' =>
+
+                    $section['start_line']
+                    ??
+                    null,
+
+
+                'end_line' =>
+
+                    $section['end_line']
+                    ??
+                    null,
 
 
             ];
@@ -302,32 +286,55 @@ class DocumentStructureBuilder
 
 
 
-
-
         $payload = [
 
 
 
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Document Identity
+            |--------------------------------------------------------------------------
+            */
+
+
             'document_id' =>
+
                 (string)
                 $document->id,
 
 
 
             'workspace_id' =>
+
                 (string)
                 $document->workspace_id,
 
+
+
+
+
+
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Document Metadata
+            |--------------------------------------------------------------------------
+            */
 
 
             'title' => [
 
 
                 'name' =>
+
                     $document->name,
 
 
                 'type' =>
+
                     'academic_paper'
 
 
@@ -336,16 +343,80 @@ class DocumentStructureBuilder
 
 
 
+
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Real Sections
+            |--------------------------------------------------------------------------
+            */
+
+
             'sections' =>
+
                 $structureSections,
 
 
 
+
+
+
+
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Statistics
+            |--------------------------------------------------------------------------
+            */
+
+
+            'statistics' => [
+
+
+                'section_count' =>
+
+                    count(
+                        $structureSections
+                    ),
+
+
+
+                'total_words' =>
+
+                    array_sum(
+
+                        array_column(
+
+                            $structureSections,
+
+                            'word_count'
+
+                        )
+
+                    )
+
+
+            ],
+
+
+
+
+
+
+
+
             'created_at' =>
-                now()->toISOString()
+
+                now()
+                    ->toISOString()
+
 
 
         ];
+
+
 
 
 
@@ -356,6 +427,8 @@ class DocumentStructureBuilder
             ->store(
                 $payload
             );
+
+
 
 
 
@@ -375,24 +448,344 @@ class DocumentStructureBuilder
 
 
 
+    /**
+     * Normalize section name
+     */
     protected function normalizeSection(
-        string $section
+
+        string $title
+
     ): string {
 
 
-        return strtolower(
+        return mb_strtolower(
 
             trim(
 
                 preg_replace(
-                    '/[^a-zA-Z\s]/',
+
+                    '/[^\p{L}\p{N}\s]/u',
+
                     '',
-                    $section
+
+                    $title
+
                 )
 
             )
 
         );
+
+
+    }
+
+
+
+
+
+
+
+
+
+    /**
+     * Count words
+     */
+    protected function wordCount(
+
+        string $text
+
+    ): int {
+
+
+        $text =
+
+            trim($text);
+
+
+
+
+        if ($text === '') {
+
+            return 0;
+
+        }
+
+
+
+
+
+
+        return count(
+
+            preg_split(
+
+                '/\s+/u',
+
+                $text
+
+            )
+
+        );
+
+
+    }
+
+
+
+
+
+
+
+
+
+    /**
+     * Detect section importance
+     */
+    protected function detectImportance(
+
+        string $title
+
+    ): string {
+
+
+        $title =
+
+            mb_strtolower(
+                $title
+            );
+
+
+
+
+
+
+
+        if (
+
+            str_contains(
+                $title,
+                'abstract'
+            )
+
+            ||
+
+            str_contains(
+                $title,
+                'چکیده'
+            )
+
+            ||
+
+            str_contains(
+                $title,
+                'introduction'
+            )
+
+            ||
+
+            str_contains(
+                $title,
+                'مقدمه'
+            )
+
+        ) {
+
+            return 'high';
+
+        }
+
+
+
+
+
+
+
+
+        if (
+
+            str_contains(
+                $title,
+                'method'
+            )
+
+            ||
+
+            str_contains(
+                $title,
+                'methodology'
+            )
+
+            ||
+
+            str_contains(
+                $title,
+                'model'
+            )
+
+            ||
+
+            str_contains(
+                $title,
+                'architecture'
+            )
+
+            ||
+
+            str_contains(
+                $title,
+                'experiment'
+            )
+
+            ||
+
+            str_contains(
+                $title,
+                'evaluation'
+            )
+
+            ||
+
+            str_contains(
+                $title,
+                'روش'
+            )
+
+            ||
+
+            str_contains(
+                $title,
+                'آزمایش'
+            )
+
+        ) {
+
+            return 'very_high';
+
+        }
+
+
+
+
+
+
+
+
+        if (
+
+            str_contains(
+                $title,
+                'reference'
+            )
+
+            ||
+
+            str_contains(
+                $title,
+                'bibliography'
+            )
+
+            ||
+
+            str_contains(
+                $title,
+                'appendix'
+            )
+
+            ||
+
+            str_contains(
+                $title,
+                'منابع'
+            )
+
+        ) {
+
+            return 'low';
+
+        }
+
+
+
+
+
+
+
+
+        return 'medium';
+
+
+    }
+
+
+
+
+
+
+
+
+
+    /**
+     * Lightweight keyword extraction
+     */
+    protected function extractKeywords(
+
+        string $text
+
+    ): array {
+
+
+        $words =
+
+            preg_split(
+
+                '/\s+/u',
+
+                mb_strtolower($text)
+
+            );
+
+
+
+
+
+        return collect($words)
+
+            ->map(
+
+                fn($word) =>
+
+                    preg_replace(
+
+                        '/[^\p{L}\p{N}]/u',
+
+                        '',
+
+                        $word
+
+                    )
+
+            )
+
+            ->filter(
+
+                fn($word) =>
+
+                    mb_strlen($word) > 5
+
+            )
+
+            ->countBy()
+
+            ->sortDesc()
+
+            ->take(10)
+
+            ->keys()
+
+            ->values()
+
+            ->all();
+
 
     }
 

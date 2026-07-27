@@ -11,6 +11,9 @@ use App\Domain\Contracts\EmbeddingProvider;
 use App\Domain\Contracts\MessageStore;
 use App\Domain\Contracts\PlannerProvider;
 use App\Domain\Contracts\SmallChatProvider;
+use App\Domain\Documents\Contracts\DocumentChunkRepositoryInterface;
+use App\Domain\Documents\Contracts\DocumentStructureRepositoryInterface;
+use App\Domain\Documents\Contracts\DocumentVectorRepositoryInterface;
 use App\Infrastructure\Conversation\DatabaseConversationLoader;
 use App\Infrastructure\Embedding\BgeM3EmbeddingProvider;
 use App\Infrastructure\LLM\GapGPTProvider;
@@ -20,6 +23,8 @@ use App\Infrastructure\Memory\DatabaseMemoryRetriever;
 use App\Infrastructure\Message\DatabaseMessageStore;
 use App\Infrastructure\Planner\OllamaQwenPlannerProvider;
 use App\Infrastructure\Repositories\DatabaseConversationRepository;
+use App\Infrastructure\Repositories\DocumentChunkRepository;
+use App\Infrastructure\Repositories\DocumentStructureRepository;
 use Illuminate\Support\ServiceProvider;
 use App\Infrastructure\Memory\DatabaseMemoryStore;
 
@@ -87,6 +92,35 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->bind(
             DocumentOverviewService::class
+        );
+
+
+        $this->app->bind(
+
+            DocumentChunkRepositoryInterface::class,
+
+            DocumentChunkRepository::class
+
+        );
+
+
+
+        $this->app->bind(
+
+            DocumentVectorRepositoryInterface::class,
+
+            DocumentVectorRepositoryInterface::class
+
+        );
+
+
+
+        $this->app->bind(
+
+            DocumentStructureRepositoryInterface::class,
+
+            DocumentStructureRepository::class
+
         );
     }
 

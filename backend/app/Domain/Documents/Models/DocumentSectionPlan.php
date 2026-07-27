@@ -49,90 +49,183 @@ class DocumentSectionPlan extends Model
 
 
 
+
     public function __construct(
-        array $data
+        array $data = []
     )
     {
 
 
         $this->id =
             (string)
-            ($data['id'] ?? '');
+            (
+                $data['id']
+                ??
+                ''
+            );
 
 
 
         $this->documentId =
             (string)
-            ($data['document_id'] ?? '');
+            (
+                $data['document_id']
+                ??
+                ''
+            );
 
 
 
         $this->workspaceId =
             (string)
-            ($data['workspace_id'] ?? '');
+            (
+                $data['workspace_id']
+                ??
+                ''
+            );
 
 
 
         $this->section =
             (string)
-            ($data['section'] ?? '');
+            (
+                $data['section']
+                ??
+                ''
+            );
 
 
 
         $this->sectionTitle =
             (string)
-            ($data['section_title'] ?? '');
+            (
+                $data['section_title']
+                ??
+                ''
+            );
 
 
 
         $this->summary =
             (string)
-            ($data['summary'] ?? '');
+            (
+                $data['summary']
+                ??
+                ''
+            );
 
 
 
         $this->keywords =
-            $data['keywords'] ?? [];
+
+            is_array(
+                $data['keywords']
+                ??
+                null
+            )
+
+            ?
+
+            $data['keywords']
+
+            :
+
+            [];
 
 
 
         $this->questionTypes =
-            $data['question_types'] ?? [];
+
+            is_array(
+                $data['question_types']
+                ??
+                null
+            )
+
+            ?
+
+            $data['question_types']
+
+            :
+
+            [];
 
 
 
         $this->answerProbability =
             (float)
-            ($data['answer_probability'] ?? 0);
+            (
+                $data['answer_probability']
+                ??
+                0
+            );
 
 
 
         $this->plannerRank =
             (int)
-            ($data['planner_rank'] ?? 0);
+            (
+                $data['planner_rank']
+                ??
+                0
+            );
 
 
 
         $this->selectedCount =
             (int)
-            ($data['selected_count'] ?? 0);
+            (
+                $data['selected_count']
+                ??
+                0
+            );
 
 
 
         $this->metadata =
-            $data['metadata'] ?? [];
+
+            is_array(
+                $data['metadata']
+                ??
+                null
+            )
+
+            ?
+
+            $data['metadata']
+
+            :
+
+            [];
 
 
 
         $this->createdAt =
-            $data['created_at'] ?? null;
+            $data['created_at']
+            ??
+            null;
 
 
 
         $this->updatedAt =
-            $data['updated_at'] ?? null;
+            $data['updated_at']
+            ??
+            null;
 
 
+    }
+
+
+
+
+
+
+
+
+
+    public function getId(): string
+    {
+        return $this->id;
     }
 
 
@@ -147,10 +240,16 @@ class DocumentSectionPlan extends Model
 
 
 
+
+
+
     public function getWorkspaceId(): string
     {
         return $this->workspaceId;
     }
+
+
+
 
 
 
@@ -161,10 +260,16 @@ class DocumentSectionPlan extends Model
 
 
 
+
+
+
     public function getSectionTitle(): string
     {
         return $this->sectionTitle;
     }
+
+
+
 
 
 
@@ -175,10 +280,16 @@ class DocumentSectionPlan extends Model
 
 
 
+
+
+
     public function getKeywords(): array
     {
         return $this->keywords;
     }
+
+
+
 
 
 
@@ -189,10 +300,16 @@ class DocumentSectionPlan extends Model
 
 
 
+
+
+
     public function getAnswerProbability(): float
     {
         return $this->answerProbability;
     }
+
+
+
 
 
 
@@ -203,6 +320,29 @@ class DocumentSectionPlan extends Model
 
 
 
+
+
+
+    public function getSelectedCount(): int
+    {
+        return $this->selectedCount;
+    }
+
+
+
+
+
+
+    public function getMetadata(): array
+    {
+        return $this->metadata;
+    }
+
+
+
+
+
+
     public function incrementSelected(): void
     {
         $this->selectedCount++;
@@ -210,12 +350,56 @@ class DocumentSectionPlan extends Model
 
 
 
+
+
+
     public function isHighConfidence(): bool
+    {
+        return $this->answerProbability >= 0.75;
+    }
+
+
+
+
+
+
+    public function isSelected(): bool
+    {
+        return $this->selectedCount > 0;
+    }
+
+
+
+
+
+
+    public function canAnswerQuestion(): bool
     {
 
         return
-            $this->answerProbability >= 0.75;
 
+            $this->answerProbability >= 0.5;
+
+    }
+
+
+
+
+
+
+    public function getCreatedAt(): ?string
+    {
+        return $this->createdAt;
+    }
+
+
+
+
+
+
+    public function getUpdatedAt(): ?string
+    {
+        return $this->updatedAt;
     }
 
 

@@ -6,7 +6,9 @@ namespace App\Domain\Documents\Models;
 use Surqlize\Model\Model;
 use Surqlize\Attributes\Table;
 use Surqlize\Attributes\Schema;
+
 use App\Domain\Documents\Schemas\DocumentSectionTranslationSchema;
+
 
 
 #[Table('document_section_translation')]
@@ -14,65 +16,347 @@ use App\Domain\Documents\Schemas\DocumentSectionTranslationSchema;
 class DocumentSectionTranslation extends Model
 {
 
-    protected string $id;
 
-    protected string $documentId;
+    private string $id = '';
 
-    protected string $workspaceId;
+    private string $documentId = '';
 
-    protected string $section;
+    private string $workspaceId = '';
 
-    protected string $title;
+    private string $section = '';
 
-    protected string $translatedContent;
+    private string $title = '';
 
-    protected string $summaryFa;
+    private string $translatedContent = '';
 
-    protected array $keywords=[];
+    private string $summaryFa = '';
 
-    protected array $embedding=[];
+    private array $keywords = [];
+
+    private array $embedding = [];
+
+    private ?string $createdAt = null;
+
+    private ?string $updatedAt = null;
 
 
 
-    public function __construct(array $data)
+
+
+
+
+    public function __construct(
+        array $data = []
+    )
     {
 
+
         $this->id =
-            $data['id'] ?? '';
+            (string)
+            (
+                $data['id']
+                ??
+                ''
+            );
+
+
 
 
         $this->documentId =
-            $data['document_id'] ?? '';
+            (string)
+            (
+                $data['document_id']
+                ??
+                ''
+            );
+
+
 
 
         $this->workspaceId =
-            $data['workspace_id'] ?? '';
+            (string)
+            (
+                $data['workspace_id']
+                ??
+                ''
+            );
+
+
 
 
         $this->section =
-            $data['section'] ?? '';
+            (string)
+            (
+                $data['section']
+                ??
+                ''
+            );
+
+
 
 
         $this->title =
-            $data['title'] ?? '';
+            (string)
+            (
+                $data['title']
+                ??
+                ''
+            );
+
+
 
 
         $this->translatedContent =
-            $data['translated_content'] ?? '';
+            (string)
+            (
+                $data['translated_content']
+                ??
+                ''
+            );
+
+
 
 
         $this->summaryFa =
-            $data['summary_fa'] ?? '';
+            (string)
+            (
+                $data['summary_fa']
+                ??
+                ''
+            );
+
+
+
+
 
 
         $this->keywords =
-            $data['keywords'] ?? [];
+
+            is_array(
+                $data['keywords']
+                ??
+                null
+            )
+
+            ?
+
+            $data['keywords']
+
+            :
+
+            [];
+
+
+
+
+
 
 
         $this->embedding =
-            $data['embedding'] ?? [];
+
+            is_array(
+                $data['embedding']
+                ??
+                null
+            )
+
+            ?
+
+            array_map(
+                'floatval',
+                $data['embedding']
+            )
+
+            :
+
+            [];
+
+
+
+
+
+
+
+        $this->createdAt =
+            $data['created_at']
+            ??
+            null;
+
+
+
+
+        $this->updatedAt =
+            $data['updated_at']
+            ??
+            null;
+
 
     }
+
+
+
+
+
+
+
+
+
+    public function getId(): string
+    {
+        return $this->id;
+    }
+
+
+
+
+
+
+    public function getDocumentId(): string
+    {
+        return $this->documentId;
+    }
+
+
+
+
+
+
+    public function getWorkspaceId(): string
+    {
+        return $this->workspaceId;
+    }
+
+
+
+
+
+
+    public function getSection(): string
+    {
+        return $this->section;
+    }
+
+
+
+
+
+
+    public function getTitle(): string
+    {
+        return $this->title;
+    }
+
+
+
+
+
+
+    public function getTranslatedContent(): string
+    {
+        return $this->translatedContent;
+    }
+
+
+
+
+
+
+    public function getSummaryFa(): string
+    {
+        return $this->summaryFa;
+    }
+
+
+
+
+
+
+    public function getKeywords(): array
+    {
+        return $this->keywords;
+    }
+
+
+
+
+
+
+    public function getEmbedding(): array
+    {
+        return $this->embedding;
+    }
+
+
+
+
+
+
+    public function getCreatedAt(): ?string
+    {
+        return $this->createdAt;
+    }
+
+
+
+
+
+
+    public function getUpdatedAt(): ?string
+    {
+        return $this->updatedAt;
+    }
+
+
+
+
+
+
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Translation Helpers
+    |--------------------------------------------------------------------------
+    */
+
+
+
+
+
+
+    public function hasTranslation(): bool
+    {
+
+        return
+
+            trim(
+                $this->translatedContent
+            )
+            !==
+            '';
+
+    }
+
+
+
+
+
+
+
+    public function hasEmbedding(): bool
+    {
+
+        return
+
+            !empty(
+                $this->embedding
+            );
+
+    }
+
+
+
 
 
 }

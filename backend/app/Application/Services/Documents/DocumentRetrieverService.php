@@ -6,6 +6,7 @@ namespace App\Application\Services\Documents;
 use App\Application\Services\Ai\EmbeddingService;
 use App\Domain\Contracts\DocumentRetriever;
 use App\Infrastructure\Repositories\DocumentVectorRepository;
+use App\Infrastructure\Repositories\DocumentStructureRepository;
 use Illuminate\Support\Facades\Log;
 
 
@@ -20,6 +21,8 @@ class DocumentRetrieverService implements DocumentRetriever
 
         protected DocumentVectorRepository $vectorRepository,
 
+        protected DocumentStructureRepository $structureRepository,
+
         protected QueryIntentClassifier $classifier,
 
         protected SectionPlanner $planner,
@@ -29,6 +32,7 @@ class DocumentRetrieverService implements DocumentRetriever
         protected DocumentContextBuilder $contextBuilder
 
     ) {
+
     }
 
 
@@ -50,21 +54,9 @@ class DocumentRetrieverService implements DocumentRetriever
     ): array {
 
 
-        if (
-            blank($query)
-        ) {
+        if(blank($query)) {
 
-
-            return [
-
-                'chunks' => [],
-
-                'context' => '',
-
-                'text' => ''
-
-            ];
-
+            return $this->emptyResult();
 
         }
 
@@ -76,7 +68,7 @@ class DocumentRetrieverService implements DocumentRetriever
 
         /*
         |--------------------------------------------------------------------------
-        | Query Classification
+        | 1. Query Intent
         |--------------------------------------------------------------------------
         */
 
@@ -91,36 +83,13 @@ class DocumentRetrieverService implements DocumentRetriever
 
 
 
-        $sectionPlan =
-            $this->planner
-                ->plan(
-                    $intent
-                );
-
-
-
-
-
-
-
         Log::info(
-            'DOCUMENT QUERY PLAN',
+            'DOCUMENT QUERY INTENT',
             [
 
-                'intent' =>
-                    $intent,
+                'intent'=>$intent,
 
-
-                'sections' =>
-                    $sectionPlan,
-
-
-                'workspace' =>
-                    $workspaceId,
-
-
-                'documents' =>
-                    $documentIds
+                'query'=>$query
 
             ]
         );
@@ -132,9 +101,121 @@ class DocumentRetrieverService implements DocumentRetriever
 
 
 
+
         /*
         |--------------------------------------------------------------------------
-        | Query Embedding
+        | 2. Load Real Sections From Structure
+        |--------------------------------------------------------------------------
+        */
+
+
+        $sections = [];
+
+
+
+
+
+        foreach($documentIds as $documentId){
+
+
+            $structure =
+                $this->structureRepository
+                    ->findByDocument(
+                        (string)$documentId
+                    );
+
+
+
+            if(
+                !empty($structure['sections'])
+            ){
+
+                $sections = array_merge(
+                    $sections,
+                    $structure['sections']
+                );
+
+            }
+
+
+        }
+
+
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | 3. Ask Planner
+        |--------------------------------------------------------------------------
+        */
+
+
+        $sectionPlan =
+            $this->planner
+                ->plan(
+
+                    intent:$intent,
+
+                    sections:$sections,
+
+                    query:$query
+
+                );
+
+
+
+
+
+
+        Log::info(
+            'DOCUMENT PLANNER RESULT',
+            [
+
+                'plan'=>$sectionPlan
+
+            ]
+        );
+
+
+
+
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | 4. Metadata Question
+        |--------------------------------------------------------------------------
+        */
+
+
+        if(
+            ($intent['type'] ?? null)
+            ===
+            'title'
+        ){
+
+            return $this->metadataResult();
+
+
+        }
+
+
+
+
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | 5. Query Embedding
         |--------------------------------------------------------------------------
         */
 
@@ -149,22 +230,9 @@ class DocumentRetrieverService implements DocumentRetriever
 
 
 
+        if(empty($vector)){
 
-        if (
-            empty($vector)
-        ) {
-
-
-            return [
-
-                'chunks' => [],
-
-                'context' => '',
-
-                'text' => ''
-
-            ];
-
+            return $this->emptyResult();
 
         }
 
@@ -175,9 +243,10 @@ class DocumentRetrieverService implements DocumentRetriever
 
 
 
+
         /*
         |--------------------------------------------------------------------------
-        | Vector Search
+        | 6. Vector Search
         |--------------------------------------------------------------------------
         */
 
@@ -186,27 +255,16 @@ class DocumentRetrieverService implements DocumentRetriever
             $this->vectorRepository
                 ->search(
 
-                    workspaceId:
+                    workspaceId:$workspaceId,
 
-                    $workspaceId,
+                    vector:$vector,
 
-
-                    vector:
-
-                    $vector,
-
-
-                    limit:
-
-                    max(
+                    limit:max(
                         $limit * 5,
                         25
                     ),
 
-
-                    documentIds:
-
-                    $documentIds
+                    documentIds:$documentIds
 
                 );
 
@@ -216,11 +274,6 @@ class DocumentRetrieverService implements DocumentRetriever
 
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Normalize SurrealDB Result
-        |--------------------------------------------------------------------------
-        */
 
 
         $candidates =
@@ -229,7 +282,7 @@ class DocumentRetrieverService implements DocumentRetriever
                 ->flatten(1)
 
                 ->filter(
-                    fn($item) =>
+                    fn($item)=>
                     is_array($item)
                 )
 
@@ -243,71 +296,41 @@ class DocumentRetrieverService implements DocumentRetriever
 
 
 
-        Log::info(
-            'DOCUMENT VECTOR SEARCH',
-            [
-
-                'count' =>
-                    count($candidates)
-
-            ]
-        );
-
-
-
-
-
-
 
 
         /*
         |--------------------------------------------------------------------------
-        | Cleaning + Deduplication
+        | 7. Cleaning
         |--------------------------------------------------------------------------
         */
 
 
         $results =
-
             collect($candidates)
 
                 ->filter(
 
-                    function ($item) {
+                    fn($item)=>
 
+                    !empty($item['content'])
 
-                        return
+                    &&
 
-                            !empty($item['content'])
-
-                            &&
-
-                            ($item['score'] ?? 0) >= 0.35;
-
-
-                    }
+                    ($item['score'] ?? 0) >= 0.30
 
                 )
-
 
                 ->unique(
 
-                    function ($item) {
+                    fn($item)=>
 
-
-                        return md5(
-
-                            trim(
-                                $item['content']
-                            )
-
-                        );
-
-
-                    }
+                    md5(
+                        trim(
+                            $item['content']
+                        )
+                    )
 
                 )
-
 
                 ->values()
 
@@ -323,14 +346,12 @@ class DocumentRetrieverService implements DocumentRetriever
 
         /*
         |--------------------------------------------------------------------------
-        | Academic Section Ranking
+        | 8. Academic Ranking
         |--------------------------------------------------------------------------
         */
 
 
-        if (
-            !empty($results)
-        ) {
+        if(!empty($results)){
 
 
             $results =
@@ -353,9 +374,10 @@ class DocumentRetrieverService implements DocumentRetriever
 
 
 
+
         /*
         |--------------------------------------------------------------------------
-        | Final Score
+        | 9. Final Score
         |--------------------------------------------------------------------------
         */
 
@@ -366,13 +388,12 @@ class DocumentRetrieverService implements DocumentRetriever
 
                 ->map(
 
-                    function ($item) {
+                    function($item){
+
 
 
                         $score =
-
                             (float)
-
                             (
 
                                 $item['planner_score']
@@ -391,14 +412,13 @@ class DocumentRetrieverService implements DocumentRetriever
 
 
 
-                        $section =
 
+
+                        $section =
                             strtolower(
 
                                 $item['metadata']['section']
-
                                 ??
-
                                 ''
 
                             );
@@ -408,73 +428,27 @@ class DocumentRetrieverService implements DocumentRetriever
 
 
 
-
-                        if (
-
+                        if(
                             in_array(
 
                                 $section,
 
                                 [
-
-                                    'reference',
 
                                     'references',
 
-                                    'bibliography'
+                                    'bibliography',
+
+                                    'appendix'
 
                                 ],
 
                                 true
 
                             )
+                        ){
 
-                        ) {
-
-
-                            $score -= 0.20;
-
-
-                        }
-
-
-
-
-
-
-                        if (
-
-                            in_array(
-
-                                $section,
-
-                                [
-
-                                    'abstract',
-
-                                    'introduction',
-
-                                    'method',
-
-                                    'methodology',
-
-                                    'experiment',
-
-                                    'results',
-
-                                    'conclusion'
-
-                                ],
-
-                                true
-
-                            )
-
-                        ) {
-
-
-                            $score += 0.03;
-
+                            $score -=0.20;
 
                         }
 
@@ -491,17 +465,11 @@ class DocumentRetrieverService implements DocumentRetriever
                                 0,
 
                                 min(
-
                                     $score,
-
                                     1
-
                                 )
 
                             );
-
-
-
 
 
 
@@ -513,23 +481,19 @@ class DocumentRetrieverService implements DocumentRetriever
                 )
 
 
-
                 ->sortByDesc(
 
-                    fn($item) =>
+                    fn($item)=>
 
                     $item['final_score']
 
                 )
 
 
-
                 ->take($limit)
 
 
-
                 ->values()
-
 
 
                 ->all();
@@ -542,55 +506,17 @@ class DocumentRetrieverService implements DocumentRetriever
 
 
 
-        Log::info(
-            'FINAL DOCUMENT RESULTS',
-            [
-
-                'count' =>
-                    count($results),
-
-
-                'sections' =>
-                    collect($results)
-                        ->pluck(
-                            'metadata.section'
-                        )
-                        ->toArray(),
-
-
-                'scores' =>
-                    collect($results)
-                        ->pluck(
-                            'final_score'
-                        )
-                        ->toArray()
-
-            ]
-        );
-
-
-
-
-
-
-
-
-
         /*
         |--------------------------------------------------------------------------
-        | Context Build
+        | 10. Context
         |--------------------------------------------------------------------------
         */
 
 
         $context =
-
             $this->contextBuilder
-
                 ->build(
-
                     $results
-
                 );
 
 
@@ -600,22 +526,15 @@ class DocumentRetrieverService implements DocumentRetriever
 
         return [
 
-            'chunks' =>
-
-                $results,
+            'chunks'=>$results,
 
 
-
-            'context' =>
-
-                $context,
+            'context'=>$context,
 
 
-
-            'text' =>
+            'text'=>
 
                 $this->contextBuilder
-
                     ->toText(
                         $context
                     )
@@ -624,6 +543,63 @@ class DocumentRetrieverService implements DocumentRetriever
 
 
     }
+
+
+
+
+
+
+
+
+
+    protected function metadataResult(): array
+    {
+
+        return [
+
+            'chunks'=>[],
+
+
+            'context'=>[
+
+                'metadata_request'=>true
+
+            ],
+
+
+            'text'=>
+
+                'Metadata request detected'
+
+        ];
+
+    }
+
+
+
+
+
+
+
+
+
+    protected function emptyResult(): array
+    {
+
+        return [
+
+            'chunks'=>[],
+
+
+            'context'=>'',
+
+
+            'text'=>''
+
+        ];
+
+    }
+
 
 
 }

@@ -5,20 +5,25 @@ namespace App\Jobs;
 
 use App\Application\Services\Ai\EmbeddingService;
 use App\Application\Services\Documents\Chunker;
+use App\Application\Services\Documents\DocumentMetadataExtractor;
+use App\Application\Services\Documents\DocumentSectionDetector;
 use App\Application\Services\Documents\DocumentStructureBuilder;
 use App\Application\Services\Documents\PdfExtractor;
-use App\Application\Services\Documents\SectionPlannerService;
+
+use App\Infrastructure\Repositories\DocumentChunkRepository;
 use App\Infrastructure\Repositories\DocumentVectorRepository;
+
 use App\Models\Document;
+
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
-use App\Application\Services\Documents\DocumentMetadataExtractor;
 
 
 
 class ProcessDocumentJob implements ShouldQueue
 {
+
 
     use Queueable;
 
@@ -36,8 +41,8 @@ class ProcessDocumentJob implements ShouldQueue
 
     public function __construct(
         public Document $document
-    ) {
-    }
+    ) {}
+
 
 
 
@@ -50,19 +55,23 @@ class ProcessDocumentJob implements ShouldQueue
 
         PdfExtractor $extractor,
 
+        DocumentSectionDetector $sectionDetector,
+
+        DocumentMetadataExtractor $metadataExtractor,
+
+        DocumentStructureBuilder $structureBuilder,
+
         Chunker $chunker,
 
         EmbeddingService $embeddingService,
 
-        DocumentVectorRepository $vectorRepository,
+        DocumentChunkRepository $chunkRepository,
 
-        SectionPlannerService $sectionPlanner,
+        DocumentVectorRepository $vectorRepository
 
-        DocumentStructureBuilder $structureBuilder,
-
-        DocumentMetadataExtractor $metadataExtractor,
 
     ): void {
+
 
 
         ini_set(
@@ -73,15 +82,15 @@ class ProcessDocumentJob implements ShouldQueue
 
 
 
-        try {
 
+        try {
 
 
             $this->document->update([
 
-                'status' => 'processing',
+                'status'=>'processing',
 
-                'error' => null
+                'error'=>null
 
             ]);
 
@@ -92,7 +101,7 @@ class ProcessDocumentJob implements ShouldQueue
 
             /*
             |--------------------------------------------------------------------------
-            | Extract
+            | Extract Text
             |--------------------------------------------------------------------------
             */
 
@@ -101,6 +110,61 @@ class ProcessDocumentJob implements ShouldQueue
                 $extractor->extract(
                     $this->document->path
                 );
+
+
+
+
+            if(blank($text)) {
+
+                throw new \Exception(
+                    'Document text empty'
+                );
+
+            }
+
+
+
+
+
+
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Sections
+            |--------------------------------------------------------------------------
+            */
+
+
+            $sections =
+                $sectionDetector->detect(
+                    $text
+                );
+
+
+
+
+            if(empty($sections)) {
+
+                throw new \Exception(
+                    'No sections detected'
+                );
+
+            }
+
+
+
+
+
+
+
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Metadata
+            |--------------------------------------------------------------------------
+            */
 
 
             $paperMetadata =
@@ -114,22 +178,38 @@ class ProcessDocumentJob implements ShouldQueue
 
 
 
+
+
             $this->document->update([
 
-                'metadata' =>
-                    $paperMetadata,
+                'metadata'=>$paperMetadata
 
             ]);
 
-            if (blank($text)) {
 
 
-                throw new \Exception(
-                    'Document text empty'
-                );
 
 
-            }
+
+
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Structure
+            |--------------------------------------------------------------------------
+            */
+
+
+            $structureBuilder->build(
+
+                document:$this->document,
+
+                sections:$sections
+
+            );
+
+
 
 
 
@@ -151,77 +231,19 @@ class ProcessDocumentJob implements ShouldQueue
 
 
 
+
             unset($text);
 
 
 
 
-            if (empty($chunks)) {
 
+            if(empty($chunks)) {
 
                 throw new \Exception(
                     'No chunks generated'
                 );
 
-
-            }
-
-
-
-
-            Log::info(
-                'DOCUMENT CHUNK CREATED',
-                [
-
-                    'document_id' => $this->document->id,
-
-                    'count' => count($chunks)
-
-                ]
-            );
-
-
-
-
-
-
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Structure
-            |--------------------------------------------------------------------------
-            */
-
-
-            try {
-
-
-                $structureBuilder->build(
-
-                    document: $this->document,
-
-                    sections: $chunks
-
-                );
-
-
-
-            } catch (\Throwable $e) {
-
-
-                Log::warning(
-                    'STRUCTURE FAILED',
-                    [
-
-                        'document_id' => $this->document->id,
-
-                        'error' => $e->getMessage()
-
-                    ]
-                );
-
-
             }
 
 
@@ -230,63 +252,28 @@ class ProcessDocumentJob implements ShouldQueue
 
 
 
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Planner
-            |--------------------------------------------------------------------------
-            */
-
-
-            $normalizeSection = function ($value) {
-
-
-                return strtolower(
-
-                    preg_replace(
-
-                        '/[^a-z0-9]/',
-
-                        '',
-
-                        trim((string) $value)
-
-                    )
-
-                );
-
-
-            };
-
-
-
-
-            $probabilityMap = [];
+            $counter = 0;
 
 
 
 
 
-            try {
 
 
-                $plans =
-                    $sectionPlanner->analyze(
 
-                        documentId:
+            foreach($chunks as $chunk) {
+
+
+
+                $content =
+                    trim(
 
                         (string)
-                        $this->document->id,
-
-
-                        workspaceId:
-
-                        (string)
-                        $this->document->workspace_id,
-
-
-                        sections: $chunks
+                        (
+                            $chunk['content']
+                            ??
+                            ''
+                        )
 
                     );
 
@@ -294,187 +281,114 @@ class ProcessDocumentJob implements ShouldQueue
 
 
 
-                if (is_array($plans)) {
+                if(blank($content)) {
 
-
-                    foreach ($plans as $plan) {
-
-
-                        if (empty($plan['section'])) {
-
-                            continue;
-
-                        }
-
-
-
-                        $probabilityMap[
-
-                            $normalizeSection(
-                                $plan['section']
-                            )
-
-                        ] =
-
-                            (float)
-                            (
-                                $plan['answer_probability']
-                                ??
-                                0
-                            );
-
-
-                    }
-
+                    continue;
 
                 }
 
 
 
 
-            } catch (\Throwable $e) {
-
-
-                Log::warning(
-                    'PLANNER FAILED',
-                    [
-
-                        'document_id' => $this->document->id,
-
-                        'error' => $e->getMessage()
-
-                    ]
-                );
-
-
-            }
 
 
 
 
 
+                $metadata = [
+
+
+                    'filename'=>
+                        $this->document->name,
 
 
 
+                    'type'=>
+                        $paperMetadata['type']
+                        ??
+                        'academic_paper',
 
 
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | Embedding
-            |--------------------------------------------------------------------------
-            */
-
-
-            $batchSize = 20;
-
-
-            $vectors = [];
+                    'title'=>
+                        $paperMetadata['title']
+                        ??
+                        '',
 
 
 
-
-
-            foreach (
-                array_chunk(
-                    $chunks,
-                    $batchSize
-                )
-                as $batch
-            ) {
+                    'abstract'=>
+                        $paperMetadata['abstract']
+                        ??
+                        '',
 
 
 
-                foreach ($batch as $chunk) {
+                    'authors'=>
+                        $paperMetadata['authors']
+                        ??
+                        [],
 
 
 
-                    $content =
-                        trim(
-                            (string)
-                            (
-                                $chunk['content']
-                                ??
-                                ''
-                            )
-                        );
+                    'year'=>
+                        $paperMetadata['year']
+                        ??
+                        '',
 
 
 
-                    if (blank($content)) {
-
-                        continue;
-
-                    }
-
-
-
-
-
-
-                    $section =
+                    'section'=>
                         strtolower(
 
-                            trim(
-
-                                (string)
-                                (
-                                    $chunk['section']
-                                    ??
-                                    ''
-                                )
-
-                            )
-
-                        );
-
-
-
-
-
-                    $sectionProbability =
-
-                        $probabilityMap[
-
-                            $normalizeSection(
-                                $section
-                            )
-
-                        ]
-                        ??
-                        0;
-
-
-
-
-
-
-                    $embeddingText =
-
-                        "Document Type:
-Academic Paper
-
-Section:
-{$section}
-
-Probability:
-{$sectionProbability}
-
-Title:
-"
-                        .
-                        (
-                            $chunk['section_title']
+                            $chunk['section']
                             ??
-                            ''
+                            'general'
+
+                        ),
+
+
+
+                    'section_title'=>
+                        $chunk['section_title']
+                        ??
+                        '',
+
+
+
+                    'heading_path'=>
+                        $chunk['heading_path']
+                        ??
+                        [],
+
+
+
+                    'importance'=>
+                        $chunk['importance']
+                        ??
+                        'medium',
+
+
+
+                    'chunk_index'=>
+                        (int)
+                        (
+                            $chunk['chunk_index']
+                            ??
+                            0
+                        ),
+
+
+
+                    'word_count'=>
+                        (int)
+                        (
+                            $chunk['word_count']
+                            ??
+                            0
                         )
-                        .
 
-                        "
-
-Content:
-{$content}";
+                ];
 
 
 
@@ -482,162 +396,191 @@ Content:
 
 
 
-                    try {
 
 
-                        $embedding =
-
-                            $embeddingService
-                                ->embedDocument(
-                                    $embeddingText
-                                );
-
+                /*
+                |--------------------------------------------------------------------------
+                | Save Chunk
+                |--------------------------------------------------------------------------
+                */
 
 
-                    } catch (\Throwable $e) {
+                $savedChunk =
+
+                    $chunkRepository->store([
 
 
-                        Log::warning(
-                            'EMBEDDING FAILED',
-                            [
-
-                                'document_id' => $this->document->id,
-
-                                'error' => $e->getMessage()
-
-                            ]
-                        );
-
-
-                        continue;
-
-
-                    }
-
-
-
-
-
-
-                    if (empty($embedding)) {
-
-
-                        continue;
-
-                    }
-
-
-
-
-
-
-
-                    $vectors[] = [
-
-
-                        'document_id' =>
+                        'document_id'=>
                             (string)
                             $this->document->id,
 
 
-                        'workspace_id' =>
+                        'workspace_id'=>
                             (string)
                             $this->document->workspace_id,
 
 
-                        'chunk_id' =>
-                            uniqid('chunk_'),
+                        'chunk_index'=>
+                            $metadata['chunk_index'],
 
 
-                        'content' => $content,
+                        'content'=>
+                            $content,
 
 
-                        'embedding' => $embedding,
-
-
-
-                        'metadata' => [
-                            'filename' =>
-                                $this->document->name,
-
-
-                            'type' =>
-                                $paperMetadata['type'],
-
-
-                            'title' =>
-                                $paperMetadata['title'],
-
-
-                            'abstract' =>
-                                $paperMetadata['abstract'],
-
-
-                            'authors' =>
-                                $paperMetadata['authors'],
-
-
-                            'year' =>
-                                $paperMetadata['year'],
-
-                            'section' =>
-                                $section,
-
-
-                            'section_probability' =>
-                                $sectionProbability,
-
-
-                            'section_title' =>
-                                $chunk['section_title']
+                        'tokens'=>
+                            (int)
+                            (
+                                $chunk['tokens']
                                 ??
-                                '',
+                                0
+                            ),
 
 
-                            'heading_path' =>
-                                $chunk['heading_path']
-                                ??
-                                [],
+                        'metadata'=>
+                            $metadata
 
 
-                            'importance' =>
-                                $chunk['importance']
-                                ??
-                                'medium',
+                    ]);
 
 
-                            'chunk_index' =>
-                                (int)
-                                (
-                                    $chunk['chunk_index']
-                                    ??
-                                    0
-                                ),
 
 
-                            'section_chunk_index' =>
-                                (int)
-                                (
-                                    $chunk['section_chunk_index']
-                                    ??
-                                    0
-                                ),
 
 
-                            'word_count' =>
-                                (int)
-                                (
-                                    $chunk['word_count']
-                                    ??
-                                    0
-                                )
+
+
+
+                $chunkId =
+                    (string)
+                    (
+                        $savedChunk['id']
+                        ??
+                        ''
+                    );
+
+
+
+
+
+
+
+                if(blank($chunkId)) {
+
+
+                    Log::warning(
+                        'CHUNK ID EMPTY'
+                    );
+
+
+                    continue;
+
+                }
+
+
+
+
+
+
+
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Embedding
+                |--------------------------------------------------------------------------
+                */
+
+
+                $embeddingText =
+
+                    "Document Type:
+Academic Paper
+
+Title:
+"
+
+                    .
+
+                    (
+                        $paperMetadata['title']
+                        ??
+                        $this->document->name
+                    )
+
+                    .
+
+                    "
+
+Section:
+"
+
+                    .
+
+                    $metadata['section']
+
+                    .
+
+                    "
+
+Content:
+"
+
+                    .
+
+                    $content;
+
+
+
+
+
+
+
+
+
+                try {
+
+
+                    $embedding =
+
+                        $embeddingService
+                            ->embedDocument(
+                                $embeddingText
+                            );
+
+
+                }
+                catch(\Throwable $e) {
+
+
+                    Log::warning(
+
+                        'EMBEDDING FAILED',
+
+                        [
+
+                            'document_id'=>$this->document->id,
+
+                            'error'=>$e->getMessage()
 
                         ]
 
-                    ];
+                    );
+
+
+                    continue;
+
+                }
 
 
 
+
+
+
+
+                if(empty($embedding)) {
+
+                    continue;
 
                 }
 
@@ -647,23 +590,61 @@ Content:
 
 
 
-                if (!empty($vectors)) {
 
 
-                    $vectorRepository
-                        ->storeBulk(
-                            $vectors
-                        );
+                /*
+                |--------------------------------------------------------------------------
+                | Save Vector
+                |--------------------------------------------------------------------------
+                */
 
+
+                $vectorRepository->store([
+
+
+                    'document_id'=>
+                        $this->document->id,
+
+
+                    'workspace_id'=>
+                        $this->document->workspace_id,
+
+
+                    'chunk_id'=>
+                        $chunkId,
+
+
+                    'content'=>
+                        $content,
+
+
+                    'embedding'=>
+                        $embedding,
+
+
+                    'metadata'=>
+                        $metadata
+
+
+                ]);
+
+
+
+
+
+
+
+                $counter++;
+
+
+
+
+                if($counter % 25 === 0){
+
+                    gc_collect_cycles();
 
                 }
 
-
-
-                $vectors = [];
-
-
-                gc_collect_cycles();
 
 
             }
@@ -675,11 +656,22 @@ Content:
 
 
 
+
             /*
             |--------------------------------------------------------------------------
-            | Translation Queue
+            | Translation
             |--------------------------------------------------------------------------
             */
+
+
+            $this->document->update([
+
+                'status'=>'processed'
+
+            ]);
+
+
+
 
 
             TranslateDocumentSectionsJob::dispatch(
@@ -692,32 +684,20 @@ Content:
 
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | Complete
-            |--------------------------------------------------------------------------
-            */
-
-
-            $this->document->update([
-
-                'status' => 'completed'
-
-            ]);
-
-
-
 
 
             Log::info(
-                'DOCUMENT COMPLETED',
+
+                'DOCUMENT PROCESSED',
+
                 [
 
-                    'document_id' => $this->document->id,
+                    'document_id'=>$this->document->id,
 
-                    'chunks' => count($chunks)
+                    'chunks'=>count($chunks)
 
                 ]
+
             );
 
 
@@ -726,31 +706,39 @@ Content:
 
 
 
-        } catch (\Throwable $e) {
+        }
+        catch(\Throwable $e) {
 
 
 
             Log::error(
+
                 'DOCUMENT PROCESSING FAILED',
+
                 [
 
-                    'document_id' => $this->document->id,
+                    'document_id'=>$this->document->id,
 
-                    'error' => $e->getMessage()
+                    'error'=>$e->getMessage()
 
                 ]
+
             );
+
+
 
 
 
 
             $this->document->update([
 
-                'status' => 'failed',
+                'status'=>'failed',
 
-                'error' => $e->getMessage()
+                'error'=>$e->getMessage()
 
             ]);
+
+
 
 
 
@@ -758,6 +746,7 @@ Content:
 
 
         }
+
 
 
     }

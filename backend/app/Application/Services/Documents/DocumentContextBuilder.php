@@ -3,6 +3,8 @@
 namespace App\Application\Services\Documents;
 
 
+use App\Application\DTOs\Documents\RetrievalResult;
+
 use Illuminate\Support\Facades\Log;
 
 
@@ -13,15 +15,14 @@ class DocumentContextBuilder
 
     public function build(
 
-        array $chunks,
+        array $results,
 
         int $maxWords = 3000
 
-    ): array
-    {
+    ): array {
 
 
-        if (empty($chunks)) {
+        if(empty($results)){
 
             return [];
 
@@ -31,139 +32,211 @@ class DocumentContextBuilder
 
 
 
+        $chunks = collect($results)
 
-        $chunks = collect($chunks)
+            ->map(function($item){
 
-            ->filter(
 
-                fn($item) =>
+
+                if($item instanceof RetrievalResult){
+
+
+                    if(method_exists($item,'toArray')){
+
+
+                        return $item->toArray();
+
+
+                    }
+
+
+
+                    return [
+
+                        'content' =>
+                            $item->content
+                            ??
+                            '',
+
+
+                        'score' =>
+                            $item->score
+                            ??
+                            0,
+
+
+                        'metadata' =>
+                            $item->metadata
+                            ??
+                            []
+
+
+                    ];
+
+
+                }
+
+
+
+                return $item;
+
+
+            })
+
+
+
+            ->filter(function($item){
+
+
+                return
 
                     is_array($item)
 
                     &&
 
                     !empty(
+
                         trim(
-                            $item['content'] ?? ''
+
+                            $item['content']
+                            ??
+                            ''
+
                         )
-                    )
 
-            )
-
-            ->map(
-
-                function ($item) {
+                    );
 
 
-                    $item['metadata'] =
-
-                        $item['metadata']
-                        ??
-                        [];
+            })
 
 
 
-                    $item['title'] =
+            ->map(function($item){
 
-                        $item['metadata']['title']
-                        ??
-                        'Unknown Document';
+
+
+                $metadata =
+
+                    $item['metadata']
+                    ??
+                    [];
 
 
 
 
-                    $item['section'] =
-
-                        strtolower(
-
-                            trim(
-
-                                $item['metadata']['section']
-                                ??
-                                'general'
-
-                            )
-
-                        );
+                $item['metadata'] =
+                    $metadata;
 
 
 
 
-                    $item['score'] =
 
-                        (float)
+                $item['title'] =
 
-                        (
+                    $metadata['title']
+                    ??
 
-                            $item['final_score']
+                    'Unknown Document';
+
+
+
+
+
+
+                $item['section'] =
+
+                    strtolower(
+
+                        trim(
+
+                            $metadata['section']
                             ??
 
-                            $item['score']
-                            ??
+                            'general'
 
-                            0
+                        )
 
-                        );
-
+                    );
 
 
-                    return $item;
 
 
-                }
 
-            )
+                $item['chunk_id'] =
 
-            ->unique(
+                    $item['chunk_id']
+                    ??
 
-                fn($item) =>
+                    $metadata['chunk_id']
+                    ??
+
+                    null;
+
+
+
+
+
+
+                $item['score'] =
+
+                    (float)
+
+                    (
+
+                        $item['final_score']
+                        ??
+
+                        $item['planner_score']
+                        ??
+
+                        $item['score']
+                        ??
+
+                        0
+
+                    );
+
+
+
+
+                return $item;
+
+
+            })
+
+
+
+            ->unique(function($item){
+
+
+
+                return
+
+
+                    $item['chunk_id']
+
+
+                    ??
+
 
                     md5(
+
                         trim(
+
                             $item['content']
+
                         )
-                    )
 
-            )
+                    );
 
-            ->sortByDesc(
 
-                fn($item) =>
-
-                    $item['score']
-
-            );
+            })
 
 
 
+            ->sortByDesc('score')
 
-
-
-
-
-        $documentInfo = [
-
-            'title' =>
-
-                $chunks
-                    ->first()['title']
-                    ??
-                    null,
-
-
-            'documents' =>
-
-                $chunks
-
-                    ->pluck('title')
-
-                    ->unique()
-
-                    ->values()
-
-                    ->all()
-
-        ];
+            ->values();
 
 
 
@@ -172,13 +245,13 @@ class DocumentContextBuilder
 
 
 
-        $grouped =
+        if($chunks->isEmpty()){
 
-            $chunks
 
-                ->groupBy(
-                    'section'
-                );
+            return [];
+
+        }
+
 
 
 
@@ -195,73 +268,84 @@ class DocumentContextBuilder
 
 
 
-        foreach ($grouped as $section => $items) {
 
 
-            $sectionText = '';
+        foreach($chunks as $chunk){
 
 
 
-            foreach ($items as $chunk) {
+            if($wordCount >= $maxWords){
+
+
+                break;
+
+
+            }
+
+
+
+
+
+            $content =
+
+                trim(
+
+                    $chunk['content']
+
+                );
+
+
+
+
+
+            $words =
+
+                $this->wordCount(
+                    $content
+                );
+
+
+
+
+
+
+
+
+            if(
+
+                ($wordCount + $words)
+
+                >
+
+                $maxWords
+
+            ){
+
 
 
                 $content =
 
-                    trim(
-                        $chunk['content']
+                    $this->limitWords(
+
+                        $content,
+
+                        $maxWords - $wordCount
+
                     );
 
 
 
                 $words =
 
-                    str_word_count(
+                    $this->wordCount(
                         $content
                     );
 
 
-
-                if (
-
-                    ($wordCount + $words)
-
-                    >
-
-                    $maxWords
-
-                ) {
-
-                    break 2;
-
-                }
-
-
-
-
-
-                $sectionText .=
-
-                    $content
-                    .
-                    "\n\n";
-
-
-
-                $wordCount += $words;
-
-
             }
 
 
 
-
-
-
-            if (blank($sectionText)) {
-
-                continue;
-
-            }
 
 
 
@@ -270,47 +354,176 @@ class DocumentContextBuilder
             $context[] = [
 
 
+
+                'chunk_id' =>
+
+                    $chunk['chunk_id'],
+
+
+
                 'title' =>
 
-                    $items
-                        ->first()['title']
-                        ??
-                        null,
+                    $chunk['title'],
 
 
 
                 'section' =>
 
-                    $section,
+                    $chunk['section'],
 
 
 
                 'content' =>
 
-                    trim(
-                        $sectionText
-                    ),
+                    $content,
 
 
 
-                'chunk_count' =>
+                'score' =>
 
-                    count($items),
+                    $chunk['score'],
 
 
 
                 'importance' =>
 
                     $this->sectionImportance(
-                        $section
-                    )
+
+                        $chunk['section']
+
+                    ),
+
+
+
+                'metadata' => [
+
+
+
+                    'section_title' =>
+
+                        $chunk['metadata']['section_title']
+                        ??
+                        '',
+
+
+
+                    'chunk_index' =>
+
+                        $chunk['metadata']['chunk_index']
+                        ??
+                        0,
+
+
+
+                    'word_count' =>
+
+                        $words,
+
+
+
+                    'original_metadata' =>
+
+                        $chunk['metadata']
+
+
+                ]
 
 
             ];
 
 
 
+
+
+
+            $wordCount += $words;
+
+
+
         }
+
+
+
+
+
+
+
+
+        if(empty($context)){
+
+
+            return [];
+
+        }
+
+
+
+
+
+
+
+        $result = [
+
+
+
+            'document_info' => [
+
+
+
+                'title' =>
+
+                    $context[0]['title']
+                    ??
+                    null,
+
+
+
+                'documents' =>
+
+                    collect($context)
+
+                        ->pluck('title')
+
+                        ->unique()
+
+                        ->values()
+
+                        ->all()
+
+
+            ],
+
+
+
+
+            'sections' =>
+
+                $context,
+
+
+
+
+            'total_words' =>
+
+                $wordCount
+
+
+
+        ];
+
+
+
+
+
+
+
+
+        $result['text'] =
+
+            $this->toText(
+                $result
+            );
+
 
 
 
@@ -325,13 +538,21 @@ class DocumentContextBuilder
             [
 
                 'title' =>
-                    $documentInfo['title'],
 
-                'sections' =>
+                    $result['document_info']['title'],
+
+
+
+                'chunks' =>
+
                     count($context),
 
+
+
                 'words' =>
+
                     $wordCount
+
 
             ]
 
@@ -342,31 +563,37 @@ class DocumentContextBuilder
 
 
 
-        return [
-
-            'document_info' =>
-                $documentInfo,
 
 
-            'sections' =>
-                $context
-
-
-        ];
+        return $result;
 
 
     }
-        public function toText(
+
+
+
+
+
+
+
+
+
+    public function toText(
+
         array $context
-    ): string
-    {
+
+    ): string {
 
 
-        if (empty($context)) {
+
+        if(empty($context['sections'])){
+
 
             return '';
 
         }
+
+
 
 
 
@@ -382,155 +609,112 @@ class DocumentContextBuilder
 
 
 
-        if (
 
-            isset(
-                $context['document_info']
-            )
-
-        ) {
-
-
-            $info =
-                $context['document_info'];
-
-
-
-            $text .=
-
-                "Document Information:\n\n";
-
-
-
-            if (
-                !empty(
-                    $info['title']
-                )
-            ) {
-
-
-                $text .=
-
-                    "Title: "
-
-                    .
-
-                    $info['title']
-
-                    .
-
-                    "\n\n";
-
-
-            }
-
-
-
-        }
-
-
-
-
-
-
-
-
-        $sections =
+        foreach(
 
             $context['sections']
-            ??
-            [];
 
+            as
 
+            $index=>$section
 
-
-
-
-
-        foreach ($sections as $index => $block) {
-
-
-            $number =
-
-                $index + 1;
-
+        ){
 
 
 
             $text .=
+
+
 
                 "====================\n"
 
                 .
 
-                "Section {$number}: "
+                "Context Block "
+
+                .
+
+                ($index + 1)
+
+                .
+
+                "\n"
+
+
+
+                .
+
+                "Document: "
+
+                .
+
+                ($section['title'] ?? '')
+
+                .
+
+                "\n"
+
+
+
+                .
+
+                "Section: "
 
                 .
 
                 ucfirst(
 
-                    $block['section']
+                    $section['section']
 
                 )
 
                 .
 
-                "\n";
+                "\n"
 
 
 
-
-
-
-            if (
-
-                !empty(
-                    $block['title']
-                )
-
-            ) {
-
-
-                $text .=
-
-                    "Document: "
-
-                    .
-
-                    $block['title']
-
-                    .
-
-                    "\n";
-
-
-            }
-
-
-
-
-
-
-            $text .=
+                .
 
                 "Importance: "
 
                 .
 
-                $block['importance']
+                $section['importance']
+
+                .
+
+                "\n"
+
+
+
+                .
+
+                "Score: "
+
+                .
+
+                round(
+
+                    $section['score'],
+
+                    3
+
+                )
 
                 .
 
                 "\n\n"
 
+
+
                 .
 
-                $block['content']
+                $section['content']
 
                 .
 
                 "\n\n";
-
 
 
         }
@@ -555,22 +739,21 @@ class DocumentContextBuilder
 
 
     protected function sectionImportance(
+
         string $section
-    ): string
-    {
+
+    ): string {
 
 
-        return match ($section) {
+
+        return match($section){
 
 
             'method',
-
+            'methods',
             'methodology',
-
             'architecture',
-
             'model',
-
             'implementation'
 
             =>
@@ -580,14 +763,10 @@ class DocumentContextBuilder
 
 
 
-
-
-            'results',
-
             'experiment',
-
+            'experiments',
             'evaluation',
-
+            'results',
             'conclusion'
 
             =>
@@ -597,11 +776,9 @@ class DocumentContextBuilder
 
 
 
-
-
             'abstract',
-
-            'introduction'
+            'introduction',
+            'background'
 
             =>
 
@@ -610,11 +787,9 @@ class DocumentContextBuilder
 
 
 
-
-
             'references',
-
-            'bibliography'
+            'bibliography',
+            'appendix'
 
             =>
 
@@ -623,11 +798,7 @@ class DocumentContextBuilder
 
 
 
-
-
-            default
-
-            =>
+            default =>
 
             'normal'
 
@@ -637,6 +808,104 @@ class DocumentContextBuilder
 
     }
 
+
+
+
+
+
+
+
+
+    protected function wordCount(
+
+        string $text
+
+    ): int {
+
+
+        $text = trim($text);
+
+
+
+        if($text === ''){
+
+            return 0;
+
+        }
+
+
+
+
+        return count(
+
+            preg_split(
+
+                '/\s+/u',
+
+                $text
+
+            )
+
+        );
+
+
+    }
+
+
+
+
+
+
+
+
+
+    protected function limitWords(
+
+        string $text,
+
+        int $limit
+
+    ): string {
+
+
+
+        $words =
+
+            preg_split(
+
+                '/\s+/u',
+
+                trim($text)
+
+            );
+
+
+
+
+        return implode(
+
+            ' ',
+
+            array_slice(
+
+                $words,
+
+                0,
+
+                max(
+
+                    1,
+
+                    $limit
+
+                )
+
+            )
+
+        );
+
+
+    }
 
 
 }

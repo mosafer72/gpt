@@ -16,42 +16,131 @@ use Surqlize\Model\Model;
 class DocumentChunk extends Model
 {
 
-    private string $id;
 
-    private string $documentId;
+    private string $id = '';
 
-    private int $chunkIndex;
+    private string $documentId = '';
 
-    private string $content;
+    private string $workspaceId = '';
 
-    private int $tokens;
+    private int $chunkIndex = 0;
 
-    private string $createdAt;
+    private string $content = '';
+
+    private int $tokens = 0;
+
+    private array $metadata = [];
+
+    private ?string $createdAt = null;
 
 
 
-    public function __construct(array $data)
+
+
+
+    public function __construct(
+        array $data = []
+    )
     {
 
+
         $this->id =
-            $data['id'] ?? '';
+            (string)
+            (
+                $data['id']
+                ??
+                ''
+            );
+
+
+
 
         $this->documentId =
-            $data['document_id'] ?? '';
+            (string)
+            (
+                $data['document_id']
+                ??
+                ''
+            );
+
+
+
+
+        $this->workspaceId =
+            (string)
+            (
+                $data['workspace_id']
+                ??
+                ''
+            );
+
+
+
 
         $this->chunkIndex =
-            $data['chunk_index'] ?? 0;
+            (int)
+            (
+                $data['chunk_index']
+                ??
+                0
+            );
+
+
+
 
         $this->content =
-            $data['content'] ?? '';
+            (string)
+            (
+                $data['content']
+                ??
+                ''
+            );
+
+
+
 
         $this->tokens =
-            $data['tokens'] ?? 0;
+            (int)
+            (
+                $data['tokens']
+                ??
+                0
+            );
+
+
+
+
+        $this->metadata =
+            is_array(
+                $data['metadata']
+                ??
+                null
+            )
+
+            ?
+
+            $data['metadata']
+
+            :
+
+            [];
+
+
+
+
 
         $this->createdAt =
-            $data['created_at'] ?? '';
+            $data['created_at']
+            ??
+            null;
+
+
 
     }
+
+
+
+
 
 
 
@@ -64,10 +153,29 @@ class DocumentChunk extends Model
 
 
 
+
+
+
+
     public function getDocumentId(): string
     {
         return $this->documentId;
     }
+
+
+
+
+
+
+
+    public function getWorkspaceId(): string
+    {
+        return $this->workspaceId;
+    }
+
+
+
+
 
 
 
@@ -78,10 +186,18 @@ class DocumentChunk extends Model
 
 
 
+
+
+
+
     public function getContent(): string
     {
         return $this->content;
     }
+
+
+
+
 
 
 
@@ -92,10 +208,89 @@ class DocumentChunk extends Model
 
 
 
-    public function getCreatedAt(): string
+
+
+
+
+    public function getMetadata(): array
+    {
+        return $this->metadata;
+    }
+
+
+
+
+
+
+
+    public function getCreatedAt(): ?string
     {
         return $this->createdAt;
     }
+
+
+
+
+
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Retrieval Helpers
+    |--------------------------------------------------------------------------
+    */
+
+
+    public function getSection(): ?string
+    {
+
+        return
+
+            $this->metadata['section']
+            ??
+            null;
+
+    }
+
+
+
+
+
+
+    public function getImportance(): ?string
+    {
+
+        return
+
+            $this->metadata['importance']
+            ??
+            null;
+
+    }
+
+
+
+
+
+
+    public function isAcademic(): bool
+    {
+
+        return
+
+            (
+                $this->metadata['type']
+                ??
+                null
+            )
+
+            ===
+
+            'academic_paper';
+
+    }
+
 
 
 }

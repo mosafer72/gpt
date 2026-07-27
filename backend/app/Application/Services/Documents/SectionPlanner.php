@@ -8,156 +8,477 @@ class SectionPlanner
 
 
     public function plan(
-        array|string $intent
+
+        array $intent,
+
+        array $sections = [],
+
+        string $query = ''
+
     ): array {
 
 
+        $type =
 
-        if (is_array($intent)) {
-
-            $intent =
-                $intent['intent']
-                ??
-                $intent['type']
-                ??
-                'general';
-
-        }
-
-
-
-        $intent =
             strtolower(
-                trim($intent)
+
+                trim(
+
+                    $intent['type']
+                    ??
+                    'general'
+
+                )
+
             );
 
 
 
 
 
-        $plans = [
+
+        /*
+        |--------------------------------------------------------------------------
+        | No Structure Available
+        |--------------------------------------------------------------------------
+        */
 
 
-            'title'=>[
+        if(empty($sections)){
 
-                'title'=>100,
 
-                'abstract'=>80,
+            return [
 
-                'introduction'=>40
+                'mode'=>'global',
+
+
+                'sections'=>[]
+
+
+            ];
+
+
+        }
+
+
+
+
+
+
+
+        $scores = [];
+
+
+
+
+
+
+        foreach($sections as $section){
+
+
+
+            $title =
+
+                strtolower(
+
+                    trim(
+
+                        $section['name']
+                        ??
+
+                        $section['title']
+                        ??
+
+                        ''
+
+                    )
+
+                );
+
+
+
+
+
+            if($title === ''){
+
+                continue;
+
+            }
+
+
+
+
+
+
+            $score = 0;
+
+
+
+
+
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Intent Based Scoring
+            |--------------------------------------------------------------------------
+            */
+
+
+            switch($type){
+
+
+
+                case 'title':
+
+
+                    if(
+                        str_contains(
+                            $title,
+                            'header'
+                        )
+                        ||
+                        str_contains(
+                            $title,
+                            'abstract'
+                        )
+                    ){
+
+                        $score = 100;
+
+                    }
+
+
+                    break;
+
+
+
+
+
+
+
+                case 'summary':
+
+
+                    if(
+                        in_array(
+
+                            $title,
+
+                            [
+
+                                'abstract',
+
+                                'introduction',
+
+                                'conclusion'
+
+                            ],
+
+                            true
+
+                        )
+                    ){
+
+                        $score = 90;
+
+                    }
+
+
+                    break;
+
+
+
+
+
+
+
+                case 'section_specific':
+
+
+                    $score =
+                        $this->sectionMatchScore(
+                            $query,
+                            $title
+                        );
+
+
+                    break;
+
+
+
+
+
+
+
+                case 'comparison':
+
+
+                    if(
+
+                        str_contains(
+                            $title,
+                            'result'
+                        )
+
+                        ||
+
+                        str_contains(
+                            $title,
+                            'evaluation'
+                        )
+
+                    ){
+
+                        $score = 90;
+
+                    }
+
+
+                    break;
+
+
+
+
+
+
+
+
+                case 'explanation':
+
+
+                    if(
+
+                        str_contains(
+                            $title,
+                            'method'
+                        )
+
+                        ||
+
+                        str_contains(
+                            $title,
+                            'model'
+                        )
+
+                        ||
+
+                        str_contains(
+                            $title,
+                            'architecture'
+                        )
+
+                    ){
+
+                        $score = 85;
+
+                    }
+
+
+                    break;
+
+
+
+
+
+
+
+                default:
+
+
+                    $score =
+                        $this->generalScore(
+                            $title
+                        );
+
+
+                    break;
+
+
+            }
+
+
+
+
+
+
+            if($score > 0){
+
+
+                $scores[$title] = $score;
+
+
+            }
+
+
+
+        }
+
+
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Sort Sections
+        |--------------------------------------------------------------------------
+        */
+
+
+        arsort($scores);
+
+
+
+
+
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Decide Search Mode
+        |--------------------------------------------------------------------------
+        */
+
+
+        if(empty($scores)){
+
+
+            return [
+
+                'mode'=>'global',
+
+                'sections'=>[]
+
+            ];
+
+
+        }
+
+
+
+
+
+
+
+        return [
+
+            'mode'=>'section',
+
+            'sections'=>$scores
+
+
+        ];
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    protected function sectionMatchScore(
+
+        string $query,
+
+        string $section
+
+    ): int {
+
+
+
+        $query =
+            strtolower($query);
+
+
+
+
+
+        $score = 0;
+
+
+
+
+
+        if(
+            str_contains(
+                $query,
+                $section
+            )
+        ){
+
+            $score +=100;
+
+        }
+
+
+
+
+
+
+        $keywords = [
+
+
+            'method'=>[
+
+                'method',
+
+                'approach',
+
+                'architecture',
+
+                'model'
 
             ],
-
-
-
-            'abstract'=>[
-
-                'abstract'=>100,
-
-                'introduction'=>50,
-
-                'conclusion'=>50
-
-            ],
-
-
-
-
-            'methodology'=>[
-
-                'methodology'=>100,
-
-                'method'=>100,
-
-                'approach'=>90,
-
-                'architecture'=>90,
-
-                'implementation'=>80
-
-            ],
-
-
 
 
 
             'dataset'=>[
 
-                'dataset'=>100,
+                'data',
 
-                'experiment'=>90,
-
-                'methodology'=>70
+                'dataset'
 
             ],
-
-
 
 
 
             'experiment'=>[
 
-                'experiment'=>100,
+                'experiment',
 
-                'setup'=>90,
-
-                'evaluation'=>80
+                'setup'
 
             ],
-
 
 
 
             'result'=>[
 
-                'results'=>100,
+                'result',
 
-                'evaluation'=>90,
+                'evaluation',
 
-                'experiment'=>70
-
-            ],
-
-
-
-
-            'results'=>[
-
-                'results'=>100,
-
-                'evaluation'=>90,
-
-                'experiment'=>70
+                'performance'
 
             ],
-
 
 
 
             'conclusion'=>[
 
-                'conclusion'=>100,
+                'conclusion',
 
-                'future work'=>80,
-
-                'discussion'=>70
-
-            ],
-
-
-
-
-            'general'=>[
-
-                'abstract'=>80,
-
-                'introduction'=>70,
-
-                'conclusion'=>60,
-
-                'methodology'=>50
+                'future'
 
             ]
+
 
         ];
 
@@ -165,12 +486,136 @@ class SectionPlanner
 
 
 
-        return
 
-            $plans[$intent]
-            ??
-            $plans['general'];
+
+        foreach($keywords as $key=>$items){
+
+
+            foreach($items as $item){
+
+
+                if(
+                    str_contains(
+                        $query,
+                        $item
+                    )
+
+                    &&
+
+                    str_contains(
+                        $section,
+                        $key
+                    )
+
+                ){
+
+                    $score +=50;
+
+                }
+
+
+            }
+
+
+        }
+
+
+
+
+
+
+        return min(
+            $score,
+            100
+        );
+
 
     }
+
+
+
+
+
+
+
+
+
+    protected function generalScore(
+
+        string $section
+
+    ): int {
+
+
+
+        return match(true){
+
+
+
+            str_contains(
+                $section,
+                'abstract'
+            )
+
+            =>
+
+            80,
+
+
+
+
+
+            str_contains(
+                $section,
+                'introduction'
+            )
+
+            =>
+
+            70,
+
+
+
+
+
+            str_contains(
+                $section,
+                'conclusion'
+            )
+
+            =>
+
+            60,
+
+
+
+
+
+            str_contains(
+                $section,
+                'method'
+            )
+
+            =>
+
+            50,
+
+
+
+
+
+            default
+
+            =>
+
+            30
+
+
+        };
+
+
+    }
+
+
 
 }

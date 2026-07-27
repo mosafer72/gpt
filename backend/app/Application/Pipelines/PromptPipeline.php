@@ -2,6 +2,7 @@
 
 namespace App\Application\Pipelines;
 
+
 use App\Application\Context\ChatContext;
 use App\Application\Prompts\SystemPrompt;
 use App\Domain\Prompt\PromptCollection;
@@ -18,14 +19,14 @@ class PromptPipeline
 
 
         $prompt =
+
             new PromptCollection();
 
 
 
 
         $this->addSystemPrompt(
-            $prompt,
-            $context
+            $prompt
         );
 
 
@@ -64,6 +65,7 @@ class PromptPipeline
 
 
 
+
         $context->setPrompt(
 
             $this->normalizeMessages(
@@ -77,7 +79,9 @@ class PromptPipeline
 
 
 
+
         return $context;
+
 
     }
 
@@ -88,22 +92,19 @@ class PromptPipeline
 
 
 
+
     protected function addSystemPrompt(
-        PromptCollection $prompt,
-        ChatContext $context
+        PromptCollection $prompt
     ): void {
 
 
         $prompt->add(
 
-            role:
-
-            'system',
-
+            role:'system',
 
             content:
 
-            SystemPrompt::default()
+                SystemPrompt::default()
 
         );
 
@@ -119,8 +120,11 @@ class PromptPipeline
 
 
     protected function addDocuments(
+
         PromptCollection $prompt,
+
         ChatContext $context
+
     ): void {
 
 
@@ -134,16 +138,19 @@ class PromptPipeline
 
 
 
+
+
         $content = <<<TEXT
-You are answering using uploaded document context.
+You are answering questions from uploaded documents.
 
 Rules:
-- Use only provided document passages.
-- Do not invent information.
-- If the answer is not available in the documents, say:
-اطلاعات کافی در اسناد پیدا نشد.
+- The document context is the only source of truth.
+- Do not use external knowledge.
+- Do not guess missing information.
+- If information is unavailable, answer:
+"اطلاعات کافی در اسناد پیدا نشد."
 
-Retrieved document passages:
+Document Context:
 
 TEXT;
 
@@ -151,20 +158,36 @@ TEXT;
 
 
 
-        $hasContent = false;
+
+        $count = 0;
+
+        $words = 0;
 
 
 
 
 
         foreach (
-            $context->documents
-            as
-            $index => $document
+
+            $context->documents as $document
+
         ) {
 
 
+
+            if ($words >= 4000) {
+
+                break;
+
+            }
+
+
+
+
+
+
             $data =
+
                 is_array($document)
 
                 ?
@@ -179,20 +202,23 @@ TEXT;
 
 
 
+
+
             $text =
+
                 trim(
+
                     $data['content']
                     ??
                     ''
+
                 );
 
 
 
 
 
-            if (
-                $text === ''
-            ) {
+            if ($text === '') {
 
                 continue;
 
@@ -202,12 +228,10 @@ TEXT;
 
 
 
-            $hasContent = true;
-
-
 
 
             $metadata =
+
                 $data['metadata']
                 ??
                 [];
@@ -216,25 +240,69 @@ TEXT;
 
 
 
-            $title =
-                $metadata['title']
-                ??
-                'Unknown';
-
-
 
 
             $section =
+
                 $metadata['section']
                 ??
+
+                $data['section']
+                ??
+
+                'general';
+
+
+
+
+
+
+
+            $title =
+
+                $metadata['title']
+                ??
+
+                'Unknown Document';
+
+
+
+
+
+
+
+
+            $importance =
+
+                $metadata['importance']
+                ??
+
                 '';
 
 
 
 
 
-            $number =
-                $index + 1;
+
+            $score =
+
+                $data['final_score']
+                ??
+
+                $data['score']
+                ??
+
+                0;
+
+
+
+
+
+
+
+
+            $count++;
+
 
 
 
@@ -242,19 +310,37 @@ TEXT;
 
             $content .= <<<TEXT
 
---- Passage {$number} ---
 
-Title:
+---------------------
+
+Passage {$count}
+
+Document:
 {$title}
 
 Section:
 {$section}
 
+Importance:
+{$importance}
+
+Score:
+{$score}
+
+
 Content:
+
 {$text}
 
 
 TEXT;
+
+
+
+
+
+            $words += str_word_count($text);
+
 
 
         }
@@ -264,19 +350,14 @@ TEXT;
 
 
 
-        if ($hasContent) {
+        if ($count > 0) {
 
 
             $prompt->add(
 
-                role:
+                role:'system',
 
-                'system',
-
-
-                content:
-
-                $content
+                content:$content
 
             );
 
@@ -295,9 +376,13 @@ TEXT;
 
 
     protected function addMemories(
+
         PromptCollection $prompt,
+
         ChatContext $context
+
     ): void {
+
 
 
         if (
@@ -312,31 +397,59 @@ TEXT;
 
 
 
+
         $content =
+
             "Relevant user context:\n\n";
 
 
 
 
 
+
         foreach (
+
             $context->memories
-            as
-            $memory
+
+            as $memory
+
         ) {
 
 
-            $content .=
 
-                "- "
+            $text =
 
-                .
+                is_object($memory)
+
+                ?
 
                 $memory->text
 
-                .
+                :
 
-                "\n";
+                ($memory['text'] ?? '');
+
+
+
+
+
+            if ($text !== '') {
+
+
+                $content .=
+
+                    "- "
+
+                    .
+
+                    $text
+
+                    .
+
+                    "\n";
+
+
+            }
 
 
         }
@@ -345,16 +458,12 @@ TEXT;
 
 
 
+
         $prompt->add(
 
-            role:
+            role:'system',
 
-            'system',
-
-
-            content:
-
-            $content
+            content:$content
 
         );
 
@@ -370,9 +479,13 @@ TEXT;
 
 
     protected function addConversation(
+
         PromptCollection $prompt,
+
         ChatContext $context
+
     ): void {
+
 
 
         if (
@@ -386,24 +499,33 @@ TEXT;
 
 
 
-        $lastUserIndex =
-            count($context->messages) - 1;
+
+        $lastIndex =
+
+            count($context->messages)-1;
+
+
 
 
 
 
 
         foreach (
+
             $context->messages
+
             as
-            $index => $message
+
+            $index=>$message
+
         ) {
+
 
 
 
             if (
 
-                $index === $lastUserIndex
+                $index === $lastIndex
 
                 &&
 
@@ -421,16 +543,12 @@ TEXT;
 
             $prompt->add(
 
-                role:
+                role:$message->role,
 
-                $message->role,
-
-
-                content:
-
-                $message->content
+                content:$message->content
 
             );
+
 
 
         }
@@ -447,121 +565,19 @@ TEXT;
 
 
     protected function addCurrentMessage(
+
         PromptCollection $prompt,
+
         ChatContext $context
+
     ): void {
 
 
         if (
-            empty($context->currentMessage)
+            blank($context->currentMessage)
         ) {
 
             return;
-
-        }
-
-
-
-
-
-        $content = [];
-
-
-
-
-
-        $content[] = [
-
-            'type' => 'text',
-
-            'text' =>
-                $context->currentMessage
-
-        ];
-
-
-
-
-
-
-
-
-        if (
-            !empty(
-                $context->metadata['attachments']
-            )
-        ) {
-
-
-            foreach (
-                $context->metadata['attachments']
-                as
-                $attachment
-            ) {
-
-
-
-                if (
-                    ($attachment['type'] ?? null)
-                    ===
-                    'image'
-                ) {
-
-
-
-                    $content[] = [
-
-                        'type' =>
-                        'image_url',
-
-
-                        'image_url' => [
-
-                            'url' =>
-                            $attachment['url']
-
-                        ]
-
-                    ];
-
-
-
-                }
-
-
-            }
-
-
-        }
-
-
-
-
-
-
-
-        if (
-            count($content) === 1
-        ) {
-
-
-
-            $prompt->add(
-
-                role:
-
-                'user',
-
-
-                content:
-
-                $context->currentMessage
-
-            );
-
-
-            return;
-
 
         }
 
@@ -572,14 +588,9 @@ TEXT;
 
         $prompt->add(
 
-            role:
+            role:'user',
 
-            'user',
-
-
-            content:
-
-            $content
+            content:$context->currentMessage
 
         );
 
@@ -595,46 +606,46 @@ TEXT;
 
 
     protected function normalizeMessages(
+
         array $messages
+
     ): array {
 
 
-        $system = [];
 
-        $conversation = [];
+        $system=[];
 
-
-
-
-
-        foreach (
-            $messages
-            as
-            $message
-        ) {
+        $conversation=[];
 
 
 
-            if (
-                ($message['role'] ?? null)
+
+
+
+        foreach($messages as $message){
+
+
+
+            if(
+                ($message['role'] ?? '')
                 ===
                 'system'
-            ) {
+            ){
+
+                $system[]=$message;
 
 
-                $system[] = $message;
+            }else{
 
 
-            } else {
-
-
-                $conversation[] = $message;
+                $conversation[]=$message;
 
 
             }
 
 
         }
+
 
 
 
@@ -650,6 +661,7 @@ TEXT;
 
 
     }
+
 
 
 }

@@ -2,12 +2,13 @@
 
 namespace App\Infrastructure\Repositories;
 
+
 use SurrealDB\Laravel\Facades\Surreal;
 use SurrealDB\SDK\Query\BoundQuery;
 
 
 
-class DocumentVectorRepository
+class DocumentEmbeddingRepository
 {
 
 
@@ -17,99 +18,80 @@ class DocumentVectorRepository
 
 
 
-    public function debugWorkspace(
-        string $workspaceId
-    ) {
-
-        return Surreal::query(
-
-            new BoundQuery(
-
-                query: "
-
-                    SELECT count() AS total
-
-                    FROM {$this->table}
-
-                    WHERE workspace_id = \$workspace_id
-
-                    GROUP ALL;
-
-                ",
-
-                bindings: [
-
-                    'workspace_id' =>
-                        (string) $workspaceId
-
-                ]
-
-            )
-
-        );
-
-    }
 
 
 
-
-
-
-
-
+    /**
+     * Store embedding
+     */
     public function store(
         array $data
-    ) {
+    ): array {
 
 
-        return Surreal::query(
+        $response =
 
-            new BoundQuery(
+            Surreal::query(
 
-                query: "
+                new BoundQuery(
 
-                    CREATE {$this->table} SET
+                    query: "
 
-
-                        document_id =
-                        <string>\$document_id,
+                        CREATE {$this->table} SET
 
 
-                        workspace_id =
-                        <string>\$workspace_id,
+                            document_id =
+                            <string>\$document_id,
 
 
-                        chunk_id =
-                        <string>\$chunk_id,
+                            workspace_id =
+                            <string>\$workspace_id,
 
 
-                        content =
-                        <string>\$content,
+                            chunk_id =
+                            <string>\$chunk_id,
 
 
-                        embedding =
-                        \$embedding,
+                            content =
+                            <string>\$content,
 
 
-                        metadata =
-                        \$metadata,
+                            embedding =
+                            \$embedding,
 
 
-                        created_at =
-                        type::datetime(
-                            \$created_at
-                        );
+                            metadata =
+                            \$metadata,
 
-                ",
 
-                bindings:
+                            created_at =
+                            type::datetime(
+                                \$created_at
+                            ),
 
-                $this->preparePayload(
-                    $data
+
+                            updated_at =
+                            time::now();
+
+
+                    ",
+
+                    bindings:
+
+                        $this->preparePayload(
+                            $data
+                        )
+
                 )
 
-            )
+            );
 
+
+
+
+
+        return $this->format(
+            $response
         );
 
 
@@ -123,12 +105,15 @@ class DocumentVectorRepository
 
 
 
+    /**
+     * Store multiple embeddings
+     */
     public function storeBulk(
         array $vectors
     ): void {
 
 
-        foreach ($vectors as $vector) {
+        foreach($vectors as $vector){
 
 
             $this->store(
@@ -149,193 +134,12 @@ class DocumentVectorRepository
 
 
 
-    public function search(
-
-        string $workspaceId,
-
-        array $vector,
-
-        int $limit = 10,
-
-        array $documentIds = [],
-
-        array $filters = []
-
-    ): array {
-
-
-        if (empty($vector)) {
-
-            return [];
-
-        }
-
-
-
-
-
-
-        $bindings = [
-
-
-            'workspace_id' =>
-                (string)
-                $workspaceId,
-
-
-
-            'vector' =>
-                array_values(
-
-                    array_map(
-
-                        'floatval',
-
-                        $vector
-
-                    )
-
-                ),
-
-
-
-            'limit' =>
-                $limit
-
-
-        ];
-
-
-
-
-
-
-        $where = "
-
-            workspace_id =
-            \$workspace_id
-
-        ";
-
-
-
-
-
-
-        if (!empty($documentIds)) {
-
-
-            $where .= "
-
-                AND document_id IN \$document_ids
-
-            ";
-
-
-
-            $bindings['document_ids'] =
-
-                array_map(
-
-                    'strval',
-
-                    $documentIds
-
-                );
-
-
-        }
-
-
-
-
-
-
-
-
-        if (!empty($filters)) {
-
-
-            foreach ($filters as $key => $value) {
-
-
-                $binding =
-                    'filter_' . $key;
-
-
-
-                $where .= "
-
-                    AND metadata.$key =
-                    \$$binding
-
-                ";
-
-
-
-                $bindings[$binding] =
-                    $value;
-
-
-            }
-
-
-        }
-        $sql = "
-
-            SELECT
-
-
-                id,
-
-
-                document_id,
-
-
-                workspace_id,
-
-
-                chunk_id,
-
-
-                content,
-
-
-                metadata,
-
-
-
-                vector::similarity::cosine(
-
-                    embedding,
-
-                    \$vector
-
-                )
-
-                AS score
-
-
-
-            FROM {$this->table}
-
-
-
-            WHERE {$where}
-
-
-
-            ORDER BY score DESC
-
-
-
-            LIMIT \$limit;
-
-        ";
-
-
-
-
+    /**
+     * Count workspace embeddings
+     */
+    public function countWorkspace(
+        string $workspaceId
+    ): int {
 
 
         $response =
@@ -344,11 +148,30 @@ class DocumentVectorRepository
 
                 new BoundQuery(
 
-                    query:
-                    $sql,
+                    query: "
 
-                    bindings:
-                    $bindings
+                        SELECT count() AS total
+
+                        FROM {$this->table}
+
+                        WHERE workspace_id =
+                        \$workspace_id
+
+                        GROUP ALL;
+
+
+                    ",
+
+                    bindings:[
+
+
+                        'workspace_id'=>
+
+                            (string)
+                            $workspaceId
+
+
+                    ]
 
                 )
 
@@ -358,9 +181,8 @@ class DocumentVectorRepository
 
 
 
-
-        $results =
-            $this->formatResults(
+        $result =
+            $this->format(
                 $response
             );
 
@@ -368,9 +190,12 @@ class DocumentVectorRepository
 
 
 
-        return $this->rankResults(
-            $results
-        );
+        return (int)
+            (
+                $result[0]['total']
+                ??
+                0
+            );
 
 
     }
@@ -383,174 +208,53 @@ class DocumentVectorRepository
 
 
 
-    protected function rankResults(
-        array $results
+    /**
+     * Find embeddings by document
+     */
+    public function findByDocument(
+        string $documentId
     ): array {
 
 
-        foreach ($results as &$item) {
+        $response =
+
+            Surreal::query(
+
+                new BoundQuery(
+
+                    query: "
+
+                        SELECT *
+
+                        FROM {$this->table}
+
+                        WHERE document_id =
+                        \$document_id;
 
 
-            $score =
+                    ",
 
-                (float)
-                (
-                    $item['score']
-                    ??
-                    0
-                );
+                    bindings:[
 
 
+                        'document_id'=>
 
-            $metadata =
-                $item['metadata']
-                ??
-                [];
-
+                            (string)
+                            $documentId
 
 
-            $section =
-
-                strtolower(
-
-                    $metadata['section']
-                    ??
-                    ''
-
-                );
-
-
-
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Academic section boost
-            |--------------------------------------------------------------------------
-            */
-
-
-            if (
-
-                in_array(
-
-                    $section,
-
-                    [
-
-                        'method',
-
-                        'methodology',
-
-                        'architecture',
-
-                        'implementation',
-
-                        'model',
-
-                        'experiment',
-
-                        'evaluation',
-
-                        'results',
-
-                        'conclusion'
-
-                    ],
-
-                    true
+                    ]
 
                 )
 
-            ) {
-
-
-                $score += 0.05;
-
-
-            }
+            );
 
 
 
 
 
-
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Title boost
-            |--------------------------------------------------------------------------
-            */
-
-
-            if (
-
-                !empty(
-                $metadata['title']
-            )
-
-            ) {
-
-
-                $score += 0.02;
-
-
-            }
-
-
-
-
-
-
-
-            $item['score'] =
-
-                min(
-
-                    $score,
-
-                    1
-
-                );
-
-
-
-        }
-
-
-
-
-
-
-
-        usort(
-
-            $results,
-
-            function ($a, $b) {
-
-
-                return
-
-                    ($b['score'] ?? 0)
-
-                    <=>
-
-                    ($a['score'] ?? 0);
-
-
-            }
-
-        );
-
-
-
-
-
-
-        return array_values(
-            $results
+        return $this->format(
+            $response
         );
 
 
@@ -564,6 +268,57 @@ class DocumentVectorRepository
 
 
 
+    /**
+     * Delete document embeddings
+     */
+    public function deleteDocument(
+        string $documentId
+    ): mixed {
+
+
+        return Surreal::query(
+
+            new BoundQuery(
+
+                query: "
+
+                    DELETE FROM {$this->table}
+
+                    WHERE document_id =
+                    \$document_id;
+
+
+                ",
+
+                bindings:[
+
+
+                    'document_id'=>
+
+                        (string)
+                        $documentId
+
+
+                ]
+
+            )
+
+        );
+
+
+    }
+
+
+
+
+
+
+
+
+
+    /**
+     * Prepare payload
+     */
     protected function preparePayload(
         array $data
     ): array {
@@ -572,7 +327,7 @@ class DocumentVectorRepository
         return [
 
 
-            'document_id' =>
+            'document_id'=>
 
                 (string)
                 (
@@ -584,7 +339,7 @@ class DocumentVectorRepository
 
 
 
-            'workspace_id' =>
+            'workspace_id'=>
 
                 (string)
                 (
@@ -596,35 +351,35 @@ class DocumentVectorRepository
 
 
 
-
-            'chunk_id' =>
+            'chunk_id'=>
 
                 (string)
                 (
                     $data['chunk_id']
                     ??
-                    uniqid('chunk_')
-                ),
-
-
-
-
-
-            'content' =>
-
-                $this->normalizeContent(
-
-                    $data['content']
-                    ??
                     ''
+                ),
+
+
+
+
+            'content'=>
+
+                trim(
+
+                    (string)
+                    (
+                        $data['content']
+                        ??
+                        ''
+                    )
 
                 ),
 
 
 
 
-
-            'embedding' =>
+            'embedding'=>
 
                 array_values(
 
@@ -643,8 +398,7 @@ class DocumentVectorRepository
 
 
 
-
-            'metadata' =>
+            'metadata'=>
 
                 is_array(
                     $data['metadata']
@@ -663,12 +417,10 @@ class DocumentVectorRepository
 
 
 
-
-
-            'created_at' =>
+            'created_at'=>
 
                 now()
-                    ->toIso8601String()
+                ->toISOString()
 
 
         ];
@@ -684,81 +436,12 @@ class DocumentVectorRepository
 
 
 
-    protected function normalizeContent(
-        mixed $content
-    ): string {
-
-
-        if ($content === null) {
-
-            return '';
-
-        }
-
-
-
-
-
-        if (is_array($content)) {
-
-
-            $content =
-
-                json_encode(
-
-                    $content,
-
-                    JSON_UNESCAPED_UNICODE
-
-                );
-
-
-        }
-
-
-
-
-
-
-        return trim(
-
-            preg_replace(
-
-                '/\s+/u',
-
-                ' ',
-
-                str_replace(
-
-                    [
-
-                        "\r",
-
-                        "\n",
-
-                        "\t"
-
-                    ],
-
-                    ' ',
-
-                    (string)
-                    $content
-
-                )
-
-            )
-
-        );
-
-
-    }
-    protected function formatResults(
+    protected function format(
         mixed $response
     ): array {
 
 
-        if (empty($response)) {
+        if(empty($response)){
 
             return [];
 
@@ -769,7 +452,7 @@ class DocumentVectorRepository
 
 
 
-        if (
+        if(
 
             is_object($response)
 
@@ -780,13 +463,10 @@ class DocumentVectorRepository
                 'getData'
             )
 
-        ) {
-
+        ){
 
             $response =
-
                 $response->getData();
-
 
         }
 
@@ -796,7 +476,7 @@ class DocumentVectorRepository
 
 
 
-        if (!is_array($response)) {
+        if(!is_array($response)){
 
             return [];
 
@@ -808,11 +488,11 @@ class DocumentVectorRepository
 
 
 
-        if (
+        if(
 
             isset(
-            $response[0]['result']
-        )
+                $response[0]['result']
+            )
 
             &&
 
@@ -820,39 +500,13 @@ class DocumentVectorRepository
                 $response[0]['result']
             )
 
-        ) {
+        ){
 
-
-            return
-
-                collect(
-                    $response[0]['result']
-                )
-
-                    ->map(
-
-                        function ($item) {
-
-
-                            $item['metadata'] =
-
-                                $item['metadata']
-                                ??
-                                [];
-
-
-
-                            return $item;
-
-
-                        }
-
-                    )
-
-                    ->values()
-
-                    ->all();
-
+            return collect(
+                $response[0]['result']
+            )
+            ->values()
+            ->all();
 
         }
 
@@ -864,26 +518,6 @@ class DocumentVectorRepository
 
         return collect($response)
 
-            ->map(
-
-                function ($item) {
-
-
-                    $item['metadata'] =
-
-                        $item['metadata']
-                        ??
-                        [];
-
-
-
-                    return $item;
-
-
-                }
-
-            )
-
             ->values()
 
             ->all();
@@ -893,127 +527,4 @@ class DocumentVectorRepository
 
 
 
-
-
-
-
-
-
-    public function deleteDocument(
-        string $documentId
-    ) {
-
-
-        return Surreal::query(
-
-            new BoundQuery(
-
-                query: "
-
-                    DELETE FROM {$this->table}
-
-                    WHERE document_id =
-                    \$document_id;
-
-                ",
-
-                bindings: [
-
-
-                    'document_id' =>
-
-                        (string)
-                        $documentId
-
-
-                ]
-
-            )
-
-        );
-
-
-    }
-
-    public function searchMetadata(
-        string $workspaceId,
-        string $field,
-        string $value,
-        int $limit = 5
-    ): array {
-
-
-        $response =
-            Surreal::query(
-
-                new BoundQuery(
-
-                    query: "
-
-                    SELECT
-
-                        id,
-
-                        document_id,
-
-                        workspace_id,
-
-                        content,
-
-                        metadata
-
-
-                    FROM {$this->table}
-
-
-                    WHERE
-
-                        workspace_id =
-                        \$workspace_id
-
-
-                    AND
-
-                        string::lowercase(
-                            metadata.$field
-                        )
-
-                        CONTAINS
-
-                        string::lowercase(
-                            \$value
-                        )
-
-
-                    LIMIT \$limit;
-
-                ",
-
-                    bindings: [
-
-
-                        'workspace_id' =>
-                            (string) $workspaceId,
-
-
-                        'value' =>
-                            $value,
-
-
-                        'limit' =>
-                            $limit
-
-
-                    ]
-
-                )
-
-            );
-
-
-        return $this->formatResults(
-            $response
-        );
-
-    }
 }

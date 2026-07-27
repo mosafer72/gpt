@@ -19,97 +19,80 @@ class QueryIntentClassifier
 
 
 
-        $patterns = [
 
+        $patterns = [
 
             'title' => [
 
                 'title',
-                'name of article',
                 'paper name',
                 'article name',
-                'what is this paper'
+                'name of article',
+                'what is this paper',
+                'عنوان مقاله',
+                'نام مقاله'
 
             ],
 
 
 
-            'abstract' => [
+            'summary' => [
 
-                'abstract',
                 'summary',
                 'overview',
-                'brief'
+                'brief',
+                'summarize',
+                'خلاصه',
+                'مرور'
 
             ],
 
 
 
-            'methodology' => [
+            'section_specific' => [
 
                 'method',
                 'methodology',
-                'approach',
                 'architecture',
                 'model',
-                'framework',
-                'algorithm'
-
-            ],
-
-
-
-            'dataset' => [
-
                 'dataset',
-                'data',
-                'training data',
-                'test data',
-                'benchmark',
-                'corpus'
-
-            ],
-
-
-
-            'experiment' => [
-
                 'experiment',
-                'experimental setup',
-                'setup',
-                'configuration',
-                'environment'
-
-            ],
-
-
-
-            'result' => [
-
                 'result',
-                'results',
-                'accuracy',
-                'performance',
-                'evaluation',
-                'comparison',
-                'score',
-                'metric'
+                'conclusion',
+                'section',
+                'بخش',
+                'قسمت'
 
             ],
 
 
 
-            'conclusion' => [
+            'comparison' => [
 
-                'conclusion',
-                'future work',
-                'limitation',
-                'limitation',
-                'discussion'
+                'compare',
+                'comparison',
+                'difference',
+                'versus',
+                'مقایسه',
+                'تفاوت'
+
+            ],
+
+
+
+            'explanation' => [
+
+                'explain',
+                'describe',
+                'how',
+                'why',
+                'توضیح',
+                'چگونه'
 
             ]
 
         ];
+
 
 
 
@@ -120,12 +103,11 @@ class QueryIntentClassifier
 
 
 
-        foreach ($patterns as $intent => $words) {
 
+        foreach ($patterns as $intent=>$words) {
 
 
             foreach ($words as $word) {
-
 
 
                 if (
@@ -138,9 +120,7 @@ class QueryIntentClassifier
 
                     $matched[] = $intent;
 
-
                     break;
-
 
                 }
 
@@ -155,26 +135,15 @@ class QueryIntentClassifier
 
 
 
+
         if(empty($matched)){
 
 
             return [
 
-                'primary' => 'general',
+                'type'=>'general',
 
-                'sections' => [
-
-                    'abstract',
-
-                    'introduction',
-
-                    'methodology',
-
-                    'results',
-
-                    'conclusion'
-
-                ]
+                'confidence'=>0.5
 
             ];
 
@@ -186,146 +155,25 @@ class QueryIntentClassifier
 
 
 
+
         return [
 
-            /**
-             * First matched intent
-             */
-            'primary' =>
+            'type'=>
                 $matched[0],
 
 
-
-            /**
-             * All relevant sections
-             */
-            'sections' =>
-                $this->mapSections(
-                    $matched
-                )
-
-        ];
+            'all'=>
+                array_values(
+                    array_unique(
+                        $matched
+                    )
+                ),
 
 
-
-    }
-
-
-
-
-
-
-
-    protected function mapSections(
-
-        array $intents
-
-    ): array {
-
-
-        $map = [
-
-
-            'title' => [
-
-                'abstract'
-
-            ],
-
-
-
-            'abstract' => [
-
-                'abstract'
-
-            ],
-
-
-
-            'methodology' => [
-
-                'methodology',
-
-                'architecture',
-
-                'model'
-
-            ],
-
-
-
-            'dataset' => [
-
-                'dataset',
-
-                'implementation'
-
-            ],
-
-
-
-            'experiment' => [
-
-                'experiment',
-
-                'experiments'
-
-            ],
-
-
-
-            'result' => [
-
-                'results',
-
-                'evaluation'
-
-            ],
-
-
-
-            'conclusion' => [
-
-                'discussion',
-
-                'conclusion',
-
-                'future work'
-
-            ]
+            'confidence'=>0.8
 
         ];
 
-
-
-
-
-        $sections = [];
-
-
-
-        foreach($intents as $intent){
-
-
-            foreach(
-                $map[$intent] ?? []
-                as $section
-            ){
-
-                $sections[] = $section;
-
-            }
-
-        }
-
-
-
-
-        return array_values(
-            array_unique(
-                $sections
-            )
-        );
 
 
     }

@@ -13,10 +13,24 @@ class DocumentSectionTranslationSchema implements SchemaContract
 
         return [
 
+            /*
+            |--------------------------------------------------------------------------
+            | Table
+            |--------------------------------------------------------------------------
+            */
+
             "
             DEFINE TABLE IF NOT EXISTS document_section_translation
             SCHEMAFULL;
             ",
+
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Core Identity
+            |--------------------------------------------------------------------------
+            */
 
             "
             DEFINE FIELD IF NOT EXISTS document_id
@@ -46,6 +60,13 @@ class DocumentSectionTranslationSchema implements SchemaContract
             ",
 
 
+
+            /*
+            |--------------------------------------------------------------------------
+            | Translation Content
+            |--------------------------------------------------------------------------
+            */
+
             "
             DEFINE FIELD IF NOT EXISTS original_content
             ON document_section_translation
@@ -67,26 +88,48 @@ class DocumentSectionTranslationSchema implements SchemaContract
             ",
 
 
+            /*
+            |--------------------------------------------------------------------------
+            | Search Data
+            |--------------------------------------------------------------------------
+            */
+
             "
             DEFINE FIELD IF NOT EXISTS keywords
             ON document_section_translation
-            TYPE array;
+            TYPE array
+            DEFAULT [];
             ",
 
 
             "
             DEFINE FIELD IF NOT EXISTS embedding
             ON document_section_translation
-            TYPE array;
+            TYPE array
+            DEFAULT [];
             ",
 
+
+            /*
+            |--------------------------------------------------------------------------
+            | Metadata
+            |--------------------------------------------------------------------------
+            */
 
             "
             DEFINE FIELD IF NOT EXISTS metadata
             ON document_section_translation
-            TYPE object FLEXIBLE;
+            TYPE object
+            FLEXIBLE;
             ",
 
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Dates
+            |--------------------------------------------------------------------------
+            */
 
             "
             DEFINE FIELD IF NOT EXISTS created_at
@@ -97,14 +140,46 @@ class DocumentSectionTranslationSchema implements SchemaContract
 
 
             "
-            DEFINE INDEX IF NOT EXISTS
-            idx_translation_document
-
+            DEFINE FIELD IF NOT EXISTS updated_at
             ON document_section_translation
+            TYPE datetime
+            DEFAULT time::now();
+            ",
 
-            COLUMNS document_id;
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Indexes
+            |--------------------------------------------------------------------------
+            */
+
             "
+            DEFINE INDEX IF NOT EXISTS idx_translation_document
+            ON document_section_translation
+            COLUMNS document_id;
+            ",
 
+
+            "
+            DEFINE INDEX IF NOT EXISTS idx_translation_workspace
+            ON document_section_translation
+            COLUMNS workspace_id;
+            ",
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Duplicate Protection
+            |--------------------------------------------------------------------------
+            */
+
+            "
+            DEFINE INDEX IF NOT EXISTS idx_translation_unique
+            ON document_section_translation
+            COLUMNS document_id, section
+            UNIQUE;
+            ",
 
         ];
 

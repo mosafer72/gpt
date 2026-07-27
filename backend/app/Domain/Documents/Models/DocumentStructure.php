@@ -4,9 +4,11 @@ namespace App\Domain\Documents\Models;
 
 
 use App\Domain\Documents\Schemas\DocumentStructureSchema;
+
 use Surqlize\Attributes\Schema;
 use Surqlize\Attributes\Table;
 use Surqlize\Model\Model;
+
 
 
 #[Table('document_structure')]
@@ -25,45 +27,142 @@ class DocumentStructure extends Model
 
     private array $sections = [];
 
+    private array $statistics = [];
+
+    private array $metadata = [];
+
     private ?string $createdAt = null;
+
+    private ?string $updatedAt = null;
+
+
+
 
 
 
 
     public function __construct(
-        array $data
+        array $data = []
     ) {
 
 
         $this->id =
             (string)
-            ($data['id'] ?? '');
+            (
+                $data['id']
+                ??
+                ''
+            );
+
 
 
 
         $this->documentId =
             (string)
-            ($data['document_id'] ?? '');
+            (
+                $data['document_id']
+                ??
+                ''
+            );
+
 
 
 
         $this->workspaceId =
             (string)
-            ($data['workspace_id'] ?? '');
+            (
+                $data['workspace_id']
+                ??
+                ''
+            );
+
 
 
 
         $this->title =
+
+            is_array(
+                $data['title']
+                ??
+                null
+            )
+
+            ?
+
             $data['title']
-            ??
+
+            :
+
             [];
+
+
+
 
 
 
         $this->sections =
+
+            is_array(
+                $data['sections']
+                ??
+                null
+            )
+
+            ?
+
             $data['sections']
-            ??
+
+            :
+
             [];
+
+
+
+
+
+
+
+        $this->statistics =
+
+            is_array(
+                $data['statistics']
+                ??
+                null
+            )
+
+            ?
+
+            $data['statistics']
+
+            :
+
+            [];
+
+
+
+
+
+
+
+        $this->metadata =
+
+            is_array(
+                $data['metadata']
+                ??
+                null
+            )
+
+            ?
+
+            $data['metadata']
+
+            :
+
+            [];
+
+
+
+
 
 
 
@@ -72,7 +171,19 @@ class DocumentStructure extends Model
             ??
             null;
 
+
+
+
+
+        $this->updatedAt =
+            $data['updated_at']
+            ??
+            null;
+
+
     }
+
+
 
 
 
@@ -135,6 +246,28 @@ class DocumentStructure extends Model
 
 
 
+    public function getStatistics(): array
+    {
+        return $this->statistics;
+    }
+
+
+
+
+
+
+
+    public function getMetadata(): array
+    {
+        return $this->metadata;
+    }
+
+
+
+
+
+
+
     public function getCreatedAt(): ?string
     {
         return $this->createdAt;
@@ -146,18 +279,36 @@ class DocumentStructure extends Model
 
 
 
-    /**
-     * Get important sections only
-     */
-    public function getImportantSections(): array
+    public function getUpdatedAt(): ?string
+    {
+        return $this->updatedAt;
+    }
+
+
+
+
+
+
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Structure Helpers
+    |--------------------------------------------------------------------------
+    */
+
+
+
+
+
+
+
+    public function getSectionCount(): int
     {
 
-        return array_values(
-            array_filter(
-                $this->sections,
-                fn(array $section) =>
-                    ($section['importance'] ?? null) === 'high'
-            )
+        return count(
+            $this->sections
         );
 
     }
@@ -168,32 +319,115 @@ class DocumentStructure extends Model
 
 
 
-    /**
-     * Find section by name
-     */
+
+
+    public function getImportantSections(): array
+    {
+
+        return array_values(
+
+            array_filter(
+
+                $this->sections,
+
+                fn(array $section) =>
+
+                in_array(
+
+                    $section['importance']
+                    ??
+                    '',
+
+                    [
+
+                        'high',
+
+                        'very_high'
+
+                    ],
+
+                    true
+
+                )
+
+            )
+
+        );
+
+    }
+
+
+
+
+
+
+
+
+
     public function findSection(
         string $name
     ): ?array {
 
 
-        foreach($this->sections as $section)
-        {
+        foreach (
+            $this->sections as $section
+        ) {
 
-            if(
-                ($section['name'] ?? null)
+            if (
+
+                strtolower(
+                    $section['name']
+                    ??
+                    ''
+                )
+
                 ===
-                $name
-            )
-            {
+
+                strtolower(
+                    $name
+                )
+
+            ) {
+
                 return $section;
+
             }
 
         }
 
 
+
         return null;
 
+
     }
+
+
+
+
+
+
+
+
+
+    public function isAcademicPaper(): bool
+    {
+
+        return
+
+            (
+                $this->metadata['type']
+                ??
+                null
+            )
+
+            ===
+
+            'academic_paper';
+
+    }
+
+
 
 
 

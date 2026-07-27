@@ -33,69 +33,140 @@ class DocumentEmbedding extends Model
 
     private ?string $createdAt = null;
 
+    private ?string $updatedAt = null;
 
 
 
 
-    public function __construct(array $data)
+
+
+
+    public function __construct(
+        array $data = []
+    )
     {
 
 
         $this->id =
             (string)
-            ($data['id'] ?? '');
+            (
+                $data['id']
+                ??
+                ''
+            );
+
 
 
 
         $this->documentId =
             (string)
-            ($data['document_id'] ?? '');
+            (
+                $data['document_id']
+                ??
+                ''
+            );
+
 
 
 
         $this->workspaceId =
             (string)
-            ($data['workspace_id'] ?? '');
+            (
+                $data['workspace_id']
+                ??
+                ''
+            );
+
 
 
 
         $this->chunkId =
             (string)
-            ($data['chunk_id'] ?? '');
+            (
+                $data['chunk_id']
+                ??
+                ''
+            );
+
 
 
 
         $this->content =
             (string)
-            ($data['content'] ?? '');
+            (
+                $data['content']
+                ??
+                ''
+            );
+
+
+
 
 
 
         $this->embedding =
-            is_array($data['embedding'] ?? null)
+
+            is_array(
+                $data['embedding']
+                ??
+                null
+            )
+
             ?
-            $data['embedding']
+
+            array_map(
+                'floatval',
+                $data['embedding']
+            )
+
             :
+
             [];
 
 
 
 
+
+
+
         $this->metadata =
-            is_array($data['metadata'] ?? null)
+
+            is_array(
+                $data['metadata']
+                ??
+                null
+            )
+
             ?
+
             $data['metadata']
+
             :
-            (array) ($data['metadata'] ?? []);
+
+            [];
+
+
 
 
 
 
         $this->createdAt =
-            $data['created_at'] ?? null;
+            $data['created_at']
+            ??
+            null;
+
+
+
+
+        $this->updatedAt =
+            $data['updated_at']
+            ??
+            null;
 
 
     }
+
+
 
 
 
@@ -112,10 +183,12 @@ class DocumentEmbedding extends Model
 
 
 
+
     public function getDocumentId(): string
     {
         return $this->documentId;
     }
+
 
 
 
@@ -130,10 +203,12 @@ class DocumentEmbedding extends Model
 
 
 
+
     public function getChunkId(): string
     {
         return $this->chunkId;
     }
+
 
 
 
@@ -148,6 +223,7 @@ class DocumentEmbedding extends Model
 
 
 
+
     public function getEmbedding(): array
     {
         return $this->embedding;
@@ -157,10 +233,12 @@ class DocumentEmbedding extends Model
 
 
 
+
     public function getMetadata(): array
     {
         return $this->metadata;
     }
+
 
 
 
@@ -176,21 +254,41 @@ class DocumentEmbedding extends Model
 
 
 
+    public function getUpdatedAt(): ?string
+    {
+        return $this->updatedAt;
+    }
+
+
+
+
+
+
+
+
     /*
     |--------------------------------------------------------------------------
-    | Academic Helpers
+    | Academic Metadata Helpers
     |--------------------------------------------------------------------------
     */
+
+
+
 
 
     public function getSection(): ?string
     {
 
-        return $this->metadata['section']
+        return
+
+            $this->metadata['section']
             ??
             null;
 
     }
+
+
+
 
 
 
@@ -199,11 +297,16 @@ class DocumentEmbedding extends Model
     public function getSectionTitle(): ?string
     {
 
-        return $this->metadata['section_title']
+        return
+
+            $this->metadata['section_title']
             ??
             null;
 
     }
+
+
+
 
 
 
@@ -212,11 +315,34 @@ class DocumentEmbedding extends Model
     public function getImportance(): ?string
     {
 
-        return $this->metadata['importance']
+        return
+
+            $this->metadata['importance']
             ??
             null;
 
     }
+
+
+
+
+
+
+
+
+    public function getChunkType(): ?string
+    {
+
+        return
+
+            $this->metadata['chunk_type']
+            ??
+            null;
+
+    }
+
+
+
 
 
 
@@ -226,11 +352,20 @@ class DocumentEmbedding extends Model
     {
 
         return
-            ($this->metadata['type'] ?? null)
+
+            (
+                $this->metadata['type']
+                ??
+                null
+            )
+
             ===
+
             'academic_paper';
 
     }
+
+
 
 
 

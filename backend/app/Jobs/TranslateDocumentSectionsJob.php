@@ -4,13 +4,14 @@ namespace App\Jobs;
 
 
 use App\Models\Document;
+
+use App\Infrastructure\Repositories\DocumentChunkRepository;
+
+use App\Application\Services\Documents\SectionTranslationService;
+
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
-
-use App\Application\Services\Documents\SectionTranslationService;
-use App\Application\Services\Documents\PdfExtractor;
-use App\Application\Services\Documents\Chunker;
 
 
 
@@ -36,9 +37,8 @@ class TranslateDocumentSectionsJob implements ShouldQueue
 
         public Document $document
 
-    ) {
+    ) {}
 
-    }
 
 
 
@@ -49,9 +49,7 @@ class TranslateDocumentSectionsJob implements ShouldQueue
 
     public function handle(
 
-        PdfExtractor $extractor,
-
-        Chunker $chunker,
+        DocumentChunkRepository $chunkRepository,
 
         SectionTranslationService $translator
 
@@ -63,64 +61,32 @@ class TranslateDocumentSectionsJob implements ShouldQueue
 
             /*
             |--------------------------------------------------------------------------
-            | Extract Document
-            |--------------------------------------------------------------------------
-            */
-
-
-            $text =
-
-                $extractor->extract(
-
-                    $this->document->path
-
-                );
-
-
-
-            if (blank($text)) {
-
-
-                throw new \Exception(
-                    'Document text empty'
-                );
-
-
-            }
-
-
-
-
-
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Generate Sections
+            | Load Stored Chunks
             |--------------------------------------------------------------------------
             */
 
 
             $chunks =
 
-                $chunker->split(
+                $chunkRepository->findByDocument(
 
-                    $text
+                    (string)
+                    $this->document->id
 
                 );
 
 
 
-            unset($text);
 
 
 
-
-            if (empty($chunks)) {
+            if(empty($chunks)){
 
 
                 throw new \Exception(
-                    'No sections found'
+
+                    'No document chunks found'
+
                 );
 
 
@@ -132,24 +98,47 @@ class TranslateDocumentSectionsJob implements ShouldQueue
 
 
 
+
+
             /*
             |--------------------------------------------------------------------------
-            | Translate Sections
+            | Translate Chunks
             |--------------------------------------------------------------------------
             */
 
 
-            foreach ($chunks as $section) {
+            foreach($chunks as $chunk){
 
 
 
-                if (
-                    empty($section['content'])
-                ) {
+                $content =
+
+                    trim(
+
+                        (string)
+                        (
+                            $chunk['content']
+                            ??
+                            ''
+                        )
+
+                    );
+
+
+
+
+
+
+                if(blank($content)){
+
 
                     continue;
 
+
                 }
+
+
+
 
 
 
@@ -158,21 +147,21 @@ class TranslateDocumentSectionsJob implements ShouldQueue
                 $translator->translate(
 
 
-                    section: $section,
+                    section:$chunk,
 
 
 
                     documentId:
 
-                    (string)
-                    $this->document->id,
+                        (string)
+                        $this->document->id,
 
 
 
                     workspaceId:
 
-                    (string)
-                    $this->document->workspace_id
+                        (string)
+                        $this->document->workspace_id
 
 
                 );
@@ -180,6 +169,28 @@ class TranslateDocumentSectionsJob implements ShouldQueue
 
 
             }
+
+
+
+
+
+
+
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Completed
+            |--------------------------------------------------------------------------
+            */
+
+
+            $this->document->update([
+
+                'translation_status'=>'completed'
+
+            ]);
+
 
 
 
@@ -193,11 +204,13 @@ class TranslateDocumentSectionsJob implements ShouldQueue
 
                 [
 
-                    'document_id' =>
+                    'document_id'=>
+
                         $this->document->id,
 
 
-                    'sections' =>
+                    'chunks'=>
+
                         count($chunks)
 
                 ]
@@ -210,7 +223,8 @@ class TranslateDocumentSectionsJob implements ShouldQueue
 
 
 
-        } catch (\Throwable $e) {
+        }
+        catch(\Throwable $e){
 
 
 
@@ -220,16 +234,31 @@ class TranslateDocumentSectionsJob implements ShouldQueue
 
                 [
 
-                    'document_id' =>
+                    'document_id'=>
+
                         $this->document->id,
 
 
-                    'error' =>
+                    'error'=>
+
                         $e->getMessage()
 
                 ]
 
             );
+
+
+
+
+
+
+            $this->document->update([
+
+                'translation_status'=>'failed'
+
+            ]);
+
+
 
 
 
@@ -239,8 +268,8 @@ class TranslateDocumentSectionsJob implements ShouldQueue
         }
 
 
-    }
 
+    }
 
 
 }

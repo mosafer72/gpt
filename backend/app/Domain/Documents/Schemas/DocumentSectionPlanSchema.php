@@ -2,22 +2,22 @@
 
 namespace App\Domain\Documents\Schemas;
 
-
 use Surqlize\Model\SchemaContract;
-
 
 
 class DocumentSectionPlanSchema implements SchemaContract
 {
 
-
     public function definitions(): array
     {
 
-
         return [
 
-
+            /*
+            |--------------------------------------------------------------------------
+            | Table
+            |--------------------------------------------------------------------------
+            */
 
             "
             DEFINE TABLE IF NOT EXISTS document_section_plan
@@ -26,21 +26,17 @@ class DocumentSectionPlanSchema implements SchemaContract
 
 
 
-
-
             /*
             |--------------------------------------------------------------------------
-            | Core
+            | Core Identity
             |--------------------------------------------------------------------------
             */
-
 
             "
             DEFINE FIELD IF NOT EXISTS document_id
             ON document_section_plan
             TYPE string;
             ",
-
 
 
             "
@@ -50,13 +46,11 @@ class DocumentSectionPlanSchema implements SchemaContract
             ",
 
 
-
             "
             DEFINE FIELD IF NOT EXISTS section
             ON document_section_plan
             TYPE string;
             ",
-
 
 
             "
@@ -66,15 +60,11 @@ class DocumentSectionPlanSchema implements SchemaContract
             ",
 
 
-
-
-
             /*
             |--------------------------------------------------------------------------
-            | AI Planner Data
+            | Planner Information
             |--------------------------------------------------------------------------
             */
-
 
             "
             DEFINE FIELD IF NOT EXISTS summary
@@ -83,21 +73,20 @@ class DocumentSectionPlanSchema implements SchemaContract
             ",
 
 
-
             "
             DEFINE FIELD IF NOT EXISTS keywords
             ON document_section_plan
-            TYPE array;
+            TYPE array
+            DEFAULT [];
             ",
-
 
 
             "
             DEFINE FIELD IF NOT EXISTS question_types
             ON document_section_plan
-            TYPE array;
+            TYPE array
+            DEFAULT [];
             ",
-
 
 
             "
@@ -108,14 +97,12 @@ class DocumentSectionPlanSchema implements SchemaContract
             ",
 
 
-
             "
             DEFINE FIELD IF NOT EXISTS planner_rank
             ON document_section_plan
             TYPE int
             DEFAULT 0;
             ",
-
 
 
             "
@@ -126,17 +113,11 @@ class DocumentSectionPlanSchema implements SchemaContract
             ",
 
 
-
-
-
-
-
             /*
             |--------------------------------------------------------------------------
             | Metadata
             |--------------------------------------------------------------------------
             */
-
 
             "
             DEFINE FIELD IF NOT EXISTS metadata
@@ -146,16 +127,11 @@ class DocumentSectionPlanSchema implements SchemaContract
             ",
 
 
-
-
-
-
             /*
             |--------------------------------------------------------------------------
             | Dates
             |--------------------------------------------------------------------------
             */
-
 
             "
             DEFINE FIELD IF NOT EXISTS created_at
@@ -163,7 +139,6 @@ class DocumentSectionPlanSchema implements SchemaContract
             TYPE datetime
             DEFAULT time::now();
             ",
-
 
 
             "
@@ -175,58 +150,43 @@ class DocumentSectionPlanSchema implements SchemaContract
 
 
 
-
-
-
-
             /*
             |--------------------------------------------------------------------------
             | Indexes
             |--------------------------------------------------------------------------
             */
 
-
             "
-            DEFINE INDEX IF NOT EXISTS
-            idx_section_plan_document_workspace
-
+            DEFINE INDEX IF NOT EXISTS idx_plan_document_workspace
             ON document_section_plan
-
             COLUMNS document_id, workspace_id;
             ",
 
 
-
             "
-            DEFINE INDEX IF NOT EXISTS
-            idx_section_plan_probability
-
+            DEFINE INDEX IF NOT EXISTS idx_plan_rank
             ON document_section_plan
-
-            COLUMNS answer_probability;
-            ",
-
-
-
-            "
-            DEFINE INDEX IF NOT EXISTS
-            idx_section_plan_rank
-
-            ON document_section_plan
-
             COLUMNS planner_rank;
             ",
 
 
+            "
+            DEFINE INDEX IF NOT EXISTS idx_plan_probability
+            ON document_section_plan
+            COLUMNS answer_probability;
+            ",
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Duplicate Protection
+            |--------------------------------------------------------------------------
+            */
 
             "
-            DEFINE INDEX IF NOT EXISTS
-            idx_section_plan_unique_section
-
+            DEFINE INDEX IF NOT EXISTS idx_plan_unique_section
             ON document_section_plan
-
             COLUMNS document_id, section
-
             UNIQUE;
             ",
 
@@ -237,14 +197,9 @@ class DocumentSectionPlanSchema implements SchemaContract
 
 
 
-
-
     public function rules(): array
     {
-
         return [];
-
     }
-
 
 }
