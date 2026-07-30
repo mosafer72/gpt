@@ -349,7 +349,7 @@
 
   transition: 0.25s;
 }
-.planCard button{
+.planCard button {
   margin-top: 30px;
 }
 .planCard button:hover,
@@ -458,40 +458,52 @@
 }
 
 .statCard {
-  background: #fff;
-  border: 1px solid #e5e7eb;
-  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 22px;
   padding: 24px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 14px;
-  min-height: 120px;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  gap: 10px;
+  min-height: 110px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(16px);
+  position: relative;
+  overflow: hidden;
+}
+
+.statCard::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
 }
 
 .statCard:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
-  border-color: #d1d5db;
+  transform: translateY(-4px);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
 }
 
 .statCard h3 {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  color: #6b7280;
+  color: #94a3b8;
 }
 
 .statCard strong {
-  font-size: 34px;
-  font-weight: 700;
-  color: #111827;
+  font-size: 30px;
+  font-weight: 800;
+  color: #fff;
   line-height: 1;
   letter-spacing: -1px;
-  word-break: break-word;
 }
+
 
 @media (max-width: 768px) {
   .statsGrid {
@@ -703,65 +715,119 @@
   color: #e2e8f0;
 }
 
-
 .activePlan {
-
-  border: 2px solid rgba(96,165,250,.9);
+  border: 2px solid rgba(96, 165, 250, 0.9);
 
   box-shadow:
-    0 0 0 3px rgba(96,165,250,.15),
-    0 20px 50px rgba(37,99,235,.35);
+    0 0 0 3px rgba(96, 165, 250, 0.15),
+    0 20px 50px rgba(37, 99, 235, 0.35);
 
   transform: translateY(-8px);
-
 }
-
 
 .currentRibbon {
+  position: absolute;
 
-  position:absolute;
+  top: 16px;
 
-  top:16px;
+  right: 16px;
 
-  right:16px;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
 
+  color: white;
 
-  background:
-  linear-gradient(
-    135deg,
-    #2563eb,
-    #7c3aed
-  );
+  padding: 8px 16px;
 
+  border-radius: 999px;
 
-  color:white;
+  font-size: 13px;
 
+  font-weight: 700;
 
-  padding:8px 16px;
-
-
-  border-radius:999px;
-
-
-  font-size:13px;
-
-
-  font-weight:700;
-
-
-  box-shadow:
-  0 8px 20px rgba(0,0,0,.25);
-
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
 }
 
-
-
 .selectedPlan {
+  border-color: #22c55e;
 
-  border-color:#22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
+}
+.activeWsName {
+  margin-top: 10px;
+  color: #94a3b8;
+  font-size: 15px;
+}
 
+.activeWsName strong {
+  color: #60a5fa;
+}
 
-  box-shadow:
-  0 0 0 3px rgba(34,197,94,.15);
+.workspaceWrapperCard {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
 
+.workspaceTokenInfo {
+  background: rgba(37, 99, 235, 0.1);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  padding: 12px 16px;
+  border-radius: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.workspaceTokenInfo span {
+  color: #94a3b8;
+}
+
+.workspaceTokenInfo strong {
+  color: #60a5fa;
+}
+
+.otherWorkspacesSection {
+  margin-top: 50px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 30px;
+}
+
+.plansListForType {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.subPlanItem {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px 16px;
+  border-radius: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.subPlanItem div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.subPlanItem span {
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.subPlanItem button {
+  width: auto !important;
+  padding: 8px 16px !important;
+  font-size: 14px !important;
+  border-radius: 10px !important;
 }

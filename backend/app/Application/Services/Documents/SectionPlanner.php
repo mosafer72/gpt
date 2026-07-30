@@ -2,620 +2,234 @@
 
 namespace App\Application\Services\Documents;
 
+use Illuminate\Support\Facades\Log;
 
 class SectionPlanner
 {
-
-
     public function plan(
-
         array $intent,
-
         array $sections = [],
-
         string $query = ''
-
     ): array {
+        $type = strtolower(trim($intent['type'] ?? 'general'));
 
-
-        $type =
-
-            strtolower(
-
-                trim(
-
-                    $intent['type']
-                    ??
-                    'general'
-
-                )
-
-            );
-
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | No Structure Available
-        |--------------------------------------------------------------------------
-        */
-
-
-        if(empty($sections)){
-
-
+        if (empty($sections)) {
             return [
-
-                'mode'=>'global',
-
-
-                'sections'=>[]
-
-
+                'mode' => 'global',
+                'sections' => []
             ];
-
-
         }
-
-
-
-
-
-
 
         $scores = [];
 
+        foreach ($sections as $section) {
 
+            $title = strtolower(
+                trim(
+                    $section['name']
+                    ?? $section['normalized']
+                    ?? $section['title']
+                    ?? ''
+                )
+            );
 
-
-
-
-        foreach($sections as $section){
-
-
-
-            $title =
-
-                strtolower(
-
-                    trim(
-
-                        $section['name']
-                        ??
-
-                        $section['title']
-                        ??
-
-                        ''
-
-                    )
-
-                );
-
-
-
-
-
-            if($title === ''){
-
+            if ($title === '') {
                 continue;
-
             }
-
-
-
-
-
 
             $score = 0;
 
+            switch ($type) {
 
+                case 'abstract':
 
+                    if (
+                        str_contains($title, 'abstract')
+                        || str_contains($title, 'summary')
+                        || str_contains($title, 'overview')
+                    ) {
+                        $score = 100;
+                    }
 
-
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Intent Based Scoring
-            |--------------------------------------------------------------------------
-            */
-
-
-            switch($type){
-
+                    break;
 
 
                 case 'title':
 
-
-                    if(
-                        str_contains(
-                            $title,
-                            'header'
-                        )
-                        ||
-                        str_contains(
-                            $title,
-                            'abstract'
-                        )
-                    ){
-
+                    if (
+                        str_contains($title, 'header')
+                        || str_contains($title, 'title')
+                        || str_contains($title, 'abstract')
+                    ) {
                         $score = 100;
-
                     }
 
-
                     break;
-
-
-
-
-
 
 
                 case 'summary':
 
-
-                    if(
-                        in_array(
-
-                            $title,
-
-                            [
-
-                                'abstract',
-
-                                'introduction',
-
-                                'conclusion'
-
-                            ],
-
-                            true
-
-                        )
-                    ){
-
+                    if (
+                        str_contains($title, 'abstract')
+                        || str_contains($title, 'introduction')
+                        || str_contains($title, 'conclusion')
+                    ) {
                         $score = 90;
-
                     }
 
-
                     break;
-
-
-
-
-
 
 
                 case 'section_specific':
 
-
-                    $score =
-                        $this->sectionMatchScore(
-                            $query,
-                            $title
-                        );
-
+                    $score = $this->sectionMatchScore(
+                        $query,
+                        $title
+                    );
 
                     break;
-
-
-
-
-
 
 
                 case 'comparison':
 
-
-                    if(
-
-                        str_contains(
-                            $title,
-                            'result'
-                        )
-
-                        ||
-
-                        str_contains(
-                            $title,
-                            'evaluation'
-                        )
-
-                    ){
-
+                    if (
+                        str_contains($title, 'result')
+                        || str_contains($title, 'evaluation')
+                        || str_contains($title, 'comparison')
+                    ) {
                         $score = 90;
-
                     }
 
-
                     break;
-
-
-
-
-
-
 
 
                 case 'explanation':
 
-
-                    if(
-
-                        str_contains(
-                            $title,
-                            'method'
-                        )
-
-                        ||
-
-                        str_contains(
-                            $title,
-                            'model'
-                        )
-
-                        ||
-
-                        str_contains(
-                            $title,
-                            'architecture'
-                        )
-
-                    ){
-
+                    if (
+                        str_contains($title, 'method')
+                        || str_contains($title, 'model')
+                        || str_contains($title, 'architecture')
+                        || str_contains($title, 'approach')
+                    ) {
                         $score = 85;
-
                     }
 
-
                     break;
-
-
-
-
-
 
 
                 default:
 
-
-                    $score =
-                        $this->generalScore(
-                            $title
-                        );
-
+                    $score = $this->generalScore($title);
 
                     break;
-
-
             }
 
 
-
-
-
-
-            if($score > 0){
-
-
+            if ($score > 0) {
                 $scores[$title] = $score;
-
-
             }
-
-
-
         }
-
-
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Sort Sections
-        |--------------------------------------------------------------------------
-        */
 
 
         arsort($scores);
 
 
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Decide Search Mode
-        |--------------------------------------------------------------------------
-        */
-
-
-        if(empty($scores)){
-
+        if (empty($scores)) {
 
             return [
-
-                'mode'=>'global',
-
-                'sections'=>[]
-
+                'mode' => 'global',
+                'sections' => []
             ];
-
-
         }
 
 
-
-
-
-
-
         return [
-
-            'mode'=>'section',
-
-            'sections'=>$scores
-
-
+            'mode' => 'section',
+            'sections' => $scores
         ];
-
-
-
     }
 
 
-
-
-
-
-
-
-
     protected function sectionMatchScore(
-
         string $query,
-
         string $section
-
     ): int {
 
-
-
-        $query =
-            strtolower($query);
-
-
-
-
+        $query = strtolower($query);
 
         $score = 0;
 
 
-
-
-
-        if(
-            str_contains(
-                $query,
-                $section
-            )
-        ){
-
-            $score +=100;
-
+        if (str_contains($query, $section)) {
+            $score += 100;
         }
-
-
-
-
 
 
         $keywords = [
-
-
-            'method'=>[
-
+            'method' => [
                 'method',
-
                 'approach',
-
                 'architecture',
-
                 'model'
-
             ],
 
-
-
-            'dataset'=>[
-
+            'dataset' => [
                 'data',
-
                 'dataset'
-
             ],
 
-
-
-            'experiment'=>[
-
+            'experiment' => [
                 'experiment',
-
                 'setup'
-
             ],
 
-
-
-            'result'=>[
-
+            'result' => [
                 'result',
-
                 'evaluation',
-
                 'performance'
-
             ],
 
-
-
-            'conclusion'=>[
-
+            'conclusion' => [
                 'conclusion',
-
                 'future'
-
             ]
-
-
         ];
 
 
+        foreach ($keywords as $key => $items) {
 
+            foreach ($items as $item) {
 
-
-
-
-        foreach($keywords as $key=>$items){
-
-
-            foreach($items as $item){
-
-
-                if(
-                    str_contains(
-                        $query,
-                        $item
-                    )
-
+                if (
+                    str_contains($query, $item)
                     &&
-
-                    str_contains(
-                        $section,
-                        $key
-                    )
-
-                ){
-
-                    $score +=50;
-
+                    str_contains($section, $key)
+                ) {
+                    $score += 50;
                 }
-
-
             }
-
-
         }
 
 
-
-
-
-
-        return min(
-            $score,
-            100
-        );
-
-
+        return min($score, 100);
     }
-
-
-
-
-
-
-
 
 
     protected function generalScore(
-
         string $section
-
     ): int {
 
+        return match (true) {
 
+            str_contains($section, 'abstract') => 80,
 
-        return match(true){
+            str_contains($section, 'introduction') => 70,
 
+            str_contains($section, 'conclusion') => 60,
 
+            str_contains($section, 'method') => 50,
 
-            str_contains(
-                $section,
-                'abstract'
-            )
-
-            =>
-
-            80,
-
-
-
-
-
-            str_contains(
-                $section,
-                'introduction'
-            )
-
-            =>
-
-            70,
-
-
-
-
-
-            str_contains(
-                $section,
-                'conclusion'
-            )
-
-            =>
-
-            60,
-
-
-
-
-
-            str_contains(
-                $section,
-                'method'
-            )
-
-            =>
-
-            50,
-
-
-
-
-
-            default
-
-            =>
-
-            30
-
-
+            default => 30
         };
-
-
     }
-
-
-
 }

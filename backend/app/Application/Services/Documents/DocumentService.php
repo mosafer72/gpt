@@ -6,6 +6,7 @@ namespace App\Application\Services\Documents;
 use App\Infrastructure\Repositories\DocumentSectionPlanRepository;
 use App\Infrastructure\Repositories\DocumentStructureRepository;
 use App\Infrastructure\Repositories\DocumentVectorRepository;
+use App\Jobs\ExtractDocumentTextJob;
 use App\Models\Document;
 use App\Jobs\ProcessDocumentJob;
 
@@ -103,9 +104,11 @@ class DocumentService
          * Chunking
          * Embedding (later)
          */
-        ProcessDocumentJob::dispatch(
-            $document
-        );
+        // ExtractDocumentTextJob::dispatch($document);
+
+        // ProcessDocumentJob::dispatch(
+        //     $document
+        // );
 
 
 
@@ -270,4 +273,6 @@ class DocumentService
         ];
 
     }
+
+
 }

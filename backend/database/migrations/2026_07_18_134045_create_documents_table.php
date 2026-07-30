@@ -7,17 +7,21 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
 
+
     public function up(): void
     {
 
         Schema::create('documents', function (Blueprint $table) {
 
+
             $table->id();
+
 
 
             $table->foreignId('workspace_id')
                 ->constrained()
                 ->cascadeOnDelete();
+
 
 
             $table->foreignId('user_id')
@@ -26,14 +30,18 @@ return new class extends Migration {
 
 
 
+
             $table->string('name');
+
 
 
             $table->string('path');
 
 
+
             $table->string('mime_type')
                 ->nullable();
+
 
 
             $table->unsignedBigInteger('size')
@@ -41,23 +49,68 @@ return new class extends Migration {
 
 
 
+
+
             /*
             |--------------------------------------------------------------------------
-            | processing status
+            | Document Processing
             |--------------------------------------------------------------------------
             */
+
 
             $table->enum(
                 'status',
                 [
+
                     'uploaded',
+
                     'processing',
+
                     'completed',
+
                     'failed'
+
                 ]
             )
-                ->default('uploaded');
+            ->default('uploaded');
 
+
+
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Translation Pipeline
+            |--------------------------------------------------------------------------
+            */
+
+
+            $table->enum(
+                'translation_status',
+                [
+
+                    'pending',
+
+                    'processing',
+
+                    'completed',
+
+                    'failed'
+
+                ]
+            )
+            ->default('pending');
+
+
+
+
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Error Handling
+            |--------------------------------------------------------------------------
+            */
 
 
             $table->text('error')
@@ -65,12 +118,38 @@ return new class extends Migration {
 
 
 
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Metadata
+            |--------------------------------------------------------------------------
+            */
+
+
+            $table->json('metadata')
+                ->nullable();
+
+
+
+
+
             $table->timestamps();
+
+
+
+            $table->index([
+                'workspace_id',
+                'status'
+            ]);
+
 
 
         });
 
     }
+
+
 
 
 
@@ -82,5 +161,6 @@ return new class extends Migration {
         );
 
     }
+
 
 };

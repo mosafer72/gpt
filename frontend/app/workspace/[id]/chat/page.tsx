@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 
-import { getWorkspace } from "@/lib/api";
+import { checkWorkspaceAccess } from "@/lib/api";
 
 import ChatInterface from "@/components/Chat/ChatInterface";
 
@@ -18,16 +19,25 @@ export default function WorkspaceChatPage() {
 
   const [loading, setLoading] = useState(true);
 
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+
   useEffect(() => {
     async function load() {
       try {
-        const response = await getWorkspace(id);
+        // ارسال workspace_id و feature به بک‌اند
+        const response = await checkWorkspaceAccess(id, "chat");
 
         console.log("CHAT WORKSPACE:", response);
 
-        setWorkspace(response.workspace ?? response);
+        if (response.has_access) {
+          setHasAccess(true);
+          setWorkspace(response.workspace ?? response);
+        } else {
+          setHasAccess(false);
+        }
       } catch (error) {
         console.log(error);
+        setHasAccess(false);
       } finally {
         setLoading(false);
       }
@@ -42,8 +52,21 @@ export default function WorkspaceChatPage() {
     return <div className={styles.loading}>در حال آماده سازی...</div>;
   }
 
-  if (!workspace) {
-    return <div className={styles.loading}>Workspace پیدا نشد</div>;
+  if (!hasAccess || !workspace) {
+    return (
+      <div className={styles.notFoundContainer}>
+        <div className={styles.notFoundContent}>
+          <span className={styles.errorCode}>404</span>
+          <h1 className={styles.errorTitle}>فضای کاری یافت نشد</h1>
+          <p className={styles.errorDesc}>
+            شما به این Workspace دسترسی ندارید یا این قابلیت فعال نیست.
+          </p>
+          <Link href="/workspaces" className={styles.backButton}>
+            بازگشت به لیست فضاهای کاری
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   /**

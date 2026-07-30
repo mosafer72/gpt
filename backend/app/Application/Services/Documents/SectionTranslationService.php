@@ -2,394 +2,184 @@
 
 namespace App\Application\Services\Documents;
 
-
 use App\Application\Services\Ai\EmbeddingService;
 use App\Domain\Contracts\SmallChatProvider;
 use App\Domain\LLM\ChatMessage;
 use App\Domain\LLM\ChatRequest;
 use App\Infrastructure\Repositories\DocumentSectionTranslationRepository;
-
-
+use Illuminate\Support\Facades\Log;
 
 class SectionTranslationService
 {
-
-
     public function __construct(
-
         protected SmallChatProvider $llm,
-
         protected EmbeddingService $embedding,
-
         protected DocumentSectionTranslationRepository $repository
-
     ) {
     }
 
-
-
-
-
-
-
     public function translate(
-
         array $section,
-
         string $documentId,
-
         string $workspaceId
-
-    ): void {
-
-
-        $content =
-            $section['content']
-            ??
-            '';
-
-
+    ): bool {
+        $content = trim($section['content'] ?? '');
 
         if (blank($content)) {
-
-            return;
-
+            return false;
         }
 
+        try {
+            $response = $this->llm->chat(new ChatRequest(
+                messages: [
+                    new ChatMessage(
+                        role: 'user',
+                        content:
+                        "Translate this scientific section to Persian.
+CRITICAL: Return ONLY valid JSON. Do NOT insert literal line breaks inside string values (use \\n for line breaks instead).
 
-
-
-
-        $prompt = <<<PROMPT
-
-You are an academic translator.
-
-Translate the following scientific paper section into Persian.
-
-Rules:
-
-- Preserve technical terms.
-- Keep formulas unchanged.
-- Write academic Persian.
-- Also provide a short Persian summary.
-- Return ONLY valid JSON.
-- Do not use markdown.
-- Do not add explanations.
-
-Return JSON:
-
+Format:
 {
-"title":"",
-"translation":"",
-"summary":"",
-"keywords":[]
+\"title\":\"\",
+\"translation\":\"\",
+\"summary\":\"\",
+\"keywords\":[]
 }
 
-
-Section:
-
-$content
-
-PROMPT;
-
-
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Small LLM Translation
-        |--------------------------------------------------------------------------
-        */
-
-
-        $response =
-
-            $this->llm->chat(
-
-                new ChatRequest(
-
-                    messages: [
-
-                        new ChatMessage(
-
-                            role: 'user',
-
-                            content: $prompt
-
-                        )
-
-                    ],
-
-
-                    model:
-
-                    'qwen2.5-64k:latest',
-
-
-                    temperature:
-
-                    0.2,
-
-
-                    maxTokens:
-
-                    2500
-
-                )
-
-            );
-
-
-
-
-
-        $result =
-
-            $response->content;
-
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Clean JSON Response
-        |--------------------------------------------------------------------------
-        */
-
-
-        $result = trim($result);
-
-
-
-        $result = preg_replace(
-
-            '/^```json|```$/',
-
-            '',
-
-            $result
-
-        );
-
-
-
-        $json =
-
-            json_decode(
-
-                trim($result),
-
-                true
-
-            );
-
-
-
-
-
-        if (!is_array($json)) {
-
-
-            \Log::warning(
-
-                'SECTION TRANSLATION INVALID JSON',
-
-                [
-
-                    'document_id' =>
-                        $documentId,
-
-
-                    'response' =>
-                        $result
-
-                ]
-
-            );
-
-
-            return;
-
-        }
-
-
-
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Translation Embedding
-        |--------------------------------------------------------------------------
-        */
-
-
-        $embedding =
-
-            $this->embedding
-
-                ->embedDocument(
-
-                    $json['translation']
-                    ??
-                    ''
-
+Rules:
+- Academic Persian
+- Keep formulas
+- Keep technical terms
+
+TEXT:
+" . $content
+                    )
+                ],
+                model: 'qwen2.5-64k:latest',
+                temperature: 0.1,
+                maxTokens: 4000
+            ));
+
+            $raw = $response->content ?? '';
+
+            $json = $this->parseJson($raw);
+
+            if (!$json) {
+                Log::warning(
+                    'TRANSLATION JSON FAILED',
+                    [
+                        'document_id' => $documentId,
+                        'output' => $raw
+                    ]
                 );
 
+                return false;
+            }
 
+            $translation = trim($json['translation'] ?? '');
 
+            if (blank($translation)) {
+                Log::warning(
+                    'EMPTY TRANSLATION',
+                    [
+                        'document_id' => $documentId
+                    ]
+                );
 
+                return false;
+            }
 
+            try {
+                $vector = $this->embedding->embedDocument($translation);
+            } catch (\Throwable $e) {
+                Log::error(
+                    'TRANSLATION EMBEDDING FAILED',
+                    [
+                        'document_id' => $documentId,
+                        'error' => $e->getMessage()
+                    ]
+                );
 
+                $vector = [];
+            }
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Store Translation
-        |--------------------------------------------------------------------------
-        */
-
-
-        $this->repository
-
-            ->store([
-
-
-                'document_id' =>
-
-                    (string)
-                    $documentId,
-
-
-
-                'workspace_id' =>
-
-                    (string)
-                    $workspaceId,
-
-
-
-                'section' =>
-
-                    $section['section']
-                    ??
-                    'unknown',
-
-
-
-
-                'title' =>
-
-                    $json['title']
-                    ??
-                    '',
-
-
-
-
-                'original_content' =>
-
-                    $content,
-
-
-
-
-
-                'translated_content' =>
-
-                    $json['translation']
-                    ??
-                    '',
-
-
-
-
-                'summary_fa' =>
-
-                    $json['summary']
-                    ??
-                    '',
-
-
-
-
-                'keywords' =>
-
-                    $json['keywords']
-                    ??
-                    [],
-
-
-
-
-                'embedding' =>
-
-                    $embedding,
-
-
-
-
-
+            $this->repository->store([
+                'document_id' => $documentId,
+                'workspace_id' => $workspaceId,
+                'section' => $section['section'] ?? 'general',
+                'title' => $json['title'] ?? 'Document',
+                'original_content' => $content,
+                'translated_content' => $translation,
+                'summary_fa' => $json['summary'] ?? '',
+                'keywords' => is_array($json['keywords'] ?? null)
+                    ? $json['keywords']
+                    : [],
+                'embedding' => $vector,
                 'metadata' => [
-
-                    'order' =>
-
-                        $section['order']
-                        ??
-                        0,
-
-
-
-                    'word_count' =>
-
-                        $section['word_count']
-                        ??
-                        0,
-
-
-
-                    'translated_by' =>
-
-                        'qwen2.5-64k:latest'
-
+                    'order' => (int) ($section['order'] ?? 0),
+                    'importance' => $section['importance'] ?? 'medium',
+                    'translated_by' => 'qwen2.5-64k:latest'
                 ]
-
-
             ]);
 
 
 
+            return true;
 
+        } catch (\Throwable $e) {
+            Log::error(
+                'SECTION TRANSLATION ERROR',
+                [
+                    'document_id' => $documentId,
+                    'error' => $e->getMessage()
+                ]
+            );
 
-
-        \Log::info(
-
-            'SECTION TRANSLATED SUCCESSFULLY',
-
-            [
-
-                'document_id' =>
-                    $documentId,
-
-
-                'section' =>
-                    $section['section']
-                    ??
-                    'unknown'
-
-            ]
-
-        );
-
-
+            return false;
+        }
     }
 
+    protected function parseJson(string $content): ?array
+    {
+        $clean = trim($content);
 
+        // ۱. استخراج بلاک JSON در صورتی که داخل مارک‌داون قرار گرفته باشد
+        if (preg_match('/```(?:json)?\s*(\{[\s\S]*?\})\s*```/u', $clean, $matches)) {
+            $clean = trim($matches[1]);
+        } elseif (preg_match('/\{[\s\S]*\}/u', $clean, $matches)) {
+            $clean = trim($matches[0]);
+        }
+
+        $clean = preg_replace('/^```(?:json)?|```$/i', '', $clean);
+        $clean = trim($clean);
+
+        // تلاش ۱: پارس مستقیم استاندارد
+        $json = json_decode($clean, true);
+        if (is_array($json) && json_last_error() === JSON_ERROR_NONE) {
+            return $json;
+        }
+
+        // تلاش ۲: اصلاح خطوط جدید غیرمجاز و Tabها درون رشته‌های JSON
+        $sanitized = preg_replace_callback('/"(?:\\\\.|[^"\\\\])*"/s', function ($m) {
+            return str_replace(
+                ["\r\n", "\n", "\r", "\t"],
+                ["\\n", "\\n", "\\n", "\\t"],
+                $m[0]
+            );
+        }, $clean);
+
+        $json = json_decode($sanitized, true);
+        if (is_array($json) && json_last_error() === JSON_ERROR_NONE) {
+            return $json;
+        }
+
+        // تلاش ۳: حذف کاراکترهای غیرقابل چاپ ASCII
+        $sanitizedControl = preg_replace('/[\x00-\x1F\x7F]/u', '', $sanitized);
+        $json = json_decode($sanitizedControl, true);
+        if (is_array($json) && json_last_error() === JSON_ERROR_NONE) {
+            return $json;
+        }
+
+        return null;
+    }
 }

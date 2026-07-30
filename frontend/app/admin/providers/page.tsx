@@ -82,8 +82,8 @@ export default function LlmProvidersPage() {
     setIsSubmitting(true);
     try {
       if (modalMode === 'add') {
-        const res = await createLlmProvider(formData);
-        const newItem = res.llm_provider || res;
+        const res = (await createLlmProvider(formData)) as any;
+        const newItem = res?.llm_provider || res;
         setProviders([newItem, ...providers]);
       } else if (modalMode === 'edit' && editingId) {
         await updateLlmProvider(editingId, formData);

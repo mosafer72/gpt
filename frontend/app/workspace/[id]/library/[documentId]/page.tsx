@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 
 import styles from "./page.module.css";
 
-import { getDocumentOverview } from "../components/lib/api";
+import {  checkWorkspaceAccess } from "@/lib/api";
 
 // Components
 
@@ -27,6 +28,7 @@ import ErrorPanel from "./components/ErrorPanel/ErrorPanel";
 import AllInsights from "./components/AIInsights/AIInsights";
 import DocumentHeader from "./components/DocumentHeader/DocumentHeader";
 import DocumentStructure from "./components/DocumentStructure/DocumentStructure";
+import { getDocumentOverview } from "../components/lib/api";
 
 export default function DocumentPage() {
   const params = useParams();
@@ -40,10 +42,41 @@ export default function DocumentPage() {
   const [data, setData] = useState<any>(null);
 
   const [loading, setLoading] = useState(true);
+  const [checkingAccess, setCheckingAccess] = useState(true);
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
 
   useEffect(() => {
-    load();
-  }, [workspaceId, documentId]);
+    async function verifyAccess() {
+      if (!workspaceId) {
+        setHasAccess(false);
+        setCheckingAccess(false);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await checkWorkspaceAccess(workspaceId, "Research");
+        if (response.has_access) {
+          setHasAccess(true);
+        } else {
+          setHasAccess(false);
+        }
+      } catch (error) {
+        console.error("Access check failed:", error);
+        setHasAccess(false);
+      } finally {
+        setCheckingAccess(false);
+      }
+    }
+
+    verifyAccess();
+  }, [workspaceId]);
+
+  useEffect(() => {
+    if (hasAccess && workspaceId && documentId) {
+      load();
+    }
+  }, [hasAccess, workspaceId, documentId]);
 
   async function load() {
     try {
@@ -59,8 +92,25 @@ export default function DocumentPage() {
     }
   }
 
-  if (loading) {
-    return <div className={styles.loading}>در حال تحلیل مقاله...</div>;
+  if (checkingAccess || (hasAccess && loading)) {
+    return <div className={styles.loading}>در حال بررسی دسترسی و تحلیل مقاله...</div>;
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className={styles.notFoundContainer}>
+        <div className={styles.notFoundContent}>
+          <span className={styles.errorCode}>404</span>
+          <h1 className={styles.errorTitle}>فضای کاری یافت نشد</h1>
+          <p className={styles.errorDesc}>
+            شما به این فضای کاری یا قابلیت پژوهش دسترسی ندارید.
+          </p>
+          <Link href="/workspaces" className={styles.backButton}>
+            بازگشت به لیست فضاهای کاری
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   if (!data) {

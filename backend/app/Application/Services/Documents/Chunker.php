@@ -1,450 +1,133 @@
 <?php
-
 namespace App\Application\Services\Documents;
-
 
 class Chunker
 {
+    protected int $maxWords=700;
+    protected int $minWords=30;
 
+    public function split(array $sections):array
+    {
+        if(empty($sections))return [];
 
-    public function __construct(
-        protected DocumentSectionDetector $detector
-    ) {
-    }
+        $chunks=[];
+        $index=0;
 
+        foreach($sections as $section){
 
+            $content=trim($section['content']??'');
 
+            if(blank($content))continue;
 
+            $title=trim($section['title']??'Document');
 
-
-    /**
-     * Main document splitter
-     */
-    public function split(
-        string $text
-    ): array {
-
-
-        $text =
-            trim(
-                str_replace(
-                    "\r",
-                    "",
-                    $text
-                )
+            $normalized=$this->normalize(
+                $section['normalized']??$title
             );
 
+            $parts=$this->splitContent($content);
 
+            foreach($parts as $part){
 
-        if (blank($text)) {
+                $part=trim($part);
 
-            return [];
+                if($this->wordCount($part)<$this->minWords)continue;
 
-        }
-
-
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Detect real document structure
-        |--------------------------------------------------------------------------
-        */
-
-
-        $sections =
-            $this->detector
-                ->detect(
-                    $text
-                );
-
-
-
-
-
-
-        if (empty($sections)) {
-
-
-            return [];
-
-
-        }
-
-
-
-
-
-
-
-        $chunks = [];
-
-        $index = 1;
-
-
-
-
-
-
-
-        foreach ($sections as $section) {
-
-
-
-
-
-            $content =
-                trim(
-                    $section['content']
-                    ??
-                    ''
-                );
-
-
-
-
-
-            if ($content === '') {
-
-                continue;
-
+                $chunks[]=[
+                    'chunk_index'=>$index++,
+                    'section'=>$normalized?:'general',
+                    'section_title'=>$title,
+                    'heading_path'=>[$title],
+                    'word_count'=>$this->wordCount($part),
+                    'importance'=>$this->importance($normalized),
+                    'content'=>"# ".$title."\n\n".$part
+                ];
             }
-
-
-
-
-
-
-            $normalized =
-
-                strtolower(
-
-                    trim(
-
-                        $section['normalized']
-                        ??
-                        'general'
-
-                    )
-
-                );
-
-
-
-
-
-
-            $wordCount =
-
-                count(
-
-                    preg_split(
-
-                        '/\s+/u',
-
-                        $content
-
-                    )
-
-                );
-
-
-
-
-
-
-
-            $chunks[] = [
-
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Section Metadata
-                |--------------------------------------------------------------------------
-                */
-
-
-                'section' =>
-
-                    $normalized,
-
-
-
-                'section_title' =>
-
-                    $section['title']
-                    ??
-                    ucfirst($normalized),
-
-
-
-
-                'heading_path' =>
-
-                    [
-
-                        $section['title']
-                        ??
-                        ucfirst($normalized)
-
-                    ],
-
-
-
-
-
-
-                'section_level' =>
-
-                    $section['level']
-                    ??
-                    1,
-
-
-
-                'start_line' =>
-
-                    $section['start_line']
-                    ??
-                    null,
-
-
-
-                'end_line' =>
-
-                    $section['end_line']
-                    ??
-                    null,
-
-
-
-
-
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Chunk Metadata
-                |--------------------------------------------------------------------------
-                */
-
-
-                'chunk_index' =>
-
-                    $index,
-
-
-
-                'section_chunk_index' =>
-
-                    1,
-
-
-
-                'word_count' =>
-
-                    $wordCount,
-
-
-
-
-
-                'importance' =>
-
-                    $this->sectionImportance(
-                        $normalized
-                    ),
-
-
-
-
-
-
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Processing Status
-                |--------------------------------------------------------------------------
-                */
-
-
-                'translation_status' =>
-
-                    'pending',
-
-
-
-                'embedding_status' =>
-
-                    'pending',
-
-
-
-
-
-
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Content
-                |--------------------------------------------------------------------------
-                */
-
-
-                'content' =>
-
-                    "# "
-
-                    .
-
-                    (
-                        $section['title']
-                        ??
-                        ''
-                    )
-
-                    .
-
-                    "\n\n"
-
-                    .
-
-                    $content
-
-
-
-            ];
-
-
-
-
-
-            $index++;
-
-
         }
-
-
-
-
-
-
 
         return $chunks;
-
-
     }
 
 
+    protected function splitContent(string $text):array
+    {
+        $words=preg_split('/\s+/u',trim($text));
 
+        if(count($words)<=$this->maxWords)return [$text];
 
+        $chunks=[];
+        $buffer=[];
 
+        foreach($words as $word){
 
+            $buffer[]=$word;
 
+            if(count($buffer)>=$this->maxWords){
 
+                $chunks[]=implode(' ',$buffer);
 
-    protected function sectionImportance(
-        string $section
-    ): string {
+                $buffer=[];
+            }
+        }
 
+        if(!empty($buffer)){
+            $chunks[]=implode(' ',$buffer);
+        }
 
+        return $chunks;
+    }
 
-        return match ($section) {
 
+    protected function wordCount(string $text):int
+    {
+        if(blank($text))return 0;
 
+        return count(
+            preg_split('/\s+/u',trim($text))
+        );
+    }
 
-            'abstract',
 
-            'method',
+    protected function importance(string $section):string
+    {
+        return match(true){
 
-            'methods',
+            str_contains($section,'abstract'),
+            str_contains($section,'introduction'),
+            str_contains($section,'conclusion')
+            =>'high',
 
-            'methodology',
+            str_contains($section,'method'),
+            str_contains($section,'methodology'),
+            str_contains($section,'approach'),
+            str_contains($section,'framework'),
+            str_contains($section,'architecture'),
+            str_contains($section,'model'),
+            str_contains($section,'algorithm'),
+            str_contains($section,'experiment'),
+            str_contains($section,'evaluation'),
+            str_contains($section,'results')
+            =>'very_high',
 
-            'architecture',
+            str_contains($section,'references'),
+            str_contains($section,'appendix')
+            =>'low',
 
-            'model',
-
-            'approach' =>
-
-                'very_high',
-
-
-
-
-
-
-
-            'introduction',
-
-            'background',
-
-            'related work',
-
-            'literature review',
-
-            'implementation',
-
-            'experiment',
-
-            'experiments',
-
-            'evaluation',
-
-            'results',
-
-            'discussion',
-
-            'conclusion' =>
-
-                'high',
-
-
-
-
-
-
-            'header' =>
-
-                'medium',
-
-
-
-
-
-
-            'references',
-
-            'bibliography',
-
-            'acknowledgement',
-
-            'acknowledgments',
-
-            'appendix' =>
-
-                'low',
-
-
-
-
-
-
-            default =>
-
-                'medium'
-
-
+            default=>'medium'
         };
-
     }
 
 
-
+    protected function normalize(string $value):string
+    {
+        return mb_strtolower(
+            trim(
+                preg_replace(
+                    '/[^\p{L}\p{N}\s]/u',
+                    '',
+                    $value
+                )
+            )
+        );
+    }
 }

@@ -33,7 +33,7 @@ export default function ChatByIdPage() {
 
         setWorkspace(workspaceResponse.workspace);
 
-        const chatData = chatResponse.chat;
+        const chatData = chatResponse;
 
         setChat({
           ...chatData,

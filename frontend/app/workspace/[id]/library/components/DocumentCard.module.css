@@ -136,3 +136,78 @@
   transform: scale(1.03);
   border-color: rgba(239, 68, 68, 0.4);
 }
+/* --- Actions (Buttons) --- */
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto; /* دکمه‌ها را به پایین کارت هل می‌دهد */
+}
+
+.primary,
+.chatBtn,
+.danger {
+  flex: 1;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 600;
+  font-size: 13px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* دکمه اصلی (مشاهده) */
+.primary {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.primary:hover {
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  transform: scale(1.03);
+  box-shadow: 0 10px 20px rgba(37, 99, 235, 0.25);
+  border-color: transparent;
+}
+
+/* دکمه چت با مقاله - هماهنگ با بقیه دکمه‌ها */
+.chatBtn {
+  background: rgba(124, 58, 237, 0.12);
+  color: #a78bfa;
+  border: 1px solid rgba(139, 92, 246, 0.25);
+}
+
+.chatBtn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4f46e5, #9333ea);
+  color: white;
+  transform: scale(1.03);
+  box-shadow: 0 10px 20px rgba(124, 58, 237, 0.25);
+  border-color: transparent;
+}
+
+.chatBtn:disabled {
+  background: rgba(255, 255, 255, 0.03);
+  color: #475569;
+  border-color: rgba(255, 255, 255, 0.02);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* دکمه خطر (حذف) */
+.danger {
+  background: rgba(220, 38, 38, 0.1);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.danger:hover {
+  background: rgba(220, 38, 38, 0.2);
+  transform: scale(1.03);
+  border-color: rgba(239, 68, 68, 0.4);
+}

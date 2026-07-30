@@ -43,10 +43,6 @@ class DocumentMetadata
 
             'keywords' =>
                 $this->keywords,
-
-            'abstract' =>
-                $this->abstract,
-
         ];
     }
 

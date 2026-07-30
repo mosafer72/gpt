@@ -25,7 +25,6 @@ class SmsService
                 $message
             );
 
-            Log::info("SMS sent to {$phone}", ['result' => $result]);
             return true;
 
         } catch (\Exception $e) {

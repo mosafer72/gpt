@@ -15,6 +15,8 @@ use App\Http\Services\SmsIrService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
+use App\Models\Workspace;
+
 
 
 
@@ -28,7 +30,8 @@ class AuthController extends Controller
 
         protected WorkspaceService $workspaceService
 
-    ) {}
+    ) {
+    }
 
 
 
@@ -42,7 +45,7 @@ class AuthController extends Controller
 
         $request->validate([
 
-            'phone'=>'required|string|regex:/^09[0-9]{9}$/'
+            'phone' => 'required|string|regex:/^09[0-9]{9}$/'
 
         ]);
 
@@ -55,13 +58,13 @@ class AuthController extends Controller
 
 
 
-        if(!$user){
+        if (!$user) {
 
             return response()->json([
 
-                'message'=>'کاربر یافت نشد'
+                'message' => 'کاربر یافت نشد'
 
-            ],404);
+            ], 404);
 
         }
 
@@ -86,7 +89,7 @@ class AuthController extends Controller
 
         $request->validate([
 
-            'phone'=>'required|string|regex:/^09[0-9]{9}$/'
+            'phone' => 'required|string|regex:/^09[0-9]{9}$/'
 
         ]);
 
@@ -96,13 +99,13 @@ class AuthController extends Controller
 
             [
 
-                'phone'=>$request->phone
+                'phone' => $request->phone
 
             ],
 
             [
 
-                'name'=>'User'
+                'name' => 'User'
 
             ]
 
@@ -137,12 +140,12 @@ class AuthController extends Controller
         $user->update([
 
 
-            'verification_code'=>
+            'verification_code' =>
                 Hash::make($code),
 
 
 
-            'verification_code_expires_at'=>
+            'verification_code_expires_at' =>
                 now()->addMinutes(5)
 
         ]);
@@ -170,7 +173,7 @@ class AuthController extends Controller
         return response()->json([
 
 
-            'message'=>'کد ارسال شد'
+            'message' => 'کد ارسال شد'
 
 
             // فقط محیط توسعه
@@ -197,11 +200,11 @@ class AuthController extends Controller
         $request->validate([
 
 
-            'phone'=>
+            'phone' =>
                 'required|string',
 
 
-            'code'=>
+            'code' =>
                 'required|string|size:6'
 
 
@@ -217,14 +220,14 @@ class AuthController extends Controller
             $request->phone
 
         )
-        ->firstOrFail();
+            ->firstOrFail();
 
 
 
 
 
 
-        if(
+        if (
 
             !$user->verification_code_expires_at
 
@@ -232,13 +235,13 @@ class AuthController extends Controller
 
             $user->verification_code_expires_at < now()
 
-        ){
+        ) {
 
             return response()->json([
 
-                'message'=>'کد منقضی شده است'
+                'message' => 'کد منقضی شده است'
 
-            ],422);
+            ], 422);
 
         }
 
@@ -249,7 +252,7 @@ class AuthController extends Controller
 
 
 
-        if(
+        if (
 
             !Hash::check(
 
@@ -259,13 +262,13 @@ class AuthController extends Controller
 
             )
 
-        ){
+        ) {
 
             return response()->json([
 
-                'message'=>'کد اشتباه است'
+                'message' => 'کد اشتباه است'
 
-            ],422);
+            ], 422);
 
         }
 
@@ -279,10 +282,10 @@ class AuthController extends Controller
         $user->update([
 
 
-            'verification_code'=>null,
+            'verification_code' => null,
 
 
-            'verification_code_expires_at'=>null
+            'verification_code_expires_at' => null
 
 
         ]);
@@ -332,11 +335,11 @@ class AuthController extends Controller
         return response()->json([
 
 
-            'message'=>'ورود موفق',
+            'message' => 'ورود موفق',
 
 
 
-            'user'=>$user->only([
+            'user' => $user->only([
 
                 'id',
 
@@ -350,7 +353,7 @@ class AuthController extends Controller
 
 
 
-            'token'=>$token
+            'token' => $token
 
 
         ]);
@@ -370,13 +373,13 @@ class AuthController extends Controller
     ): void {
 
 
-        if(
+        if (
 
             $user
                 ->workspaces()
                 ->exists()
 
-        ){
+        ) {
 
             return;
 
@@ -395,7 +398,7 @@ class AuthController extends Controller
                 'general'
 
             )
-            ->first();
+                ->first();
 
 
 
@@ -409,7 +412,7 @@ class AuthController extends Controller
                 'general-basic'
 
             )
-            ->first();
+                ->first();
 
 
 
@@ -417,13 +420,13 @@ class AuthController extends Controller
 
 
 
-        if(
+        if (
 
             !$type ||
 
             !$plan
 
-        ){
+        ) {
 
             return;
 
@@ -438,16 +441,18 @@ class AuthController extends Controller
         $this->workspaceService
             ->create(
 
-                user:$user,
+                user: $user,
 
-                type:$type,
+                type: $type,
 
-                plan:$plan
+                plan: $plan
 
             );
 
 
     }
+
+
 
 
 }

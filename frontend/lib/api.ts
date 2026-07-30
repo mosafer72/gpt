@@ -8,6 +8,7 @@ import type {
   WorkspacePlan,
   Workspace,
   DashboardResponse,
+  WorkspaceType,
 } from "@/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL;
@@ -111,6 +112,10 @@ export function getMySubscription() {
   return request<Subscription>("/my-subscription");
 }
 
+export function getWorkspaceTypes() {
+  return request<WorkspaceType>("/workspace_types");
+}
+
 // ============================
 // Dashboard
 // ============================
@@ -122,7 +127,7 @@ export function getDashboard() {
 export async function getDashboardData() {
   const [plansResponse, subscription] = await Promise.all([
     getPlans(),
-
+    getWorkspaceTypes(),
     getMySubscription(),
   ]);
 
@@ -221,28 +226,26 @@ export async function sendMessageStream(
   }
 
   const reader = response.body.getReader();
-  const decoder = new TextDecoder();
+  const decoder = new TextDecoder("utf-8");
   let buffer = "";
 
   while (true) {
     const { done, value } = await reader.read();
     if (done) break;
 
+    // ۱. حتماً stream: true برای جلوگیری از شکستن حروف فارسی
     buffer += decoder.decode(value, { stream: true });
 
-    // جدا کردن خطوط بر اساس line break های مختلف (\r\n یا \n)
     const lines = buffer.split(/\r?\n/);
 
-    // نگه داشتن آخرین بخش ناقص درون بافر
+    // نگه داشتن بخش ناقص در بافر
     buffer = lines.pop() || "";
 
     for (const line of lines) {
       const trimmedLine = line.trim();
 
-      // رد کردن خطوط خالی و خطوطی که رویداد data نیستند
       if (!trimmedLine || !trimmedLine.startsWith("data:")) continue;
 
-      // حذف کلمه data: و فواصل خالی ابتدای آن
       const payload = trimmedLine.replace(/^data:\s*/, "").trim();
 
       if (!payload || payload === "[DONE]") {
@@ -256,21 +259,19 @@ export async function sendMessageStream(
           throw new Error(json.error);
         }
 
-        if (typeof json.content === "string") {
-          onChunk?.(
-            JSON.stringify({
-              content: json.content,
-            }),
-          );
+        // ۲. استخراج صحیح متن بر اساس ساختار OpenAI / Ollama و همچنین ساختار مستقیم
+        const content = json?.choices?.[0]?.delta?.content ?? json?.content;
+
+        // ۳. ارسال متن خالص به فرانت‌اند بدون JSON.stringify
+        if (typeof content === "string" && content.length > 0) {
+          onChunk?.(content);
         }
       } catch (e) {
-        // جلوگیری از کرش کردن برنامه در صورت دریافت دیتای نادرست یا ناقص
         console.warn("Skipped invalid stream chunk:", payload);
       }
     }
   }
 }
-
 // ============================
 // Chats
 // ============================
@@ -301,14 +302,20 @@ export function deleteChat(
   );
 }
 
+
+export async function checkWorkspaceAccess(workspaceId: number | string, feature?: string) {
+  const query = feature ? `?feature=${encodeURIComponent(feature)}` : "";
+  return request<any>(`/workspaces/${workspaceId}/check-access${query}`);
+}
+
 // ============================
 // Models
 // ============================
 
-export function getAvailableModels() {
+export function getAvailableModels(workspace_id:number) {
   return request<{
     models: AIModel[];
-  }>("/models");
+  }>(`/models/${workspace_id}`);
 }
 
 // ============================
@@ -377,12 +384,12 @@ export function getMyWorkspace() {
 // Workspace Plans
 // ============================
 
-export function getWorkspacePlans(workspaceTypeId: number) {
+export function getWorkspacePlans(workspaceId: number) {
   return request<{
     success: boolean;
 
     data: WorkspacePlan[];
-  }>(`/workspace-types/${workspaceTypeId}/plans`);
+  }>(`/workspace-types/${workspaceId}/workspace_plans`);
 }
 
 // ============================

@@ -2,443 +2,108 @@
 
 namespace App\Infrastructure\LLM;
 
-
 use App\Models\AiModel;
 use App\Models\LLMRequest;
 use Log;
 use OpenAI;
-
 use App\Domain\Contracts\LlmProvider;
 use App\Domain\LLM\ChatRequest;
 use App\Domain\LLM\ChatResponse;
 use App\Domain\LLM\Usage;
 
-
-
 class GapGPTProvider implements LlmProvider
 {
-
-
-    /**
-     * ساخت Client بر اساس Provider دیتابیس
-     */
     protected function client(AiModel $model)
     {
-
-        return OpenAI::factory()
-
-            ->withApiKey(
-                $model->provider->api_key
-            )
-
-            ->withBaseUri(
-                $model->provider->base_url
-            )
-
-            ->make();
-
+        return OpenAI::factory()->withApiKey($model->provider->api_key)->withBaseUri($model->provider->base_url)->make();
     }
 
-
-
-
-
-
-    /**
-     * Stream Response
-     */
     public function stream(ChatRequest $request)
     {
-
-
+        // جستجوی امن بر اساس key یا model_name
         $aiModel = AiModel::with('provider')
-
-            ->where(
-                'key',
-                $request->model
-            )
-
+            ->where('key', $request->model)
+            ->orWhere('model_name', $request->model)
             ->firstOrFail();
-
-        // \Log::info('AI MODEL DEBUG', [
-        //     'requested_model' => $request->model,
-        // ]);
-
 
         $client = $this->client($aiModel);
 
+        $payload = [
+            'model' => $aiModel->model_name,
+            'messages' => array_map(fn($message) => $message->toArray(), $request->messages),
+            'temperature' => $request->temperature ?? 0.7,
+            'max_tokens' => $request->maxTokens ?? 1000,
+            'stream' => true, // <--- بسیار مهم: حتما true باشد
+        ];
 
+        // غیرفعال کردن ارسال reasoning مجزا در OpenRouter برای دریافت مستقیم پاسخ
+        if (str_contains($aiModel->provider->base_url ?? '', 'openrouter')) {
+            $payload['include_reasoning'] = false;
+        }
 
+        $stream = $client->chat()->createStreamed($payload);
 
-        return $client
-            ->chat()
-            ->createStreamed([
+        return (function () use ($stream) {
+            foreach ($stream as $chunk) {
 
-
-                // مدل واقعی API
-                'model' =>
-                    $aiModel->model_name,
-
-
-
-                'messages' => array_map(
-
-                    fn($message) =>
-                    $message->toArray(),
-
-                    $request->messages
-
-                ),
-
-
-
-                'temperature' =>
-                    $request->temperature,
-
-
-
-                'max_tokens' =>
-                    $request->maxTokens,
-
-
-
-                'stream' => true,
-
-
-
-                'stream_options' => [
-
-                    'include_usage' => true
-
-                ]
-
-
-            ]);
-
+                yield $chunk;
+            }
+        })();
     }
 
-
-
-
-
-
-
-
-
-
-    /**
-     * Chat Request
-     */
-    public function chat(
-        ChatRequest $request
-    ): ChatResponse {
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Load Model + Provider
-        |--------------------------------------------------------------------------
-        */
-
-
+    public function chat(ChatRequest $request): ChatResponse
+    {
         $aiModel = AiModel::with('provider')
-
-            ->where(
-                'key',
-                $request->model
-            )
-
+            ->where('key', $request->model)
+            ->orWhere('model_name', $request->model)
             ->firstOrFail();
 
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Create API Client
-        |--------------------------------------------------------------------------
-        */
-
-
         $client = $this->client($aiModel);
-
-
-
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Save Request Log
-        |--------------------------------------------------------------------------
-        */
-        $messages = array_map(
-
-            fn($message) =>
-            $message->toArray(),
-
-            $request->messages
-
-        );
-
-
-        Log::info('LLM REQUEST DEBUG', [
-
-            'base_url' => $aiModel->provider->base_url,
-
-            'provider' => $aiModel->provider->key,
-
-            'model' => $aiModel->model_name,
-
-            'messages' => $messages,
-
-            'temperature' => $request->temperature,
-
-            'max_tokens' => $request->maxTokens
-
-        ]);
+        $messages = array_map(fn($message) => $message->toArray(), $request->messages);
 
         $log = LLMRequest::create([
-
-
             'user_id' => auth()->id(),
-
-
-            'provider' =>
-                $aiModel->provider->key,
-
-
-
-            'model' =>
-                $aiModel->model_name,
-
-
-
-            'messages' => collect(
-                $request->messages
-            )
-
-                ->map(
-                    fn($message) =>
-                    $message->toArray()
-                )
-
-                ->toArray(),
-
-
-
-
+            'provider' => $aiModel->provider->key,
+            'model' => $aiModel->model_name,
+            'messages' => $messages,
             'request_options' => [
-
-                'temperature' =>
-                    $request->temperature,
-
-
-                'max_tokens' =>
-                    $request->maxTokens,
-
+                'temperature' => $request->temperature ?? 0.7,
+                'max_tokens' => $request->maxTokens ?? 1000
             ],
-
-
-
             'status' => 'processing'
-
-
         ]);
 
-
-
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Send Request
-        |--------------------------------------------------------------------------
-        */
-
-
-        $response = $client
-
-            ->chat()
-
-            ->create([
-
-
-                'model' =>
-                    $aiModel->model_name,
-
-
-
-                'messages' => array_map(
-
-                    fn($message) =>
-                    $message->toArray(),
-
-                    $request->messages
-
-                ),
-
-
-
-                'temperature' =>
-                    $request->temperature,
-
-
-
-                'max_tokens' =>
-                    $request->maxTokens,
-
-
+        try {
+            $response = $client->chat()->create([
+                'model' => $aiModel->model_name,
+                'messages' => $messages,
+                'temperature' => $request->temperature ?? 0.7,
+                'max_tokens' => $request->maxTokens ?? 1000
             ]);
 
 
+        } catch (\Throwable $e) {
+            Log::error('LLM ERROR', ['message' => $e->getMessage()]);
+            $log->update(['status' => 'failed']);
+            throw $e;
+        }
 
+        $input = $response->usage->promptTokens ?? 0;
+        $output = $response->usage->completionTokens ?? 0;
+        $total = $response->usage->totalTokens ?? 0;
 
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Update Log
-        |--------------------------------------------------------------------------
-        */
-
+        $content = $response->choices[0]->message->content ?? '';
 
         $log->update([
-
-
             'status' => 'completed',
-
-
-
-            'response' => [
-
-                'content' =>
-
-                    $response
-                        ->choices[0]
-                        ->message
-                        ->content
-
-            ],
-
-
-
-
-            'usage' => [
-
-
-                'input' =>
-
-                    $response
-                        ->usage
-                        ->promptTokens ?? 0,
-
-
-
-                'output' =>
-
-                    $response
-                        ->usage
-                        ->completionTokens ?? 0,
-
-
-
-                'total' =>
-
-                    $response
-                        ->usage
-                        ->totalTokens ?? 0,
-
-
-            ]
-
-
+            'response' => ['content' => $content],
+            'usage' => ['input' => $input, 'output' => $output, 'total' => $total]
         ]);
 
-
-
-
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Return Domain Response
-        |--------------------------------------------------------------------------
-        */
-
-
         return new ChatResponse(
-
-
-
-            content:
-
-            $response
-                ->choices[0]
-                ->message
-                ->content,
-
-
-
-
-
-            usage:
-
-            new Usage(
-
-
-                inputTokens:
-
-                $response
-                    ->usage
-                    ->promptTokens ?? 0,
-
-
-
-                outputTokens:
-
-                $response
-                    ->usage
-                    ->completionTokens ?? 0,
-
-
-
-                totalTokens:
-
-                $response
-                    ->usage
-                    ->totalTokens ?? 0,
-
-
-            ),
-
-
-
-
-
-            model:
-
-            $aiModel->model_name
-
-
+            content: $content,
+            usage: new Usage(inputTokens: $input, outputTokens: $output, totalTokens: $total),
+            model: $aiModel->model_name
         );
-
-
     }
-
-
-
 }

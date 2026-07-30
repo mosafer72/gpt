@@ -2,688 +2,228 @@
 
 namespace App\Infrastructure\Repositories;
 
-
 use SurrealDB\Laravel\Facades\Surreal;
-
 use SurrealDB\SDK\Query\BoundQuery;
-
-
 
 class DocumentChunkRepository
 {
-
-
     protected string $table = 'document_chunk';
 
-
-
-
-
-
-
-
-
-    public function store(
-        array $data
-    ): array {
-
-
-        $response =
-
-
-            Surreal::query(
-
-                new BoundQuery(
-
-                    query: "
-
-
-                    CREATE {$this->table}
-
-                    SET
-
-
-                        document_id =
-                        <string>\$document_id,
-
-
-                        workspace_id =
-                        <string>\$workspace_id,
-
-
-                        chunk_index =
-                        <int>\$chunk_index,
-
-
-                        content =
-                        <string>\$content,
-
-
-                        tokens =
-                        <int>\$tokens,
-
-
-                        metadata =
-                        \$metadata,
-
-
-                        created_at =
-                        time::now()
-
-
-                    RETURN AFTER;
-
-
-                    ",
-
-                    bindings:[
-
-
-                        'document_id'=>
-
-                            (string)
-                            (
-                                $data['document_id']
-                                ??
-                                ''
-                            ),
-
-
-
-                        'workspace_id'=>
-
-                            (string)
-                            (
-                                $data['workspace_id']
-                                ??
-                                ''
-                            ),
-
-
-
-                        'chunk_index'=>
-
-                            (int)
-                            (
-                                $data['chunk_index']
-                                ??
-                                0
-                            ),
-
-
-
-                        'content'=>
-
-                            (string)
-                            (
-                                $data['content']
-                                ??
-                                ''
-                            ),
-
-
-
-                        'tokens'=>
-
-                            (int)
-                            (
-                                $data['tokens']
-                                ??
-                                0
-                            ),
-
-
-
-                        'metadata'=>
-
-                            is_array(
-
-                                $data['metadata']
-                                ??
-                                null
-
-                            )
-
-                            ?
-
-                            $data['metadata']
-
-                            :
-
-                            []
-
-
-
-                    ]
-
-                )
-
-            );
-
-
-
-
-
-        return $this->format(
-            $response
+    public function store(array $data): array
+    {
+        $id = $this->recordId(
+            (string) $data['document_id'],
+            (int) $data['chunk_index']
         );
 
+        return $this->extract(
+            Surreal::query(
+                new BoundQuery(
+                    query: "
+                    UPSERT type::record('document_chunk', \$id)
+                    SET
+                        document_id=<string>\$document_id,
+                        workspace_id=<string>\$workspace_id,
+                        chunk_index=<int>\$chunk_index,
+                        content=<string>\$content,
+                        tokens=<int>\$tokens,
+                        metadata=\$metadata,
+                        updated_at=time::now(),
+                        created_at=IF created_at IS NONE THEN time::now() ELSE created_at END;
 
+                    RETURN AFTER;
+                    ",
+                    bindings: [
+                        'id' => $id,
+                        'document_id' => (string) $data['document_id'],
+                        'workspace_id' => (string) ($data['workspace_id'] ?? ''),
+                        'chunk_index' => (int) $data['chunk_index'],
+                        'content' => trim((string) ($data['content'] ?? '')),
+                        'tokens' => (int) ($data['tokens'] ?? 0),
+                        'metadata' => $data['metadata'] ?? []
+                    ]
+                )
+            )
+        )[0] ?? [];
     }
-
-
-
-
-
-
-
-
 
     public function findByDocument(
         string $documentId
     ): array {
-
-
-        $response =
-
-
+        return $this->extract(
             Surreal::query(
-
                 new BoundQuery(
-
                     query: "
-
-
                     SELECT *
-
                     FROM {$this->table}
-
-
-                    WHERE document_id =
-                    \$document_id
-
-
+                    WHERE document_id = \$id
                     ORDER BY chunk_index ASC;
-
-
                     ",
-
-                    bindings:[
-
-
-                        'document_id'=>
-
-                            (string)
-                            $documentId
-
-
+                    bindings: [
+                        'id' => (string) $documentId
                     ]
-
                 )
-
-            );
-
-
-
-
-
-        return $this->format(
-            $response
+            )
         );
-
-
     }
 
-
-
-
-
-
-
-
-
-    public function findByWorkspace(
-        string $workspaceId
+    public function findByDocumentAndSection(
+        string $documentId,
+        string $section
     ): array {
-
-
-        $response =
-
-
+        return $this->extract(
             Surreal::query(
-
                 new BoundQuery(
-
                     query: "
-
-
                     SELECT *
-
                     FROM {$this->table}
-
-
-                    WHERE workspace_id =
-                    \$workspace_id
-
-
-                    ORDER BY created_at DESC;
-
-
+                    WHERE
+                        document_id = \$id
+                        AND metadata.section = \$section
+                    ORDER BY chunk_index ASC;
                     ",
-
-                    bindings:[
-
-
-                        'workspace_id'=>
-
-                            (string)
-                            $workspaceId
-
-
+                    bindings: [
+                        'id' => (string) $documentId,
+                        'section' => strtolower(trim($section))
                     ]
-
                 )
-
-            );
-
-
-
-
-
-        return $this->format(
-            $response
+            )
         );
-
-
     }
 
-
-
-
-
-
-
-
-
-    public function find(
-        string $id
+    public function findSections(
+        string $documentId,
+        array $sections
     ): array {
+        if (empty($sections)) {
+            return [];
+        }
 
-
-        $response =
-
-
+        return $this->extract(
             Surreal::query(
-
                 new BoundQuery(
-
                     query: "
-
-
                     SELECT *
-
                     FROM {$this->table}
-
-
-                    WHERE id =
-                    type::thing(
-                        \$id
-                    )
-
-
-                    LIMIT 1;
-
-
+                    WHERE
+                        document_id = \$id
+                        AND metadata.section IN \$sections
+                    ORDER BY chunk_index ASC;
                     ",
-
-                    bindings:[
-
-
-                        'id'=>
-
-                            (string)
-                            $id
-
-
+                    bindings: [
+                        'id' => (string) $documentId,
+                        'sections' => array_map(
+                            fn($x) => strtolower(trim($x)),
+                            $sections
+                        )
                     ]
-
                 )
-
-            );
-
-
-
-
-
-        $result =
-
-            $this->format(
-                $response
-            );
-
-
-
-
-
-        return $result[0] ?? [];
-
+            )
+        );
     }
-
-
-
-
-
-
-
-
-
-    public function countByDocument(
-        string $documentId
-    ): int {
-
-
-        $response =
-
-
-            Surreal::query(
-
-                new BoundQuery(
-
-                    query: "
-
-
-                    SELECT count() AS total
-
-                    FROM {$this->table}
-
-
-                    WHERE document_id =
-                    \$document_id
-
-
-                    GROUP ALL;
-
-
-                    ",
-
-                    bindings:[
-
-
-                        'document_id'=>
-
-                            (string)
-                            $documentId
-
-
-                    ]
-
-                )
-
-            );
-
-
-
-
-
-        $result =
-
-            $this->format(
-                $response
-            );
-
-
-
-
-
-        return (int)
-            (
-                $result[0]['total']
-                ??
-                0
-            );
-
-
-    }
-
-
-
-
-
-
-
-
 
     public function searchContent(
-
         string $workspaceId,
-
         string $keyword,
-
         int $limit = 10
-
     ): array {
+        if (blank($keyword)) {
+            return [];
+        }
 
-
-        $response =
-
-
+        return $this->extract(
             Surreal::query(
-
                 new BoundQuery(
-
                     query: "
-
-
                     SELECT *
-
-
                     FROM {$this->table}
-
-
                     WHERE
-
-
-                        workspace_id =
-                        \$workspace_id
-
-
-                    AND
-
-
-                        string::lowercase(content)
-
-                        CONTAINS
-
-                        string::lowercase(
-                            \$keyword
-                        )
-
-
+                        workspace_id = \$workspace_id
+                        AND string::lowercase(content)
+                        CONTAINS string::lowercase(\$keyword)
+                    ORDER BY chunk_index ASC
                     LIMIT \$limit;
-
-
                     ",
-
-                    bindings:[
-
-
-                        'workspace_id'=>
-
-                            (string)
-                            $workspaceId,
-
-
-
-                        'keyword'=>
-
-                            $keyword,
-
-
-
-                        'limit'=>
-
-                            $limit
-
-
+                    bindings: [
+                        'workspace_id' => (string) $workspaceId,
+                        'keyword' => $keyword,
+                        'limit' => $limit
                     ]
-
                 )
-
-            );
-
-
-
-
-
-        return $this->format(
-            $response
+            )
         );
-
-
     }
 
-
-
-
-
-
-
-
+    public function searchByMetadata(
+        string $workspaceId,
+        string $key,
+        string $value,
+        int $limit = 10
+    ): array {
+        return $this->extract(
+            Surreal::query(
+                new BoundQuery(
+                    query: "
+                    SELECT *
+                    FROM {$this->table}
+                    WHERE
+                        workspace_id = \$workspace_id
+                        AND metadata.\$key = \$value
+                    ORDER BY chunk_index ASC
+                    LIMIT \$limit;
+                    ",
+                    bindings: [
+                        'workspace_id' => (string) $workspaceId,
+                        'key' => $key,
+                        'value' => $value,
+                        'limit' => $limit
+                    ]
+                )
+            )
+        );
+    }
 
     public function deleteDocument(
         string $documentId
     ): mixed {
-
-
         return Surreal::query(
-
             new BoundQuery(
-
                 query: "
-
-
                 DELETE FROM {$this->table}
-
-
-                WHERE document_id =
-                \$document_id;
-
-
+                WHERE document_id = \$id;
                 ",
-
-                bindings:[
-
-
-                    'document_id'=>
-
-                        (string)
-                        $documentId
-
-
+                bindings: [
+                    'id' => (string) $documentId
                 ]
-
             )
-
         );
-
-
     }
 
-
-
-
-
-
-
-
-
-    protected function format(
-        mixed $response
-    ): array {
-
-
-        if(empty($response)){
-
-            return [];
-
-        }
-
-
-
-
-
-
-        if(
-
-            is_object($response)
-
-            &&
-
-            method_exists(
-                $response,
-                'getData'
-            )
-
-        ){
-
-            $response =
-                $response->getData();
-
-        }
-
-
-
-
-
-
-        if(!is_array($response)){
-
-            return [];
-
-        }
-
-
-
-
-
-
-
-        if(
-
-            isset($response[0]['result'])
-
-            &&
-
-            is_array(
-                $response[0]['result']
-            )
-
-        ){
-
-            return collect(
-                    $response[0]['result']
-                )
-
-                ->values()
-
-                ->all();
-
-        }
-
-
-
-
-
-
-
-        return collect($response)
-
-            ->values()
-
-            ->all();
-
-
+    protected function recordId(
+        string $documentId,
+        int $index
+    ): string {
+        return md5($documentId . '_' . $index);
     }
 
+    protected function extract(mixed $response): array
+    {
+        if (empty($response)) {
+            return [];
+        }
 
+        if (is_object($response) && method_exists($response, 'getData')) {
+            $response = $response->getData();
+        }
+
+        if (isset($response[0]) && is_array($response[0])) {
+            if (isset($response[0]['result']) && is_array($response[0]['result'])) {
+                return collect($response[0]['result'])->values()->all();
+            }
+
+            return collect($response[0])->values()->all();
+        }
+
+        return is_array($response) ? collect($response)->values()->all() : [];
+    }
 }

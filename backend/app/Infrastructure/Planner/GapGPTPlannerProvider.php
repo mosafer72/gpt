@@ -44,8 +44,6 @@ class GapGPTPlannerProvider implements PlannerProvider
     public function analyze(ChatContext $context): IntentResult
     {
 
-        // \Log::info('Planner analyze executed');
-
 
         $prompt = <<<PROMPT
 
@@ -114,11 +112,6 @@ PROMPT;
             'total_tokens' => $response->usage->totalTokens ?? 0,
 
         ]);
-
-        // \Log::info('Planner Time', [
-        //     'seconds' => microtime(true) - $start
-        // ]);
-
 
         $content = trim($response->choices[0]->message->content);
 

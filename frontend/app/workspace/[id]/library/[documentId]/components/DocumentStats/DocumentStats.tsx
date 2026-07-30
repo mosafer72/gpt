@@ -3,15 +3,18 @@
 import { DocumentItem } from "../../../components/types/types";
 import styles from "./DocumentStats.module.css";
 
-
 interface Props {
   document: DocumentItem;
+  structure?: any;
+  sections?: any;
 }
 
-export default function DocumentStats({ document }: Props) {
-  const sizeMB = (document.size / 1024 / 1024).toFixed(2);
+export default function DocumentStats({ document, structure, sections }: Props) {
+  // اگر size رشته باشد، تبدیل آن به عدد یا مدیریت مقدار خالی
+  const sizeValue = typeof document.size === 'string' ? Number(document.size) : (document.size || 0);
+  const sizeMB = (sizeValue / 1024 / 1024).toFixed(2);
 
-  const statusMap = {
+  const statusMap: Record<string, { label: string; icon: string; className: string }> = {
     uploaded: {
       label: "آپلود شده",
       icon: "📤",

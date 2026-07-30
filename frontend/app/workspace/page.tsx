@@ -29,7 +29,7 @@ export default function WorkspacesPage() {
       try {
         const data = await getWorkspaces();
 
-        setWorkspaces(data);
+        setWorkspaces(data as any);
       } catch (err: any) {
         setError(err.message || "خطا در دریافت Workspace ها");
       } finally {

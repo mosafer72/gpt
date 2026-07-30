@@ -10,7 +10,8 @@ class DocumentMetadataExtractor
     public function extract(
         string $text,
         string $filename
-    ): array {
+    ): array
+    {
 
 
         $lines =
@@ -18,127 +19,300 @@ class DocumentMetadataExtractor
                 explode("\n", $text)
             )
             ->map(
-                fn($line) => trim($line)
+                fn($x)=>trim($x)
             )
             ->filter();
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Title
-        |--------------------------------------------------------------------------
-        */
-
-
-        $title =
-            $lines
-                ->first();
-
-
-
-        if (!$title) {
-
-            $title = pathinfo(
-                $filename,
-                PATHINFO_FILENAME
-            );
-
-        }
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Abstract
-        |--------------------------------------------------------------------------
-        */
-
-
-        $abstract = '';
-
-
-
-        $pattern =
-            '/abstract\s*(.*?)(introduction|1\. introduction)/is';
-
-
-
-        if (
-            preg_match(
-                $pattern,
-                $text,
-                $matches
-            )
-        ) {
-
-
-            $abstract =
-                trim(
-                    $matches[1]
-                );
-
-        }
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Year
-        |--------------------------------------------------------------------------
-        */
-
-
-        preg_match(
-            '/\b(19|20)\d{2}\b/',
-            $text,
-            $yearMatch
-        );
-
-
-
-        $year =
-            $yearMatch[0]
-            ??
-            null;
-
-
-
 
 
 
         return [
 
             'title' =>
-                $title,
-
-
-            'abstract' =>
-                mb_substr(
-                    $abstract,
-                    0,
-                    2000
+                $this->extractTitle(
+                    $lines,
+                    $filename
                 ),
 
 
             'authors' =>
-                [],
+                $this->extractAuthors(
+                    $lines
+                ),
 
 
             'year' =>
-                $year,
+                $this->extractYear(
+                    $text
+                ),
 
 
             'type' =>
-                'academic_paper'
+                'academic_paper',
 
+
+            'language' =>
+                $this->language(
+                    $text
+                )
 
         ];
 
     }
+
+
+
+
+
+
+
+    protected function extractTitle(
+        $lines,
+        string $filename
+    ): string
+    {
+
+
+        foreach(
+            $lines->take(15)
+            as $line
+        ){
+
+            if(
+                mb_strlen($line) < 10
+            ){
+                continue;
+            }
+
+
+
+            if(
+                $this->isNoise($line)
+            ){
+                continue;
+            }
+
+
+
+            /*
+             اولین خط معتبر
+             معمولا عنوان مقاله است
+            */
+
+
+            return $line;
+
+        }
+
+
+
+
+        return pathinfo(
+            $filename,
+            PATHINFO_FILENAME
+        );
+
+
+    }
+
+
+
+
+
+
+
+
+
+    protected function extractAuthors(
+        $lines
+    ): array
+    {
+
+
+        $authors=[];
+
+
+
+        foreach(
+            $lines->take(20)
+            as $line
+        ){
+
+
+
+            if(
+                $this->isNoise($line)
+            ){
+                continue;
+            }
+
+
+
+
+            /*
+              نویسنده ها معمولا
+              قبل از Abstract هستند
+              و شامل ایمیل/لینک نیستند
+            */
+
+
+            if(
+                preg_match(
+                    '/^[A-Z][a-z]+\s+[A-Z][a-z]+/',
+                    $line
+                )
+            ){
+
+                $authors[]=$line;
+
+            }
+
+
+
+        }
+
+
+
+        return array_values(
+            array_unique(
+                $authors
+            )
+        );
+
+
+    }
+
+
+
+
+
+
+
+
+
+    protected function extractYear(
+        string $text
+    ): ?string
+    {
+
+
+        if(
+            preg_match(
+                '/\b(19|20)\d{2}\b/',
+                $text,
+                $match
+            )
+        ){
+
+            return $match[0];
+
+        }
+
+
+
+        return null;
+
+
+    }
+
+
+
+
+
+
+
+
+
+    protected function language(
+        string $text
+    ): string
+    {
+
+
+        $fa =
+            preg_match_all(
+                '/[\x{0600}-\x{06FF}]/u',
+                $text
+            );
+
+
+
+        return $fa > 20
+            ? 'fa'
+            : 'en';
+
+    }
+
+
+
+
+
+
+
+
+
+    protected function isNoise(
+        string $line
+    ): bool
+    {
+
+
+        if(
+            str_contains(
+                strtolower($line),
+                'http'
+            )
+        ){
+
+            return true;
+
+        }
+
+
+
+
+        if(
+            str_contains(
+                strtolower($line),
+                '@'
+            )
+        ){
+
+            return true;
+
+        }
+
+
+
+
+        if(
+            preg_match(
+                '/^[0-9\.\-\s]+$/',
+                $line
+            )
+        ){
+
+            return true;
+
+        }
+
+
+
+
+        if(
+            mb_strlen($line)>150
+        ){
+
+            return true;
+
+        }
+
+
+
+
+        return false;
+
+    }
+
+
 
 }

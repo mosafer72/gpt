@@ -2,535 +2,117 @@
 
 namespace App\Infrastructure\Repositories;
 
-
 use SurrealDB\Laravel\Facades\Surreal;
 use SurrealDB\SDK\Query\BoundQuery;
-use Illuminate\Support\Facades\Log;
-
-
 
 class DocumentSectionPlanRepository
 {
-
-
-    protected string $table =
-        'document_section_plan';
-
-
-
-
-
-
-
-    public function store(
-        array $data
-    ) {
-
-
-        $payload = $this->normalizePayload(
-            $data
-        );
-
-
-
-        return Surreal::query(
-
-            new BoundQuery(
-
-                query: "
-
-                CREATE {$this->table}
-
-                CONTENT \$payload;
-
-                ",
-
-                bindings: [
-
-                    'payload' =>
-                        $payload
-
-                ]
-
-            )
-
-        );
-
-
-    }
-
-
-
-
-
-
-
-
-    public function storeBulk(
-        array $sections
-    ): void {
-
-
-        foreach ($sections as $section) {
-
-
-            try {
-
-
-                $this->store(
-                    $section
-                );
-
-
-            } catch (\Throwable $e) {
-
-
-                Log::warning(
-
-                    'SECTION PLAN STORE FAILED',
-
-                    [
-
-                        'error' =>
-                            $e->getMessage(),
-
-                        'section' =>
-                            $section['section'] ?? null
-
-                    ]
-
-                );
-
-
-            }
-
-
-        }
-
-
-    }
-
-
-
-
-
-
-
-
-    public function findTopSections(
-
-        string $workspaceId,
-
-        string $documentId,
-
-        int $limit = 20
-
-    ): array {
-
-
-
-        $response =
-            Surreal::query(
-
+    protected string $table = 'document_section_plan';
+
+    public function storeBulk(array $items): array
+    {
+        $results = [];
+
+        foreach ($items as $item) {
+
+            $payload = [
+                'document_id' => (string) ($item['document_id'] ?? ''),
+                'workspace_id' => (string) ($item['workspace_id'] ?? ''),
+                'section' => strtolower(trim($item['section'] ?? '')),
+                'section_title' => trim($item['section_title'] ?? ''),
+                'summary' => (string) ($item['summary'] ?? ''),
+                'keywords' => is_array($item['keywords'] ?? null)
+                    ? array_values($item['keywords'])
+                    : [],
+                'question_types' => is_array($item['question_types'] ?? null)
+                    ? array_values($item['question_types'])
+                    : [],
+                'answer_probability' => (float) ($item['answer_probability'] ?? 0.8),
+                'planner_rank' => (int) ($item['planner_rank'] ?? 0),
+                'selected_count' => (int) ($item['selected_count'] ?? 0),
+
+                // SurrealDB object
+                'metadata' => is_array($item['metadata'] ?? null)
+                    ? (object) $item['metadata']
+                    : (object) [],
+
+                'created_at' => now()->toISOString(),
+                'updated_at' => now()->toISOString(),
+            ];
+
+            $results[] = Surreal::query(
                 new BoundQuery(
-
                     query: "
-
-                    SELECT *
-
-                    FROM {$this->table}
-
-                    WHERE
-
-                        workspace_id = \$workspace
-
-                    AND
-
-                        document_id = \$document
-
-
-                    ORDER BY
-
-                        answer_probability DESC
-
-
-                    LIMIT \$limit;
-
-
+                        CREATE {$this->table}
+                        CONTENT \$payload;
                     ",
-
                     bindings: [
-
-                        'workspace' =>
-                            $workspaceId,
-
-
-                        'document' =>
-                            $documentId,
-
-
-                        'limit' =>
-                            $limit
-
+                        'payload' => $payload
                     ]
-
                 )
-
             );
+        }
 
-
-
-        return $this->formatResults(
-            $response
-        );
-
-
+        return $results;
     }
 
 
-
-
-
-
-
-
-
-
-    public function searchRelevantSections(
-
-        string $workspaceId,
-
-        string $documentId,
-
-        string $question,
-
-        int $limit = 5
-
-    ): array {
-
-
-        Log::debug(
-
-            'SECTION PLAN SEARCH',
-
-            [
-
-                'question' => $question
-
-            ]
-
-        );
-
-
-
-        return $this->findTopSections(
-
-            workspaceId:
-            $workspaceId,
-
-            documentId:
-            $documentId,
-
-            limit:
-            $limit
-
-        );
-
-
-    }
-
-
-
-
-
-
-
-
-
-    protected function normalizePayload(
-
-        array $data
-
-    ): array {
-
-
-        $probability =
-            (float)
-            (
-                $data['answer_probability']
-                ??
-                0
-            );
-
-
-
-        if ($probability > 1) {
-
-            $probability =
-                $probability / 100;
-
-        }
-
-
-
-
-        return [
-
-
-
-            'document_id' =>
-
-                (string)
-                (
-                    $data['document_id']
-                    ??
-                    ''
-                ),
-
-
-
-            'workspace_id' =>
-
-                (string)
-                (
-                    $data['workspace_id']
-                    ??
-                    ''
-                ),
-
-
-
-
-            'section' =>
-
-                strtolower(
-                    trim(
-                        (string)
-                        (
-                            $data['section']
-                            ??
-                            ''
-                        )
-                    )
-                ),
-
-
-
-
-            'section_title' =>
-
-                $this->normalizeString(
-                    $data['section_title'] ?? ''
-                ),
-
-
-
-
-            'summary' =>
-
-                $this->normalizeString(
-                    $data['summary'] ?? ''
-                ),
-
-
-
-
-            'keywords' =>
-
-                $this->normalizeStringArray(
-                    $data['keywords'] ?? []
-                ),
-
-
-
-
-            'question_types' =>
-
-                $this->normalizeStringArray(
-                    $data['question_types'] ?? []
-                ),
-
-
-
-
-
-            'answer_probability' =>
-
-                min(
-                    max(
-                        $probability,
-                        0
-                    ),
-                    1
-                ),
-
-
-
-
-            'planner_rank' =>
-
-                (int)
-                (
-                    $data['planner_rank']
-                    ??
-                    0
-                ),
-
-
-
-
-            'selected_count' =>
-
-                (int)
-                (
-                    $data['selected_count']
-                    ??
-                    0
-                ),
-
-
-
-
-            'metadata' =>
-
-                $data['metadata']
-                ??
-                [],
-
-
-
-
-            'created_at' =>
-
-                now()->toISOString()
-
-        ];
-
-
-
-    }
-
-
-
-
-
-
-
-
-
-    protected function normalizeString(
-        mixed $value
-    ): string {
-
-
-        if ($value === null) {
-
-            return '';
-
-        }
-
-
-        if (
-            is_array($value)
-            ||
-            is_object($value)
-        ) {
-
-            return json_encode(
-                $value,
-                JSON_UNESCAPED_UNICODE
-            );
-
-        }
-
-
-        return trim(
-            (string) $value
-        );
-
-
-    }
-
-
-
-
-
-
-
-
-    protected function normalizeStringArray(
-        mixed $value
-    ): array {
-
-
-        if (!is_array($value)) {
-
-            return [];
-
-        }
-
-
-
-        return collect($value)
-
-            ->map(
-                fn($item) =>
-                (string) $item
+    public function findByDocument(string $documentId): array
+    {
+        $response = Surreal::query(
+            new BoundQuery(
+                query: "
+                    SELECT *
+                    FROM {$this->table}
+                    WHERE document_id = \$documentId
+                    ORDER BY planner_rank ASC;
+                ",
+                bindings: [
+                    'documentId' => (string) $documentId
+                ]
             )
+        );
 
-            ->values()
-
-            ->toArray();
-
-
+        return $this->format($response);
     }
 
 
-
-
-
-
-
-
-
-    protected function formatResults(
-        $response
+    public function findByDocumentAndSection(
+        string $documentId,
+        string $section
     ): array {
 
+        $response = Surreal::query(
+            new BoundQuery(
+                query: "
+                    SELECT *
+                    FROM {$this->table}
+                    WHERE document_id = \$documentId
+                    AND section = \$section;
+                ",
+                bindings: [
+                    'documentId' => (string) $documentId,
+                    'section' => strtolower(trim($section))
+                ]
+            )
+        );
 
-        if (empty($response)) {
-
-            return [];
-
-        }
-
-
-
-
-        if (
-            isset($response[0]['result'])
-        ) {
-
-            return $response[0]['result'];
-
-        }
-
-
-
-        return is_array($response)
-
-            ?
-
-            $response
-
-            :
-
-            [];
-
-
+        return $this->format($response);
     }
 
 
+    protected function format($response): array
+    {
+        if (
+            is_object($response)
+            &&
+            method_exists($response, 'getData')
+        ) {
+            $data = $response->getData();
 
+            return $data[0]['result'] ?? [];
+        }
 
+        return [];
+    }
 }

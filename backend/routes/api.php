@@ -104,13 +104,17 @@ Route::middleware('auth:sanctum')->group(function () {
     );
 
 
-
     Route::prefix('workspaces/{workspace}')
         ->group(function () {
 
             Route::get(
                 'chats',
                 [ChatController::class, 'index']
+            );
+
+            Route::get(
+                'check-access',
+                [ChatController::class, 'checkAccess']
             );
 
 
@@ -448,8 +452,8 @@ Route::middleware('auth:sanctum')->group(function () {
         [WorkspaceController::class, 'models']
     );
     Route::get(
-        '/workspace-types/{id}/plans',
-        [WorkspaceController::class, 'plans']
+        '/workspace-types/{id}/workspace_plans',
+        [WorkspaceController::class, 'workspace_plans']
     );
     Route::post(
         '/workspace/initiate-payment',

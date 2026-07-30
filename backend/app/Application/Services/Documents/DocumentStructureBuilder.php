@@ -2,10 +2,8 @@
 
 namespace App\Application\Services\Documents;
 
-
 use App\Infrastructure\Repositories\DocumentStructureRepository;
 use App\Models\Document;
-
 
 
 class DocumentStructureBuilder
@@ -23,25 +21,14 @@ class DocumentStructureBuilder
 
 
 
-    /**
-     * Build document structure
-     *
-     * Input:
-     *  - Sections from DocumentSectionDetector
-     *
-     * Output:
-     *  - Document structure metadata
-     */
     public function build(
-
         Document $document,
-
         array $sections
+    ): array
+    {
 
-    ): array {
 
-
-        if (empty($sections)) {
+        if(empty($sections)){
 
             return [];
 
@@ -49,60 +36,29 @@ class DocumentStructureBuilder
 
 
 
+        $structureSections=[];
+        $order=1;
 
 
 
-
-        $structureSections = [];
-
-        $order = 1;
-
-
-
-
-
-
-
-
-        foreach ($sections as $section) {
-
+        foreach($sections as $section){
 
 
             $title =
-
                 trim(
-
-                    $section['title']
-                    ??
-                    'Untitled Section'
-
+                    $section['title'] ?? 'Untitled Section'
                 );
 
 
 
-
-
-
-            /**
-             * Compatible with DocumentSectionDetector
-             */
             $text =
-
                 trim(
-
-                    $section['content']
-                    ??
-                    ''
-
+                    $section['content'] ?? ''
                 );
 
 
 
-
-
-
-
-            if ($text === '') {
+            if($text===''){
 
                 continue;
 
@@ -110,173 +66,81 @@ class DocumentStructureBuilder
 
 
 
-
-
-
-
-
-            $name =
-
+            $normalized =
                 $this->normalizeSection(
-                    $title
+                    $section['normalized'] ?? $title
                 );
 
 
 
+            $structureSections[]=[
 
 
+                'name'=>
+                    $normalized,
 
 
-
-            $structureSections[] = [
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Identity
-                |--------------------------------------------------------------------------
-                */
+                'normalized'=>
+                    $normalized,
 
 
-                'name' =>
-
-                    $name,
-
-
-
-                'normalized' =>
-
-                    $name,
-
-
-
-                'title' =>
-
+                'title'=>
                     $title,
 
 
-
-                'order' =>
-
+                'order'=>
                     $order++,
 
 
-
-
-
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Content Information
-                |--------------------------------------------------------------------------
-                */
-
-
-                'summary' =>
-
-                    mb_substr(
-
-                        $text,
-
-                        0,
-
-                        700
-
+                'summary'=>
+                    $this->makeSummary(
+                        $text
                     ),
 
 
 
-
-                'word_count' =>
-
+                'word_count'=>
                     $this->wordCount(
                         $text
                     ),
 
 
 
-
-
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Retrieval Metadata
-                |--------------------------------------------------------------------------
-                */
-
-
-                'importance' =>
-
+                'importance'=>
                     $this->detectImportance(
-                        $title
+                        $normalized
                     ),
 
 
 
-
-                'keywords' =>
-
+                'keywords'=>
                     $this->extractKeywords(
                         $text
                     ),
 
 
 
+                'translation'=>[
 
+                    'status'=>'pending',
 
+                    'title_fa'=>null,
 
-
-                /*
-                |--------------------------------------------------------------------------
-                | Translation Pipeline
-                |--------------------------------------------------------------------------
-                */
-
-
-                'translation' => [
-
-                    'status' =>
-                        'pending',
-
-
-                    'title_fa' =>
-                        null,
-
-
-                    'summary_fa' =>
-                        null,
+                    'summary_fa'=>null
 
                 ],
 
 
 
-
-                /*
-                |--------------------------------------------------------------------------
-                | Source Position
-                |--------------------------------------------------------------------------
-                */
+                'start_line'=>
+                    $section['start_line'] ?? 0,
 
 
-                'start_line' =>
-
-                    $section['start_line']
-                    ??
-                    null,
-
-
-                'end_line' =>
-
-                    $section['end_line']
-                    ??
-                    null,
+                'end_line'=>
+                    $section['end_line'] ?? 0,
 
 
             ];
-
-
 
         }
 
@@ -286,133 +150,56 @@ class DocumentStructureBuilder
 
 
 
-        $payload = [
+        $payload=[
+
+
+            'document_id'=>
+                (string)$document->id,
 
 
 
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Document Identity
-            |--------------------------------------------------------------------------
-            */
-
-
-            'document_id' =>
-
-                (string)
-                $document->id,
+            'workspace_id'=>
+                (string)$document->workspace_id,
 
 
 
-            'workspace_id' =>
+            'title'=>[
 
-                (string)
-                $document->workspace_id,
-
-
-
-
-
-
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Document Metadata
-            |--------------------------------------------------------------------------
-            */
-
-
-            'title' => [
-
-
-                'name' =>
-
+                'name'=>
                     $document->name,
 
-
-                'type' =>
-
+                'type'=>
                     'academic_paper'
-
 
             ],
 
 
 
-
-
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Real Sections
-            |--------------------------------------------------------------------------
-            */
-
-
-            'sections' =>
-
+            'sections'=>
                 $structureSections,
 
 
 
+            'statistics'=>[
+
+                'section_count'=>
+                    count($structureSections),
 
 
-
-
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Statistics
-            |--------------------------------------------------------------------------
-            */
-
-
-            'statistics' => [
-
-
-                'section_count' =>
-
-                    count(
-                        $structureSections
-                    ),
-
-
-
-                'total_words' =>
-
+                'total_words'=>
                     array_sum(
-
                         array_column(
-
                             $structureSections,
-
                             'word_count'
-
                         )
-
                     )
-
 
             ],
 
 
 
-
-
-
-
-
-            'created_at' =>
-
-                now()
-                    ->toISOString()
-
-
+            'created_at'=>
+                now()->toISOString()
 
         ];
 
@@ -421,17 +208,9 @@ class DocumentStructureBuilder
 
 
 
-
-
-        $this->repository
-            ->store(
-                $payload
-            );
-
-
-
-
-
+        $this->repository->store(
+            $payload
+        );
 
 
 
@@ -448,33 +227,89 @@ class DocumentStructureBuilder
 
 
 
-    /**
-     * Normalize section name
-     */
     protected function normalizeSection(
-
         string $title
-
-    ): string {
+    ):string
+    {
 
 
         return mb_strtolower(
-
             trim(
-
                 preg_replace(
-
                     '/[^\p{L}\p{N}\s]/u',
-
                     '',
-
                     $title
-
                 )
-
             )
-
         );
+
+    }
+
+
+
+
+
+
+
+
+
+    protected function makeSummary(
+        string $text
+    ):string
+    {
+
+
+        $text =
+            trim(
+                preg_replace(
+                    '/\s+/u',
+                    ' ',
+                    $text
+                )
+            );
+
+
+
+        if(
+            mb_strlen($text)<=700
+        ){
+
+            return $text;
+
+        }
+
+
+
+        $summary =
+            mb_substr(
+                $text,
+                0,
+                700
+            );
+
+
+
+        $last =
+            mb_strrpos(
+                $summary,
+                '.'
+            );
+
+
+
+        if($last!==false){
+
+            return mb_substr(
+                $summary,
+                0,
+                $last+1
+            );
+
+        }
+
+
+
+        return $summary;
 
 
     }
@@ -487,24 +322,18 @@ class DocumentStructureBuilder
 
 
 
-    /**
-     * Count words
-     */
     protected function wordCount(
-
         string $text
-
-    ): int {
+    ):int
+    {
 
 
         $text =
-
             trim($text);
 
 
 
-
-        if ($text === '') {
+        if($text===''){
 
             return 0;
 
@@ -512,19 +341,11 @@ class DocumentStructureBuilder
 
 
 
-
-
-
         return count(
-
             preg_split(
-
                 '/\s+/u',
-
                 $text
-
             )
-
         );
 
 
@@ -538,126 +359,30 @@ class DocumentStructureBuilder
 
 
 
-    /**
-     * Detect section importance
-     */
     protected function detectImportance(
+        string $section
+    ):string
+    {
 
-        string $title
 
-    ): string {
-
-
-        $title =
-
+        $section =
             mb_strtolower(
-                $title
+                $section
             );
 
 
 
-
-
-
-
-        if (
-
-            str_contains(
-                $title,
-                'abstract'
+        if(
+            in_array(
+                $section,
+                [
+                    'methodology',
+                    'experiment',
+                    'results',
+                    'evaluation'
+                ]
             )
-
-            ||
-
-            str_contains(
-                $title,
-                'چکیده'
-            )
-
-            ||
-
-            str_contains(
-                $title,
-                'introduction'
-            )
-
-            ||
-
-            str_contains(
-                $title,
-                'مقدمه'
-            )
-
-        ) {
-
-            return 'high';
-
-        }
-
-
-
-
-
-
-
-
-        if (
-
-            str_contains(
-                $title,
-                'method'
-            )
-
-            ||
-
-            str_contains(
-                $title,
-                'methodology'
-            )
-
-            ||
-
-            str_contains(
-                $title,
-                'model'
-            )
-
-            ||
-
-            str_contains(
-                $title,
-                'architecture'
-            )
-
-            ||
-
-            str_contains(
-                $title,
-                'experiment'
-            )
-
-            ||
-
-            str_contains(
-                $title,
-                'evaluation'
-            )
-
-            ||
-
-            str_contains(
-                $title,
-                'روش'
-            )
-
-            ||
-
-            str_contains(
-                $title,
-                'آزمایش'
-            )
-
-        ) {
+        ){
 
             return 'very_high';
 
@@ -667,45 +392,40 @@ class DocumentStructureBuilder
 
 
 
-
-
-
-        if (
-
-            str_contains(
-                $title,
-                'reference'
+        if(
+            in_array(
+                $section,
+                [
+                    'abstract',
+                    'introduction',
+                    'related_work',
+                    'conclusion'
+                ]
             )
+        ){
 
-            ||
-
-            str_contains(
-                $title,
-                'bibliography'
-            )
-
-            ||
-
-            str_contains(
-                $title,
-                'appendix'
-            )
-
-            ||
-
-            str_contains(
-                $title,
-                'منابع'
-            )
-
-        ) {
-
-            return 'low';
+            return 'high';
 
         }
 
 
 
+
+
+        if(
+            in_array(
+                $section,
+                [
+                    'references',
+                    'bibliography',
+                    'appendix'
+                ]
+            )
+        ){
+
+            return 'low';
+
+        }
 
 
 
@@ -724,26 +444,38 @@ class DocumentStructureBuilder
 
 
 
-    /**
-     * Lightweight keyword extraction
-     */
     protected function extractKeywords(
-
         string $text
+    ):array
+    {
 
-    ): array {
+
+        $stopWords=[
+
+            'this',
+            'that',
+            'with',
+            'from',
+            'using',
+            'based',
+            'paper',
+            'method',
+            'approach',
+            'model',
+            'data',
+            'result',
+            'study',
+            'also'
+
+        ];
+
 
 
         $words =
-
             preg_split(
-
                 '/\s+/u',
-
                 mb_strtolower($text)
-
             );
-
 
 
 
@@ -751,27 +483,22 @@ class DocumentStructureBuilder
         return collect($words)
 
             ->map(
-
-                fn($word) =>
-
+                fn($word)=>
                     preg_replace(
-
                         '/[^\p{L}\p{N}]/u',
-
                         '',
-
                         $word
-
                     )
-
             )
 
             ->filter(
-
-                fn($word) =>
-
-                    mb_strlen($word) > 5
-
+                fn($word)=>
+                    mb_strlen($word)>4
+                    &&
+                    !in_array(
+                        $word,
+                        $stopWords
+                    )
             )
 
             ->countBy()
@@ -788,7 +515,6 @@ class DocumentStructureBuilder
 
 
     }
-
 
 
 }

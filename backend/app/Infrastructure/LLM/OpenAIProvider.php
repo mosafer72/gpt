@@ -55,16 +55,6 @@ class OpenAIProvider implements LlmProvider
         ChatRequest $request
     ): ChatResponse {
 
-        Log::info('OPENAI REQUEST', [
-
-            'model' => $request->model,
-
-            'temperature' => $request->temperature,
-
-            'max_tokens' => $request->maxTokens,
-
-        ]);
-
         $log = LLMRequest::create([
 
             'provider' => 'openai',

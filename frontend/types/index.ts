@@ -209,6 +209,8 @@ export interface DashboardResponse {
 
   workspace: Workspace | null;
 
+  workspace_types: any,
+  
   subscription: WorkspaceSubscription | null;
 
   wallet: TokenWallet | null;

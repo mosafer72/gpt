@@ -36,7 +36,6 @@ return [
 
         \App\Domain\Documents\Models\DocumentEmbedding::class,
 
-        \App\Domain\Documents\Models\DocumentVector::class,
     ],
 
     /*

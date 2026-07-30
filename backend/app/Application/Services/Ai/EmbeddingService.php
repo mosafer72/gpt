@@ -1,263 +1,60 @@
 <?php
-
 namespace App\Application\Services\Ai;
-
 use Illuminate\Support\Facades\Http;
-
 
 class EmbeddingService
 {
-
-
     protected string $baseUrl;
-
-
     protected string $model;
-
-
-
-
 
     public function __construct()
     {
-
-
-        $this->baseUrl =
-            config(
-                'services.local_ai.url',
-                'http://localhost:11434/v1'
-            );
-
-
-
-        $this->model =
-            config(
-                'services.local_ai.embedding_model',
-                'bge-m3'
-            );
-
-
+        $this->baseUrl=rtrim(config('services.local_ai.url','http://localhost:11434/v1'),'/');
+        $this->model=config('services.local_ai.embedding_model','bge-m3');
     }
 
+    protected function request(array|string $input):array
+    {
+        $response=Http::timeout(120)->post($this->baseUrl.'/embeddings',[
+            'model'=>$this->model,
+            'input'=>$input
+        ]);
 
+        if(!$response->successful())throw new \Exception('Embedding failed: '.$response->body());
 
+        $data=$response->json('data',[]);
 
-
-
-
-
-
-    /**
-     * Base embedding request
-     */
-    protected function request(
-        array|string $input
-    ): array {
-
-
-        $response =
-            Http::timeout(120)
-            ->post(
-
-                $this->baseUrl . '/embeddings',
-
-                [
-
-                    'model'=>
-                        $this->model,
-
-
-                    'input'=>
-                        $input
-
-                ]
-
-            );
-
-
-
-
-
-        if(!$response->successful()){
-
-
-            throw new \Exception(
-
-                'Embedding failed: '
-                .
-                $response->body()
-
-            );
-
-        }
-
-
-
-
-
-
-
-        return collect(
-
-            $response->json()['data'] ?? []
-
-        )
-        ->map(
-
-            fn($item)=>
-
-                $item['embedding'] ?? []
-
-        )
-        ->toArray();
-
+        return collect($data)->map(fn($item)=>$item['embedding']??[])->filter()->values()->all();
     }
 
-
-
-
-
-
-
-
-
-    /**
-     * Single embedding
-     */
-    public function embed(
-        string $text
-    ): array {
-
-
-        $result =
-            $this->request(
-                $text
-            );
-
-
-
-        return $result[0] ?? [];
-
+    public function embed(string $text):array
+    {
+        return $this->request($text)[0]??[];
     }
 
-
-
-
-
-
-
-
-
-    /**
-     * Document embedding
-     *
-     * bge-m3 instruction:
-     * passage:
-     */
-    public function embedDocument(
-        string $text
-    ): array {
-
-
-        return $this->embed(
-
-            "passage: "
-            .
-            $text
-
-        );
-
+    public function embedDocument(string $text):array
+    {
+        return $this->embed("passage: ".$this->clean($text));
     }
 
-
-
-
-
-
-
-
-
-    /**
-     * Query embedding
-     *
-     * bge-m3 instruction:
-     * query:
-     */
-    public function embedQuery(
-        string $text
-    ): array {
-
-
-
-        $query =
-
-        "
-query: {$text}
-
-Find relevant academic information about:
-methodology,
-architecture,
-approach,
-implementation,
-experiments,
-evaluation,
-results.
-";
-
-
-
-        return $this->embed(
-            $query
-        );
-
+    public function embedQuery(string $text):array
+    {
+        return $this->embed("query: ".$this->clean($text)."\nFind relevant academic information about methodology, architecture, approach, implementation, experiments, evaluation and results.");
     }
 
-
-
-
-
-
-
-
-
-    /**
-     * Batch embedding
-     */
-    public function embedMany(
-        array $texts
-    ): array {
-
-
-        if(empty($texts)){
-
-            return [];
-
-        }
-
-
-
-
-
-        $inputs =
-            array_map(
-
-                fn($text)=>
-
-                    "passage: ".$text,
-
-                $texts
-
-            );
-
-
-
-
+    public function embedMany(array $texts):array
+    {
+        if(empty($texts))return [];
 
         return $this->request(
-            $inputs
+            array_map(fn($text)=>"passage: ".$this->clean($text),$texts)
         );
-
     }
 
-
+    protected function clean(string $text):string
+    {
+        return trim(
+            preg_replace('/\s+/u',' ',$text)
+        );
+    }
 }

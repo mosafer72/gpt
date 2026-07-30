@@ -12,16 +12,17 @@ use Illuminate\Support\Facades\Log;
 class OllamaQwenChatProvider implements SmallChatProvider
 {
     protected Client $client;
-    protected string $url = 'http://127.0.0.1:11434/api/chat';
+    protected string $baseUrl;
 
-    public function __construct()
+    public function __construct(?Client $client = null)
     {
-        $this->client = new Client([
-            'timeout'         => 300,
-            'connect_timeout' => 3,
-        ]);
+        // خواندن آدرس از config و تعریف مقدار پیش‌فرض
+        $this->baseUrl = config('services.ollama.url', 'http://127.0.0.1:11434');
 
-        \Log::info("hiiiiiiiiiiiii");
+        $this->client = $client ?? new Client([
+            'timeout' => 300,
+            'connect_timeout' => 5,
+        ]);
     }
 
     public function stream(ChatRequest $request): \Generator
@@ -29,107 +30,103 @@ class OllamaQwenChatProvider implements SmallChatProvider
         $requestStart = microtime(true);
         $firstTokenTime = null;
 
-        Log::info('OLLAMA REQUEST', [
-            'model'    => $request->model,
-            'messages' => $this->prepareMessages($request),
-        ]);
 
-        $response = $this->client->post(
-            $this->url,
-            [
-                'stream' => true, // فعال‌سازی استریم لایه Guzzle
-                'json'   => [
-                    'model'      => $request->model,
-                    'messages'   => $this->prepareMessages($request),
-                    'stream'     => true,
-                    'keep_alive' => '24h',
-                    'options'    => [
-                        'temperature' => 0.4,
-                        'num_predict' => 2048,
-                        'num_ctx'     => 4096,
-                    ],
+        try {
+            $response = $this->client->post(
+                rtrim($this->baseUrl, '/') . '/api/chat',
+                [
+                    'stream' => true, // الزام برای استریم واقعی در Guzzle
+                    'json' => [
+                        'model' => $request->model,
+                        'messages' => $this->prepareMessages($request),
+                        'stream' => true,
+                        'keep_alive' => '24h',
+                        'options' => [
+                            'temperature' => $request->temperature ?? 0.1,
+                            'num_predict' => $request->maxTokens ?? 4096,
+                            'num_ctx' => 32768
+                        ]
+                    ]
                 ]
-            ]
-        );
-
-        // تبدیل بفر Guzzle به یک Resource واقعی در PHP
-        $stream = $response->getBody()->detach();
-
-        if (!is_resource($stream)) {
-            return;
+            );
+        } catch (\Throwable $e) {
+            Log::error('OLLAMA REQUEST FAILED', ['error' => $e->getMessage()]);
+            throw $e;
         }
 
-        // خواندن خط به خط بلافاصله بعد از رسیدن newline (\n) از سمت اولاما
-        while (!feof($stream)) {
-            $line = fgets($stream);
+        $body = $response->getBody();
+        $buffer = '';
 
-            if ($line === false) {
-                continue;
+        while (!$body->eof()) {
+            // خواندن دیتا و اضافه کردن به بفر
+            $buffer .= $body->read(1024);
+
+            // پردازش خط به خط برای جلوگیری از شکستن JSON
+            while (($pos = strpos($buffer, "\n")) !== false) {
+                $jsonLine = trim(substr($buffer, 0, $pos));
+                $buffer = substr($buffer, $pos + 1);
+
+                if ($jsonLine === '') {
+                    continue;
+                }
+
+                $data = json_decode($jsonLine, true);
+
+                if (!is_array($data)) {
+                    continue;
+                }
+
+                // زمان رسیدن به انتهای پاسخ
+                if (($data['done'] ?? false) === true) {
+                    $totalMs = round((microtime(true) - $requestStart) * 1000, 2);
+                    $ttftMs = $firstTokenTime ? round(($firstTokenTime - $requestStart) * 1000, 2) : null;
+
+                    // ارسال اطلاعات توکن‌ها به عنوان آخرین چانک متاداده
+                    yield [
+                        'content' => '',
+                        'usage' => new Usage(
+                            inputTokens: $data['prompt_eval_count'] ?? 0,
+                            outputTokens: $data['eval_count'] ?? 0,
+                            totalTokens: ($data['prompt_eval_count'] ?? 0) + ($data['eval_count'] ?? 0)
+                        )
+                    ];
+
+                    return;
+                }
+
+                $content = $data['message']['content'] ?? null;
+
+                if ($content !== null && $content !== '') {
+                    if ($firstTokenTime === null) {
+                        $firstTokenTime = microtime(true);
+                    }
+
+                    yield [
+                        'content' => $content
+                    ];
+                }
             }
-
-            $line = trim($line);
-
-            if ($line === '') {
-                continue;
-            }
-
-            $data = json_decode($line, true);
-
-            if (!is_array($data)) {
-                continue;
-            }
-
-            if (($data['done'] ?? false) === true) {
-                $total = round((microtime(true) - $requestStart) * 1000, 2);
-                $generation = $firstTokenTime
-                    ? round((microtime(true) - $firstTokenTime) * 1000, 2)
-                    : 0;
-
-                Log::info('OLLAMA PERFORMANCE', [
-                    'model'         => $request->model,
-                    'ttft_ms'       => $firstTokenTime ? round(($firstTokenTime - $requestStart) * 1000, 2) : null,
-                    'generation_ms' => $generation,
-                    'total_ms'      => $total,
-                ]);
-
-                fclose($stream);
-                return;
-            }
-
-            $content = $data['message']['content'] ?? null;
-
-            if ($content === null || $content === '') {
-                continue;
-            }
-
-            if ($firstTokenTime === null) {
-                $firstTokenTime = microtime(true);
-            }
-
-            // ارسال آنی توکن تولید شده به لایه‌های بالاتر
-            yield [
-                'content' => $content
-            ];
         }
-
-        fclose($stream);
     }
 
     public function chat(ChatRequest $request): ChatResponse
     {
         $content = '';
+        $finalUsage = new Usage(0, 0, 0);
 
         foreach ($this->stream($request) as $chunk) {
             $content .= $chunk['content'];
+
+            // اگر چانک شامل اطلاعات توکن بود، آن را ذخیره کن
+            if (isset($chunk['usage'])) {
+                $finalUsage = $chunk['usage'];
+            }
         }
 
         return new ChatResponse(
             content: $content,
-            usage: new Usage(
-                inputTokens: 0,
-                outputTokens: 0,
-                totalTokens: 0
-            )
+            usage: $finalUsage,
+            model: $request->model
         );
     }
 
@@ -137,7 +134,7 @@ class OllamaQwenChatProvider implements SmallChatProvider
     {
         return collect($request->messages)
             ->map(fn($message) => [
-                'role'    => $message->role,
+                'role' => $message->role,
                 'content' => $message->content
             ])
             ->values()

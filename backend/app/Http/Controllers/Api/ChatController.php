@@ -2,38 +2,80 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Application\Pipelines\WorkspacePipelineFactory;
 use App\Http\Controllers\Controller;
+use App\Application\Context\ChatContext;
 use App\Jobs\StoreMessageJob;
+use App\Models\Chat;
 use App\Models\Workspace;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use App\Models\Chat;
-use App\Application\Context\ChatContext;
-use App\Application\Pipelines\ChatPipeline;
-use App\Domain\Contracts\MessageStore;
+use Illuminate\Support\Facades\Cache;
 
 class ChatController extends Controller
 {
     public function __construct(
-        protected ChatPipeline $chatPipeline,
-        protected MessageStore $messageStore
+        protected WorkspacePipelineFactory $pipelineFactory
     ) {
     }
 
-    /**
-     * لیست چت‌ها
-     */
-    public function index(): JsonResponse
+
+    public function checkAccess(Request $request, $id): JsonResponse
+    {
+        $user = auth()->user();
+
+        if (!$user) {
+            return response()->json([
+                'has_access' => false,
+                'message' => 'Unauthenticated'
+            ], 401);
+        }
+
+        $feature = $request->query('feature');
+
+        // ۱. بررسی اینکه آیا این workspace متعلق به کاربر است و فعال می‌باشد
+        $workspace = $user->workspaces()
+            ->with(['workspaceType', 'plan.models'])
+            ->where('workspaces.id', $id)
+            ->where('workspaces.is_active', true)
+            ->first();
+
+        if (!$workspace) {
+            return response()->json([
+                'has_access' => false,
+                'message' => 'Workspace not found or unauthorized'
+            ], 403);
+        }
+
+        // ۲. اگر فیلتر feature ارسال شده بود، بررسی کن که آیا در آرایه features آن نوع ورک‌اسپیس وجود دارد یا خیر
+        if ($feature) {
+            $workspaceType = $workspace->workspaceType;
+
+            // چک کردن اینکه آیا ستون features به صورت آرایه وجود دارد و شامل مقدار مورد نظر است
+            if (!$workspaceType || !is_array($workspaceType->features) || !in_array($feature, $workspaceType->features)) {
+                return response()->json([
+                    'has_access' => false,
+                    'message' => 'Feature not available in this workspace type'
+                ], 403);
+            }
+        }
+
+        return response()->json([
+            'has_access' => true,
+            'workspace' => $workspace
+        ]);
+    }
+    public function index($workspace_id): JsonResponse
     {
         $userId = auth()->id();
+
         $cacheKey = "user:{$userId}:chats:last20";
 
         $chats = Cache::remember(
             $cacheKey,
             now()->addMinutes(10),
-            function () use ($userId) {
-                return Chat::where('user_id', $userId)
+            function () use ($userId, $workspace_id) {
+                return Chat::where(['user_id' => $userId], ["workspace_id" => $workspace_id])
                     ->with([
                         'messages' => function ($q) {
                             $q->latest()->limit(1);
@@ -48,26 +90,32 @@ class ChatController extends Controller
         return response()->json($chats);
     }
 
-    /**
-     * پیام‌های یک چت
-     */
     public function messages(Chat $chat, Request $request): JsonResponse
     {
         if ($chat->user_id !== auth()->id()) {
-            return response()->json(['error' => 'Forbidden'], 403);
+            return response()->json([
+                'error' => 'Forbidden'
+            ], 403);
         }
 
         $perPage = (int) $request->input('per_page', 20);
         $page = (int) $request->input('page', 1);
-        $cacheKey = "chat:{$chat->id}:messages:page:{$page}:limit:{$perPage}";
+
+        $cacheKey = "chat:{$chat->id}:messages:{$page}:{$perPage}";
 
         $messages = Cache::remember(
             $cacheKey,
             now()->addMinutes(10),
             function () use ($chat, $perPage, $page) {
+
                 $paginator = $chat->messages()
                     ->orderBy('created_at', 'asc')
-                    ->paginate($perPage, ['*'], 'page', $page);
+                    ->paginate(
+                        $perPage,
+                        ['*'],
+                        'page',
+                        $page
+                    );
 
                 return [
                     'data' => $paginator->items(),
@@ -75,7 +123,7 @@ class ChatController extends Controller
                         'current_page' => $paginator->currentPage(),
                         'last_page' => $paginator->lastPage(),
                         'per_page' => $paginator->perPage(),
-                        'total' => $paginator->total(),
+                        'total' => $paginator->total()
                     ]
                 ];
             }
@@ -84,18 +132,27 @@ class ChatController extends Controller
         return response()->json($messages);
     }
 
-    /**
-     * ارسال پیام و پاسخ Stream آنی بدون تاخیر
-     */
-    /**
-     * ارسال پیام و پاسخ Stream آنی بدون تاخیر
-     */
     public function store(Request $request)
     {
         $user = auth()->user();
 
         if (!$user) {
-            return response()->json(['error' => 'Unauthenticated'], 401);
+            return response()->json([
+                'error' => 'Unauthenticated'
+            ], 401);
+        }
+
+        // بررسی و گرفتن Workspace فعال کاربر در همان ابتدا
+        $workspace = $user->workspaces()
+            ->where('is_active', true)
+            ->first();
+
+        if (!$workspace) {
+            return response()->json([
+                'success' => false,
+                'error' => 'No active workspace',
+                'message' => 'workspace فعالی برای شما یافت نشد.'
+            ], 403);
         }
 
         $request->validate([
@@ -103,275 +160,198 @@ class ChatController extends Controller
             'chat_id' => 'nullable|exists:chats,id',
             'model_id' => 'required|exists:ai_models,id',
             'image' => 'nullable|image|max:5120',
-            'paper_id' => 'nullable|exists:papers,id',
+            'pdf' => 'nullable|file|mimes:pdf|max:20480',
             'document_ids' => 'nullable|array',
-            'document_ids.*' => 'exists:documents,id'
+            'document_ids.*' => 'exists:documents,id',
+            'paper_id' => 'nullable|exists:papers,id'
         ]);
 
-        /*
-        |--------------------------------------------------------------------------
-        | ۱. دریافت Workspace فعال
-        |--------------------------------------------------------------------------
-        */
-        $workspace = $user->workspaces()
-            ->where('is_active', true)
-            ->first();
+        $content = trim($request->message ?? '');
 
-        if (!$workspace) {
-            return response()->json(['error' => 'No active workspace'], 403);
+        // اگر داکیومنت انتخاب شده اما متن پیام خالی است
+        if (empty($content)) {
+            if (!empty($request->document_ids) || $request->hasFile('pdf') || $request->hasFile('image')) {
+                return response()->stream(
+                    function () {
+                        $noticeText = "داکیومنت انتخاب شد. لطفاً یک پیام یا سوال بنویسید.";
+
+                        $chars = mb_str_split($noticeText);
+                        foreach ($chars as $char) {
+                            echo "data: " . json_encode([
+                                'content' => $char
+                            ], JSON_UNESCAPED_UNICODE) . "\n\n";
+
+                            if (ob_get_level() > 0) {
+                                ob_flush();
+                            }
+                            flush();
+                            usleep(25000);
+                        }
+
+                        echo "data: [DONE]\n\n";
+                        flush();
+                    },
+                    200,
+                    [
+                        'Content-Type' => 'text/event-stream',
+                        'Cache-Control' => 'no-cache',
+                        'Connection' => 'keep-alive',
+                        'X-Accel-Buffering' => 'no'
+                    ]
+                );
+            }
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Empty message',
+                'message' => 'متن پیام نمی‌تواند خالی باشد.'
+            ], 422);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | ۲. بررسی اشتراک فعال
-        |--------------------------------------------------------------------------
-        */
         $subscription = $workspace->activeSubscription();
 
         if (!$subscription) {
-            return response()->json(['error' => 'No active subscription'], 403);
+            return response()->json([
+                'error' => 'No active subscription'
+            ], 403);
         }
 
         $subscription->load('workspacePlan.models');
 
-        if (!$subscription->workspacePlan) {
-            return response()->json(['error' => 'No workspace plan associated with subscription'], 403);
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | ۳. بررسی دسترسی به مدل AI
-        |--------------------------------------------------------------------------
-        */
         $aiModel = $subscription->workspacePlan
-            ->models()
-            ->where('ai_models.id', $request->model_id)
-            ->first();
+            ->models
+            ->firstWhere('id', $request->model_id);
 
         if (!$aiModel) {
-            return response()->json(['error' => 'Model unavailable'.$subscription->workspacePlan], 403);
+            return response()->json([
+                'success' => false,
+                'error' => 'Model unavailable',
+                'message' => "مدل انتخاب شده (ID: {$request->model_id}) در اشتراک فعلی شما در دسترس نیست."
+            ], 403);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | ۴. آپلود تصویر در صورت وجود
-        |--------------------------------------------------------------------------
-        */
-        $imagePath = null;
-        if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('chat-images', 'public');
-        }
-        $imageUrl = $imagePath ? asset('storage/' . $imagePath) : null;
-
-        /*
-        |--------------------------------------------------------------------------
-        | ۵. ساخت یا یافتن چت (با اعتبارسنجی تعلق به workspace)
-        |--------------------------------------------------------------------------
-        */
         if ($request->chat_id) {
             $chat = Chat::where('id', $request->chat_id)
                 ->where('workspace_id', $workspace->id)
                 ->first();
 
             if (!$chat) {
-                return response()->json(['error' => 'Chat not found in this workspace'], 404);
+                return response()->json([
+                    'error' => 'Chat not found'
+                ], 404);
             }
         } else {
             $chat = Chat::create([
                 'user_id' => $user->id,
                 'workspace_id' => $workspace->id,
-                'title' => mb_substr($request->message ?? 'New Chat', 0, 50)
+                'title' => mb_substr($content, 0, 50)
             ]);
         }
 
         Cache::forget("user:{$user->id}:chats:last20");
 
-        $content = $request->message ?? '';
+        $documentIds = array_map('strval', $request->document_ids ?? []);
 
-        /*
-        |--------------------------------------------------------------------------
-        | ۶. ارسال Async پیام کاربر به صف دیتابیس
-        |--------------------------------------------------------------------------
-        */
-        StoreMessageJob::dispatch([
-            'id' => uniqid(),
-            'conversation' => (string) $chat->id,
-            'user_id' => (string) $user->id,
-            'workspace_id' => $workspace->id,
-            'role' => 'user',
-            'content' => $content,
-            'token_count' => 0,
-            'metadata' => [
-                'model_id' => $aiModel->id,
-                'document_ids' => $request->document_ids ?? [],
-                'attachments' => $imagePath ? [['type' => 'image', 'url' => $imageUrl]] : []
-            ],
-            'created_at' => now()->toDateTimeString()
-        ]);
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('chat-images', 'public');
+        }
 
-        /*
-        |--------------------------------------------------------------------------
-        | ۷. ساخت Context
-        |--------------------------------------------------------------------------
-        */
+        $pdfPath = null;
+        if ($request->hasFile('pdf')) {
+            $pdfPath = $request->file('pdf')->store('chat-pdf', 'public');
+        }
+
         $context = new ChatContext(
             userId: (string) $user->id,
             conversationId: (string) $chat->id,
             currentMessage: $content,
             model: $aiModel->key
         );
+        $context->setWorkspace($workspace);
 
         $context->setMetadata([
             'workspace_id' => $workspace->id,
             'model_id' => $aiModel->id,
-            'document_ids' => $request->document_ids ?? [],
-            'attachments' => $imagePath ? [['type' => 'image', 'url' => $imageUrl]] : []
+            'document_ids' => $documentIds,
+            'paper_id' => $request->paper_id,
+            'attachments' => [
+                'image' => $imagePath,
+                'pdf' => $pdfPath
+            ]
         ]);
 
-        /*
-        |--------------------------------------------------------------------------
-        | بستن سشن برای جلوگیری از قفل شدن درخواست‌های همزمان کاربر
-        |--------------------------------------------------------------------------
-        */
-        if (request()->hasSession()) {
-            session()->writeClose();
-        }
+        $pipeline = $this->pipelineFactory->make($workspace["type"]);
 
-        /*
-        |--------------------------------------------------------------------------
-        | ۸. ارسال Response Stream بهینه شده و مقاوم
-        |--------------------------------------------------------------------------
-        */
         return response()->stream(
-            function () use ($context, $workspace) {
-                // تنظیمات برای خاموش کردن کامل بافرینگ سرور
-                @ini_set('zlib.output_compression', 'Off');
-                @ini_set('output_buffering', 'Off');
-                @ini_set('implicit_flush', '1');
-
-                while (ob_get_level() > 0) {
-                    @ob_end_clean();
-                }
-
-                set_time_limit(0); // جلوگیری از Timeout شدن اسکریپت در استریم‌های طولانی
-
-                try {
-                    $result = $this->chatPipeline->stream($context);
-                    $fullResponse = '';
-
-                    foreach ($result as $chunk) {
-                        // بررسی قطع اتصال کاربر (Abort شدن کلاینت)
-                        if (connection_aborted()) {
-                            break;
-                        }
-
-                        $text = '';
-
-                        if (isset($chunk['content'])) {
-                            $text = $chunk['content'];
-                        } elseif (isset($chunk['choices'][0]['delta']['content'])) {
-                            $text = $chunk['choices'][0]['delta']['content'];
-                        }
-
-                        if ($text === '') {
-                            continue;
-                        }
-
-                        $fullResponse .= $text;
-
-                        // ارسال استاندارد SSE
-                        echo "data: " . json_encode(['content' => $text], JSON_UNESCAPED_UNICODE) . "\n\n";
+            function () use ($pipeline, $context) {
+                $pipeline->stream(
+                    $context,
+                    function ($chunk) {
+                        echo "data: " . json_encode(
+                            $chunk,
+                            JSON_UNESCAPED_UNICODE
+                        ) . "\n\n";
 
                         if (ob_get_level() > 0) {
-                            @ob_flush();
+                            ob_flush();
                         }
-                        @flush();
-                    }
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | ذخیره پیام نهایی هوش مصنوعی پس از اتمام استریم
-                    |--------------------------------------------------------------------------
-                    */
-                    if ($fullResponse !== '') {
-                        StoreMessageJob::dispatch([
-                            'id' => uniqid(),
-                            'conversation' => (string) $context->conversationId,
-                            'user_id' => (string) $context->userId,
-                            'workspace_id' => $workspace->id,
-                            'role' => 'assistant',
-                            'content' => $fullResponse,
-                            'token_count' => 0,
-                            'metadata' => [
-                                'model' => $context->model,
-                                'document_ids' => $context->metadata['document_ids'] ?? []
-                            ],
-                            'created_at' => now()->toDateTimeString()
-                        ]);
+                        flush();
                     }
+                );
 
-                    echo "data: [DONE]\n\n";
-                    if (ob_get_level() > 0) {
-                        @ob_flush();
-                    }
-                    @flush();
-
-                } catch (\Exception $e) {
-                    \Log::error("Chat Stream Error: " . $e->getMessage());
-                    echo "data: " . json_encode(['error' => 'Stream failed'], JSON_UNESCAPED_UNICODE) . "\n\n";
-                    @flush();
-                }
+                echo "data: [DONE]\n\n";
+                flush();
             },
             200,
             [
                 'Content-Type' => 'text/event-stream',
-                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Cache-Control' => 'no-cache',
                 'Connection' => 'keep-alive',
-                'X-Accel-Buffering' => 'no', // حیاتی برای Nginx جهت جلوگیری از بافرینگ
-                'Content-Encoding' => 'none',
+                'X-Accel-Buffering' => 'no'
             ]
         );
     }
-
-    /**
-     * نمایش چت
-     */
-    public function show(Workspace $workspace, Chat $chat)
+    public function show($id, $chat)
     {
-        if ($chat->workspace_id !== $workspace->id) {
+        $chat = Chat::with('messages')->findOrFail($chat);
+
+        if ($chat->user_id !== auth()->id()) {
             return response()->json([
-                'success' => false,
-                'message' => 'Chat does not belong to workspace'
-            ], 404);
+                'error' => 'Forbidden'
+            ], 403);
         }
 
         return response()->json([
-            'success' => true,
-            'chat' => $chat->load('messages')
+            'chat' => $chat
         ]);
     }
 
-    /**
-     * حذف چت
-     */
     public function destroy(Chat $chat): JsonResponse
     {
         if ($chat->user_id !== auth()->id()) {
-            return response()->json(['error' => 'Forbidden'], 403);
+            return response()->json([
+                'error' => 'Forbidden'
+            ], 403);
         }
 
-        $userId = auth()->id();
         $chatId = $chat->id;
+        $userId = auth()->id();
 
         $chat->messages()->delete();
         $chat->delete();
 
-        Cache::forget("user:{$userId}:chats:last20");
-        Cache::forget("chat:{$chatId}:messages:page:1:limit:50");
+        Cache::forget(
+            "user:{$userId}:chats:last20"
+        );
+
+        Cache::forget(
+            "chat:{$chatId}:messages:page:1:limit:50"
+        );
 
         return response()->json([
-            'success' => true,
-            'message' => 'deleted'
+            'success' => true
         ]);
     }
 }

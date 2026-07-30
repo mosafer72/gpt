@@ -2,549 +2,131 @@
 
 namespace App\Application\Services\Documents;
 
-
 use App\Application\Services\Ai\EmbeddingService;
-
 use App\Application\DTOs\Documents\RetrievalResult;
-
 use App\Domain\Documents\Contracts\DocumentVectorRepositoryInterface;
-
 use App\Infrastructure\Repositories\DocumentChunkRepository;
-
 use Illuminate\Support\Facades\Log;
-
-
 
 class HybridDocumentRetrievalService
 {
-
-
     public function __construct(
-
         protected EmbeddingService $embeddingService,
-
-
         protected DocumentVectorRepositoryInterface $vectorRepository,
-
-
-        protected DocumentChunkRepository $chunkRepository
-
-
-    )
-    {
-
-    }
-
-
-
-
-
-
-
-
+        protected DocumentChunkRepository $chunkRepository,
+        protected SectionRanker $sectionRanker
+    ) {}
 
     public function retrieve(
-
         string $workspaceId,
-
         string $question,
-
         int $limit = 8,
-
-        array $filters = []
-
+        array $filters = [],
+        array $sectionPlan = []
     ): array {
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Semantic Retrieval
-        |--------------------------------------------------------------------------
-        */
-
-
         $semanticResults = [];
 
-
-
+        // ۱. جستجوی برداری (Vector Search)
         try {
+            $embedding = $this->embeddingService->embedQuery($question);
 
-
-
-            $embedding =
-
-                $this->embeddingService
-                    ->embedDocument(
-                        $question
-                    );
-
-
-
-            if(!empty($embedding)){
-
-
-                $semanticResults =
-
-                    $this->vectorRepository
-                        ->search(
-
-                            workspaceId:$workspaceId,
-
-                            vector:$embedding,
-
-                            limit:$limit * 5,
-
-                            filters:$filters
-
-                        );
-
-
+            if (!empty($embedding)) {
+                $semanticResults = $this->vectorRepository->search(
+                    workspaceId: $workspaceId,
+                    vector: $embedding,
+                    limit: $limit * 4,
+                    filters: $filters
+                );
             }
+        } catch (\Throwable $e) {
+            Log::warning('HYBRID VECTOR SEARCH FAILED', [
+                'error' => $e->getMessage()
+            ]);
+        }
 
+        // ۲. استخراج کلمات کلیدی برای جلوگیری از جستجوی جملات محاوره‌ای
+        $cleanKeyword = $this->extractSearchableKeywords($question);
+        $keywordResults = [];
 
-
-        }catch(\Throwable $e){
-
-
-
-            Log::warning(
-
-                'HYBRID VECTOR SEARCH FAILED',
-
-                [
-
-                    'error'=>
-                        $e->getMessage()
-
-                ]
-
+        if (!empty($cleanKeyword)) {
+            $keywordResults = $this->chunkRepository->searchContent(
+                workspaceId: $workspaceId,
+                keyword: $cleanKeyword,
+                limit: $limit * 2
             );
-
-
         }
 
+        // ۳. ادغام نتایج Semantic و Keyword
+        $merged = [];
 
-
-
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Keyword Retrieval
-        |--------------------------------------------------------------------------
-        */
-
-
-        $keywordResults =
-
-            $this->chunkRepository
-                ->searchContent(
-
-                    workspaceId:$workspaceId,
-
-                    keyword:$question,
-
-                    limit:$limit * 3
-
-                );
-
-
-
-
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Merge Results
-        |--------------------------------------------------------------------------
-        */
-
-
-        $merged=[];
-
-
-
-
-
-
-
-        foreach($semanticResults as $item){
-
-
-
-            $id =
-
-                $item['chunk_id']
-                ??
-                md5(
-                    $item['content']
-                    ??
-                    ''
-                );
-
-
-
-            $merged[$id]=[
-
-
-                'content'=>
-
-                    $item['content']
-                    ??
-                    '',
-
-
-                'chunk_id'=>
-
-                    $item['chunk_id']
-                    ??
-                    '',
-
-
-                'metadata'=>
-
-                    $item['metadata']
-                    ??
-                    [],
-
-
-                'vector_score'=>
-
-                    (float)
-                    (
-                        $item['score']
-                        ??
-                        0
-                    ),
-
-
-                'keyword_score'=>0
-
-
+        foreach ($semanticResults as $item) {
+            $id = $item['chunk_id'] ?? md5($item['content'] ?? '');
+            $merged[$id] = [
+                'chunk_id' => $id,
+                'content' => $item['content'] ?? '',
+                'metadata' => $item['metadata'] ?? [],
+                'score' => (float) ($item['score'] ?? 0),
+                'vector_score' => (float) ($item['score'] ?? 0),
+                'keyword_score' => 0
             ];
-
-
-
         }
 
-
-
-
-
-
-
-
-
-        foreach($keywordResults as $item){
-
-
-
-            $id =
-
-                $item['id']
-                ??
-                md5(
-                    $item['content']
-                    ??
-                    ''
-                );
-
-
-
-
-
-            if(!isset($merged[$id])){
-
-
-                $merged[$id]=[
-
-
-                    'content'=>
-
-                        $item['content']
-                        ??
-                        '',
-
-
-                    'chunk_id'=>
-
-                        $item['id']
-                        ??
-                        '',
-
-
-                    'metadata'=>
-
-                        $item['metadata']
-                        ??
-                        [],
-
-
-                    'vector_score'=>0,
-
-
-                    'keyword_score'=>0
-
-
+        foreach ($keywordResults as $item) {
+            $id = $item['id'] ?? md5($item['content'] ?? '');
+            if (!isset($merged[$id])) {
+                $merged[$id] = [
+                    'chunk_id' => $id,
+                    'content' => $item['content'] ?? '',
+                    'metadata' => $item['metadata'] ?? [],
+                    'score' => 0.5,
+                    'vector_score' => 0,
+                    'keyword_score' => 0.8
                 ];
-
-
+            } else {
+                $merged[$id]['keyword_score'] = 0.8;
+                // ترکیب وزن در صورت وجود در هر دو جستجو
+                $merged[$id]['score'] = ($merged[$id]['vector_score'] * 0.7) + (0.8 * 0.3);
             }
-
-
-
-
-
-
-            $merged[$id]['keyword_score']=0.8;
-
-
-
         }
 
-
-
-
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Hybrid Ranking
-        |--------------------------------------------------------------------------
-        */
-
-
-        $results=[];
-
-
-
-
-
-
-
-        foreach($merged as $item){
-
-
-
-            $metadata =
-
-                $item['metadata'];
-
-
-
-
-
-            $section =
-
-                strtolower(
-
-                    $metadata['section']
-                    ??
-                    ''
-
-                );
-
-
-
-
-
-            $score =
-
-                ($item['vector_score'] * 0.65)
-
-                +
-
-                ($item['keyword_score'] * 0.20);
-
-
-
-
-
-
-
-
-
-            /*
-            Section Priority
-            */
-
-
-            if(
-
-                in_array(
-
-                    $section,
-
-                    [
-
-                        'methodology',
-
-                        'architecture',
-
-                        'implementation',
-
-                        'model'
-
-                    ],
-
-                    true
-
-                )
-
-            ){
-
-                $score +=0.10;
-
-            }
-
-
-
-            elseif(
-
-                in_array(
-
-                    $section,
-
-                    [
-
-                        'results',
-
-                        'evaluation',
-
-                        'conclusion'
-
-                    ],
-
-                    true
-
-                )
-
-            ){
-
-                $score +=0.05;
-
-            }
-
-
-
-
-
-
-
-
-
-            /*
-            Metadata Boost
-            */
-
-
-            if(
-
-                ($metadata['importance'] ?? '')
-
-                ===
-
-                'very_high'
-
-            ){
-
-                $score +=0.05;
-
-            }
-
-
-
-
-
-
-
-            $results[]=
-
-                new RetrievalResult(
-
-
-                    chunkId:
-
-                        $item['chunk_id'],
-
-
-                    content:
-
-                        $item['content'],
-
-
-                    score:
-
-                        min(
-                            $score,
-                            1
-                        ),
-
-
-                    metadata:
-
-                        $metadata
-
-
-                );
-
-
-
+        if (empty($merged)) {
+            return [];
         }
 
+        // ۴. رتبه‌بندی نهایی بر اساس Plan بخش‌ها توسط SectionRanker
+        $chunksArray = array_values($merged);
 
+        if (!empty($sectionPlan)) {
+            $chunksArray = $this->sectionRanker->rank($chunksArray, $sectionPlan);
+        }
 
+        // ۵. تبدیل به DTO
+        $results = [];
+        foreach ($chunksArray as $item) {
+            $results[] = new RetrievalResult(
+                chunkId: (string) ($item['chunk_id'] ?? ''),
+                content: $item['content'] ?? '',
+                score: min((float) ($item['planner_score'] ?? $item['score'] ?? 0), 1.0),
+                metadata: $item['metadata'] ?? []
+            );
+        }
 
-
-
-
-
-
-        usort(
-
-            $results,
-
-            fn($a,$b)=>
-
-                $b->score
-
-                <=>
-
-                $a->score
-
-        );
-
-
-
-
-
-
-
-
-
-        return array_slice(
-
-            $results,
-
-            0,
-
-            $limit
-
-        );
-
-
+        return array_slice($results, 0, $limit);
     }
 
+    /**
+     * حذف عبارات محاوره‌ای و استخراج کلمات کلیدی اصلی برای Full-text Search
+     */
+    protected function extractSearchableKeywords(string $query): string
+    {
+        $stopWords = [
+            'رو', 'به', 'بهم', 'بگو', 'چیه', 'چیست', 'عزیز', 'لطفا',
+            'نمایش', 'بده', 'میخوام', 'درباره', 'مورد', 'توضیح', 'کن'
+        ];
 
+        $words = preg_split('/\s+/u', mb_strtolower(trim($query)));
+        $filtered = array_filter($words, fn($w) => !in_array($w, $stopWords, true) && mb_strlen($w) > 2);
 
+        return implode(' ', $filtered);
+    }
 }

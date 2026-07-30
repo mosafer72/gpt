@@ -115,24 +115,6 @@ class AnswerEvidenceBuilder
 
 
 
-
-
-
-        Log::info(
-
-            'ANSWER EVIDENCE BUILT',
-
-            [
-
-                'evidence_count' =>
-                    count($evidence)
-
-            ]
-
-        );
-
-
-
         return $evidence;
 
 

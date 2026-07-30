@@ -7,30 +7,15 @@ use Surqlize\Model\SchemaContract;
 
 class DocumentEmbeddingSchema implements SchemaContract
 {
-
     public function definitions(): array
     {
-
         return [
-
-            /*
-            |--------------------------------------------------------------------------
-            | Table
-            |--------------------------------------------------------------------------
-            */
 
             "
             DEFINE TABLE IF NOT EXISTS document_embedding
             SCHEMAFULL;
             ",
 
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Core Fields
-            |--------------------------------------------------------------------------
-            */
 
             "
             DEFINE FIELD IF NOT EXISTS document_id
@@ -60,26 +45,12 @@ class DocumentEmbeddingSchema implements SchemaContract
             ",
 
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | Vector Data
-            |--------------------------------------------------------------------------
-            */
-
             "
             DEFINE FIELD IF NOT EXISTS embedding
             ON document_embedding
             TYPE array;
             ",
 
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Retrieval Metadata
-            |--------------------------------------------------------------------------
-            */
 
             "
             DEFINE FIELD IF NOT EXISTS metadata
@@ -88,13 +59,6 @@ class DocumentEmbeddingSchema implements SchemaContract
             FLEXIBLE;
             ",
 
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Dates
-            |--------------------------------------------------------------------------
-            */
 
             "
             DEFINE FIELD IF NOT EXISTS created_at
@@ -110,14 +74,6 @@ class DocumentEmbeddingSchema implements SchemaContract
             TYPE datetime
             DEFAULT time::now();
             ",
-
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Indexes
-            |--------------------------------------------------------------------------
-            */
 
 
             "
@@ -148,31 +104,33 @@ class DocumentEmbeddingSchema implements SchemaContract
             ",
 
 
-
-            /*
-            |--------------------------------------------------------------------------
-            | Duplicate Protection
-            |--------------------------------------------------------------------------
-            */
-
-
             "
-            DEFINE INDEX IF NOT EXISTS idx_document_chunk_unique
+            DEFINE INDEX IF NOT EXISTS idx_embedding_document_chunk_unique
             ON document_embedding
             COLUMNS document_id, chunk_id
             UNIQUE;
             ",
 
 
+            /*
+            |--------------------------------------------------------------------------
+            | Vector Index
+            |--------------------------------------------------------------------------
+            */
+
+            "
+            DEFINE INDEX IF NOT EXISTS idx_embedding_vector
+            ON document_embedding
+            FIELDS embedding
+            HNSW DIMENSION 1024 DIST COSINE;
+            ",
+
         ];
-
     }
-
 
 
     public function rules(): array
     {
         return [];
     }
-
 }

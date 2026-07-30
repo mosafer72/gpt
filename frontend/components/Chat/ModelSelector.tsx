@@ -53,9 +53,9 @@ export default function ModelSelector({
                 <div className={styles.info}>
                   <h3>{model.name}</h3>
 
-                  <span>{model.provider}</span>
+                  <span>{String((model as any).provider || (model as any).slug || "")}</span>
 
-                  {model.description && <p>{model.description}</p>}
+                  {(model as any).description && <p>{(model as any).description}</p>}
                 </div>
 
                 <div className={styles.arrow}>›</div>

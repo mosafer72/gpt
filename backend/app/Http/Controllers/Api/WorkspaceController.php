@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 
 use App\Http\Controllers\Controller;
+use App\Models\Workspace;
 use App\Models\WorkspaceType;
 use App\Models\WorkspacePlan;
 use App\Application\Services\WorkspaceService;
@@ -161,6 +162,31 @@ class WorkspaceController extends Controller
         $plans = WorkspacePlan::where(
             'workspace_type_id',
             $workspaceTypeId
+        )
+            ->where(
+                'is_active',
+                true
+            )
+            ->with('models')
+            ->get();
+
+
+        return response()->json([
+
+            'success' => true,
+
+            'data' => $plans
+
+        ]);
+    }
+
+
+        public function workspace_plans($workspaceId)
+    {
+        $workspace=Workspace::findOrFail($workspaceId);
+        $plans = WorkspacePlan::where(
+            'workspace_type_id',
+            $workspace->workspace_type_id
         )
             ->where(
                 'is_active',

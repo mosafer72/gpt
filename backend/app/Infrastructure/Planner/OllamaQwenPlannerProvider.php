@@ -108,15 +108,6 @@ PROMPT;
 
 
 
-        \Log::info(
-            'PLANNER TIME',
-            [
-                'seconds'=>
-                    microtime(true)-$start
-            ]
-        );
-
-
 
         if(!$response->successful()){
 

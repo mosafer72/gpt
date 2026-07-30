@@ -2,21 +2,16 @@
 
 namespace App\Domain\Documents\Models;
 
-
 use App\Domain\Documents\Schemas\DocumentEmbeddingSchema;
-
 use Surqlize\Attributes\Schema;
 use Surqlize\Attributes\Table;
 use Surqlize\Model\Model;
-
 
 
 #[Table('document_embedding')]
 #[Schema(DocumentEmbeddingSchema::class)]
 class DocumentEmbedding extends Model
 {
-
-
     private string $id = '';
 
     private string $documentId = '';
@@ -37,140 +32,30 @@ class DocumentEmbedding extends Model
 
 
 
-
-
-
-
-    public function __construct(
-        array $data = []
-    )
+    public function __construct(array $data = [])
     {
+        $this->id = (string) ($data['id'] ?? '');
 
+        $this->documentId = (string) ($data['document_id'] ?? '');
 
-        $this->id =
-            (string)
-            (
-                $data['id']
-                ??
-                ''
-            );
+        $this->workspaceId = (string) ($data['workspace_id'] ?? '');
 
+        $this->chunkId = (string) ($data['chunk_id'] ?? '');
 
+        $this->content = (string) ($data['content'] ?? '');
 
+        $this->embedding = is_array($data['embedding'] ?? null)
+            ? array_values(array_map('floatval', $data['embedding']))
+            : [];
 
-        $this->documentId =
-            (string)
-            (
-                $data['document_id']
-                ??
-                ''
-            );
+        $this->metadata = is_array($data['metadata'] ?? null)
+            ? $data['metadata']
+            : [];
 
+        $this->createdAt = $data['created_at'] ?? null;
 
-
-
-        $this->workspaceId =
-            (string)
-            (
-                $data['workspace_id']
-                ??
-                ''
-            );
-
-
-
-
-        $this->chunkId =
-            (string)
-            (
-                $data['chunk_id']
-                ??
-                ''
-            );
-
-
-
-
-        $this->content =
-            (string)
-            (
-                $data['content']
-                ??
-                ''
-            );
-
-
-
-
-
-
-        $this->embedding =
-
-            is_array(
-                $data['embedding']
-                ??
-                null
-            )
-
-            ?
-
-            array_map(
-                'floatval',
-                $data['embedding']
-            )
-
-            :
-
-            [];
-
-
-
-
-
-
-
-        $this->metadata =
-
-            is_array(
-                $data['metadata']
-                ??
-                null
-            )
-
-            ?
-
-            $data['metadata']
-
-            :
-
-            [];
-
-
-
-
-
-
-        $this->createdAt =
-            $data['created_at']
-            ??
-            null;
-
-
-
-
-        $this->updatedAt =
-            $data['updated_at']
-            ??
-            null;
-
-
+        $this->updatedAt = $data['updated_at'] ?? null;
     }
-
-
-
-
-
-
 
 
 
@@ -181,16 +66,10 @@ class DocumentEmbedding extends Model
 
 
 
-
-
-
     public function getDocumentId(): string
     {
         return $this->documentId;
     }
-
-
-
 
 
 
@@ -201,16 +80,10 @@ class DocumentEmbedding extends Model
 
 
 
-
-
-
     public function getChunkId(): string
     {
         return $this->chunkId;
     }
-
-
-
 
 
 
@@ -221,16 +94,10 @@ class DocumentEmbedding extends Model
 
 
 
-
-
-
     public function getEmbedding(): array
     {
         return $this->embedding;
     }
-
-
-
 
 
 
@@ -241,16 +108,10 @@ class DocumentEmbedding extends Model
 
 
 
-
-
-
     public function getCreatedAt(): ?string
     {
         return $this->createdAt;
     }
-
-
-
 
 
 
@@ -261,112 +122,36 @@ class DocumentEmbedding extends Model
 
 
 
-
-
-
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Academic Metadata Helpers
-    |--------------------------------------------------------------------------
-    */
-
-
-
-
-
     public function getSection(): ?string
     {
-
-        return
-
-            $this->metadata['section']
-            ??
-            null;
-
+        return $this->metadata['section'] ?? null;
     }
-
-
-
-
-
 
 
 
     public function getSectionTitle(): ?string
     {
-
-        return
-
-            $this->metadata['section_title']
-            ??
-            null;
-
+        return $this->metadata['section_title'] ?? null;
     }
-
-
-
-
-
 
 
 
     public function getImportance(): ?string
     {
-
-        return
-
-            $this->metadata['importance']
-            ??
-            null;
-
+        return $this->metadata['importance'] ?? null;
     }
-
-
-
-
-
 
 
 
     public function getChunkType(): ?string
     {
-
-        return
-
-            $this->metadata['chunk_type']
-            ??
-            null;
-
+        return $this->metadata['chunk_type'] ?? null;
     }
-
-
-
-
-
 
 
 
     public function isAcademicPaper(): bool
     {
-
-        return
-
-            (
-                $this->metadata['type']
-                ??
-                null
-            )
-
-            ===
-
-            'academic_paper';
-
+        return ($this->metadata['type'] ?? null) === 'academic_paper';
     }
-
-
-
-
-
 }

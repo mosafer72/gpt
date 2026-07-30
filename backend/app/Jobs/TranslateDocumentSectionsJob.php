@@ -2,274 +2,184 @@
 
 namespace App\Jobs;
 
-
 use App\Models\Document;
-
 use App\Infrastructure\Repositories\DocumentChunkRepository;
-
 use App\Application\Services\Documents\SectionTranslationService;
-
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
 
-
-
 class TranslateDocumentSectionsJob implements ShouldQueue
 {
-
-
     use Queueable;
 
-
-
     public int $tries = 3;
-
-
     public int $timeout = 600;
 
-
-
-
-
-
-    public function __construct(
-
-        public Document $document
-
-    ) {}
-
-
-
-
-
-
-
-
+    public function __construct(public Document $document)
+    {
+    }
 
     public function handle(
-
         DocumentChunkRepository $chunkRepository,
-
         SectionTranslationService $translator
-
     ): void {
 
+        $success = 0;
+        $skipped = 0;
+        $failed = 0;
 
         try {
 
+            $this->document->refresh();
 
-            /*
-            |--------------------------------------------------------------------------
-            | Load Stored Chunks
-            |--------------------------------------------------------------------------
-            */
+            $this->document->update([
+                'translation_status' => 'processing'
+            ]);
 
-
-            $chunks =
-
-                $chunkRepository->findByDocument(
-
-                    (string)
-                    $this->document->id
-
-                );
+            $chunks = $chunkRepository->findByDocument(
+                (string) $this->document->id
+            );
 
 
-
-
-
-
-            if(empty($chunks)){
-
-
-                throw new \Exception(
-
-                    'No document chunks found'
-
-                );
-
-
+            if (!$chunks) {
+                throw new \Exception('No document chunks found');
             }
 
 
+            foreach ($chunks as $chunk) {
+
+                $metadata = $chunk['metadata'] ?? [];
+
+                $content = trim(
+                    (string) ($chunk['content'] ?? '')
+                );
+
+                if (blank($content)) {
+
+                    $skipped++;
+                    continue;
+                }
 
 
+                if (($metadata['section'] ?? '') === 'references') {
+
+                    $skipped++;
+                    continue;
+                }
 
 
+                try {
 
 
+                    $result = $translator->translate(
 
-            /*
-            |--------------------------------------------------------------------------
-            | Translate Chunks
-            |--------------------------------------------------------------------------
-            */
+                        section: [
 
+                            'content' => $content,
 
-            foreach($chunks as $chunk){
+                            'section' =>
+                                $metadata['section'] ?? 'general',
 
+                            'title' =>
+                                $metadata['section_title'] ?? 'Document',
 
+                            'word_count' =>
+                                $metadata['word_count']
+                                ??
+                                $this->wordCount($content),
 
-                $content =
+                            'order' =>
+                                (int) ($chunk['chunk_index'] ?? 0),
 
-                    trim(
+                            'importance' =>
+                                $metadata['importance'] ?? 'medium'
 
-                        (string)
-                        (
-                            $chunk['content']
-                            ??
-                            ''
-                        )
+                        ],
+
+                        documentId: (string) $this->document->id,
+
+                        workspaceId: (string) $this->document->workspace_id
 
                     );
 
 
+                    if ($result) {
+
+                        $success++;
+
+                    } else {
+
+                        $failed++;
+
+                    }
 
 
+                } catch (\Throwable $e) {
 
+                    $failed++;
 
-                if(blank($content)){
-
-
-                    continue;
-
-
+                    Log::warning(
+                        'SECTION TRANSLATION FAILED',
+                        [
+                            'document_id' => $this->document->id,
+                            'chunk_id' => $chunk['id'] ?? null,
+                            'error' => $e->getMessage()
+                        ]
+                    );
                 }
-
-
-
-
-
-
-
-
-                $translator->translate(
-
-
-                    section:$chunk,
-
-
-
-                    documentId:
-
-                        (string)
-                        $this->document->id,
-
-
-
-                    workspaceId:
-
-                        (string)
-                        $this->document->workspace_id
-
-
-                );
-
-
-
             }
 
 
+            // اگر هیچ ترجمه موفقی نداشتیم و حداقل یک ترجمه ناموفق داشتیم، یعنی خطا رخ داده است.
+// اما اگر موفقیت صفر بود و فقط skip داشتیم، یعنی داکیومنت نیاز به ترجمه نداشته است و نباید خطا بدهد.
+            if ($success === 0 && $failed > 0) {
+                throw new \Exception(
+                    "Translation failed. success:$success skipped:$skipped failed:$failed"
+                );
+            }
 
-
-
-
-
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Completed
-            |--------------------------------------------------------------------------
-            */
+            // (اختیاری) اگر می‌خواهید حالتی که هیچ فایلی برای ترجمه نبوده را هم بررسی کنید:
+            if ($success === 0 && $skipped > 0 && $failed === 0) {
+                Log::info('NO TRANSLATION NEEDED (All chunks were skipped)', [
+                    'document_id' => $this->document->id,
+                    'skipped' => $skipped
+                ]);
+            }
 
 
             $this->document->update([
-
-                'translation_status'=>'completed'
-
+                'translation_status' => 'completed'
             ]);
 
 
 
-
-
-
-
-
-            Log::info(
-
-                'DOCUMENT SECTION TRANSLATION COMPLETED',
-
-                [
-
-                    'document_id'=>
-
-                        $this->document->id,
-
-
-                    'chunks'=>
-
-                        count($chunks)
-
-                ]
-
-            );
-
-
-
-
-
-
-
-        }
-        catch(\Throwable $e){
-
-
+        } catch (\Throwable $e) {
 
             Log::error(
-
                 'DOCUMENT SECTION TRANSLATION FAILED',
-
                 [
-
-                    'document_id'=>
-
-                        $this->document->id,
-
-
-                    'error'=>
-
-                        $e->getMessage()
-
+                    'document_id' => $this->document->id,
+                    'error' => $e->getMessage()
                 ]
-
             );
 
 
-
-
-
-
             $this->document->update([
-
-                'translation_status'=>'failed'
-
+                'translation_status' => 'failed'
             ]);
 
-
-
-
-
             throw $e;
-
-
         }
-
-
-
     }
 
 
+    protected function wordCount(string $text): int
+    {
+        return blank($text)
+            ? 0
+            : count(
+                preg_split('/\s+/u', trim($text))
+            );
+    }
 }

@@ -196,22 +196,6 @@ class DocumentSectionTranslationRepository
     ) {
 
 
-
-        \Log::info(
-            'DOCUMENT SECTION TRANSLATION STORE',
-            [
-                'document_id' =>
-                    $data['document_id'] ?? null,
-                'section' =>
-                    $data['section'] ?? null
-            ]
-        );
-
-
-
-
-
-
         /*
         |--------------------------------------------------------------------------
         | Remove old translation for this section/document if exists

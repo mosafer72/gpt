@@ -1,25 +1,17 @@
 "use client";
 
-import DocumentCard from "./DocumentCard";
+import DocumentCard, { DocumentItem } from "./DocumentCard";
 import styles from "./DocumentGrid.module.css";
 
-export type DocumentItem = {
-  id: number;
-  title: string;
-  authors: string[];
-  year?: string;
-  pages?: number;
-  size?: string;
-  status: "processing" | "completed" | "failed";
-  chunks?: number;
-  uploadedAt: string;
-};
+// استفاده مجدد یا هماهنگ‌سازی تایپ DocumentItem با کامپوننت DocumentCard
+export type { DocumentItem };
 
 type Props = {
   documents: DocumentItem[];
-  onOpen?: (id: number) => void;
-  onRename?: (id: number) => void;
-  onDelete?: (id: number) => void;
+  onOpen?: (id: string | number) => void;
+  onRename?: (id: string | number) => void;
+  onDelete?: (id: string | number) => void;
+  onChat?: (document: DocumentItem) => void;
 };
 
 export default function DocumentGrid({
@@ -27,16 +19,17 @@ export default function DocumentGrid({
   onOpen,
   onRename,
   onDelete,
+  onChat,
 }: Props) {
   return (
     <section className={styles.grid}>
       {documents.map((doc) => (
         <DocumentCard
           key={doc.id}
-          {...doc}
-          onOpen={() => onOpen?.(doc.id)}
-          onRename={() => onRename?.(doc.id)}
-          onDelete={() => onDelete?.(doc.id)}
+          document={doc}
+          onOpen={onOpen}
+          onDelete={onDelete}
+          onChat={onChat}
         />
       ))}
     </section>

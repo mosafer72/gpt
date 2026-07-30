@@ -7,7 +7,7 @@ use App\Application\Services\Documents\DocumentService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Application\Services\Documents\DocumentViewerService;
-
+use App\Jobs\ExtractDocumentTextJob; // اضافه کردن ایوب پردازش
 
 class DocumentController extends Controller
 {
@@ -17,7 +17,6 @@ class DocumentController extends Controller
     ) {
     }
 
-
     /**
      * List Documents
      */
@@ -25,31 +24,25 @@ class DocumentController extends Controller
         Request $request,
         $workspaceId
     ) {
-
         $workspace = $request->user()
             ->workspaces()
             ->findOrFail($workspaceId);
 
-
         return response()->json([
             'success' => true,
-
             'documents' => $this->service->list(
                 workspace: $workspace
             )
         ]);
     }
 
-
-
     /**
-     * Upload Document
+     * Upload Document & Dispatch Text Extraction
      */
     public function store(
         Request $request,
         $workspaceId
     ) {
-
         $request->validate([
             'file' => [
                 'required',
@@ -59,29 +52,25 @@ class DocumentController extends Controller
             ]
         ]);
 
-
         $workspace = $request->user()
             ->workspaces()
             ->findOrFail($workspaceId);
 
-
-
+        // ۱. ذخیره فایل و ثبت رکورد Document اولیه
         $document = $this->service->upload(
             file: $request->file('file'),
             workspace: $workspace,
             user: $request->user()
         );
 
+        // ۲. ارسال جاب پردازش و استخراج متن به صف پس‌زمینه
 
         return response()->json([
             'success' => true,
+            'message' => 'Document uploaded successfully. Processing started.',
             'document' => $document
         ], 201);
     }
-
-
-
-
 
     /**
      * Show Document
@@ -91,29 +80,19 @@ class DocumentController extends Controller
         $workspaceId,
         $documentId
     ) {
-
-
         $workspace = $request->user()
             ->workspaces()
             ->findOrFail($workspaceId);
 
-
-
         $document = $workspace
             ->documents()
             ->findOrFail($documentId);
-
-
 
         return response()->json([
             'success' => true,
             'document' => $this->service->show($document)
         ]);
     }
-
-
-
-
 
     /**
      * Rename Document
@@ -123,8 +102,6 @@ class DocumentController extends Controller
         $workspaceId,
         $documentId
     ) {
-
-
         $request->validate([
             'name' => [
                 'required',
@@ -133,36 +110,24 @@ class DocumentController extends Controller
             ]
         ]);
 
-
-
         $workspace = $request->user()
             ->workspaces()
             ->findOrFail($workspaceId);
 
-
-
         $document = $workspace
             ->documents()
             ->findOrFail($documentId);
-
-
 
         $document = $this->service->rename(
             $document,
             $request->name
         );
 
-
-
         return response()->json([
             'success' => true,
             'document' => $document
         ]);
     }
-
-
-
-
 
     /**
      * Delete Document
@@ -172,25 +137,17 @@ class DocumentController extends Controller
         $workspaceId,
         $documentId
     ) {
-
-
         $workspace = $request->user()
             ->workspaces()
             ->findOrFail($workspaceId);
-
-
 
         $document = $workspace
             ->documents()
             ->findOrFail($documentId);
 
-
-
         $this->service->delete(
             $document
         );
-
-
 
         return response()->json([
             'success' => true
@@ -201,75 +158,51 @@ class DocumentController extends Controller
      * Document Intelligence Overview
      */
     public function overview(
-
         Request $request,
-
         $workspaceId,
-
         $documentId
-
     ) {
+        $workspace = $request->user()
+            ->workspaces()
+            ->findOrFail($workspaceId);
 
-        $workspace =
-            $request->user()
-                ->workspaces()
-                ->findOrFail($workspaceId);
-
-
-
-        $document =
-            $workspace
-                ->documents()
-                ->findOrFail($documentId);
-
-
+        $document = $workspace
+            ->documents()
+            ->findOrFail($documentId);
 
         return response()->json([
-
             'success' => true,
-
-
-            'data' =>
-                $this->overviewService
-                    ->overview(
-                        $document
-                    )
-
+            'data' => $this->overviewService->overview(
+                $document
+            )
         ]);
-
     }
 
-
+    /**
+     * Document Sections (Fixed & Secured)
+     */
     public function sections(
-
-        string $id,
-
+        Request $request,
+        $workspaceId,
+        $documentId,
         DocumentViewerService $viewer
-
     ) {
+        $workspace = $request->user()
+            ->workspaces()
+            ->findOrFail($workspaceId);
 
+        $document = $workspace
+            ->documents()
+            ->findOrFail($documentId);
 
-        $sections =
-            $viewer->sections(
-
-                documentId: $id,
-
-                workspaceId:
-                auth()->user()
-                    ->currentWorkspace()
-                    ->id
-
-            );
-
-
+        $sections = $viewer->sections(
+            documentId: (string) $document->id,
+            workspaceId: (string) $workspace->id
+        );
 
         return response()->json([
-
             'success' => true,
-
             'data' => $sections
-
         ]);
-
     }
 }

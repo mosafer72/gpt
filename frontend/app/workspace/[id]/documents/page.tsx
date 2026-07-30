@@ -9,6 +9,7 @@ import {
   FormEvent,
 } from "react";
 import { useRouter, useParams } from "next/navigation";
+import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import axios from "axios";
@@ -18,6 +19,7 @@ import {
   createChat,
   sendMessageStream,
   deleteDocument,
+  checkWorkspaceAccess,
   DocumentItem,
 } from "@/lib/api";
 
@@ -31,6 +33,10 @@ export default function DocumentsPage() {
   const router = useRouter();
   const params = useParams();
   const workspaceId = Number(params.id);
+
+  // Access States
+  const [checkingAccess, setCheckingAccess] = useState(true);
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
 
   // Document States
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -87,6 +93,34 @@ export default function DocumentsPage() {
     [],
   );
 
+  // بررسی دسترسی اولیه به ورک‌اسپیس با ویژگی document
+  useEffect(() => {
+    async function verifyAccess() {
+      if (!workspaceId) {
+        setHasAccess(false);
+        setCheckingAccess(false);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await checkWorkspaceAccess(workspaceId, "document");
+        if (response.has_access) {
+          setHasAccess(true);
+        } else {
+          setHasAccess(false);
+        }
+      } catch (error) {
+        console.error("Access check failed:", error);
+        setHasAccess(false);
+      } finally {
+        setCheckingAccess(false);
+      }
+    }
+
+    verifyAccess();
+  }, [workspaceId]);
+
   // دریافت لیست اسناد
   const loadDocuments = useCallback(
     async (showGlobalLoading = false) => {
@@ -103,12 +137,12 @@ export default function DocumentsPage() {
     [workspaceId, handleBackendError],
   );
 
-  // بارگذاری اولیه
+  // بارگذاری اسناد بعد از تایید دسترسی
   useEffect(() => {
-    if (workspaceId) {
+    if (hasAccess && workspaceId) {
       loadDocuments(true);
     }
-  }, [workspaceId, loadDocuments]);
+  }, [hasAccess, workspaceId, loadDocuments]);
 
   // Polling بهینه‌شده اسناد
   useEffect(() => {
@@ -142,7 +176,7 @@ export default function DocumentsPage() {
       try {
         const response = await createChat(workspaceId, {
           document_ids: updatedSelected.map((x) => x.id),
-          model_id: 3,
+          model_id: 16,
         });
         if (response.chat?.id) {
           setActiveChatId(response.chat.id);
@@ -266,42 +300,12 @@ export default function DocumentsPage() {
         workspaceId,
         activeChatId ?? undefined,
         null,
-        3,
+        16,
         (chunk) => {
           if (!chunk) return;
 
-          // تجزیه خط به خط برای جلوگیری از خرابی JSONهای چندتایی در یک Chunk
-          const lines = String(chunk).split("\n");
+          currentAiMessageRef.current += chunk;
 
-          for (let line of lines) {
-            line = line.trim();
-            if (!line) continue;
-
-            // پاکسازی SSE data: prefix
-            if (line.startsWith("data:")) {
-              line = line.replace(/^data:\s*/, "").trim();
-            }
-
-            let extractedText = line;
-
-            // تلاش برای استخراج محتوا از JSON
-            try {
-              const json = JSON.parse(line);
-              if (typeof json.content === "string") {
-                extractedText = json.content;
-              } else if (typeof json.delta === "string") {
-                extractedText = json.delta;
-              } else if (typeof json.text === "string") {
-                extractedText = json.text;
-              }
-            } catch {
-              // اگر JSON نبود، خود متن خام استفاده می‌شود
-            }
-
-            currentAiMessageRef.current += extractedText;
-          }
-
-          // زمان‌بندی رندر در فریم بعدی مرورگر (۶۰fps)
           if (!renderScheduled) {
             renderScheduled = true;
             animFrameId = requestAnimationFrame(updateMessagesUI);
@@ -309,7 +313,7 @@ export default function DocumentsPage() {
         },
         controller.signal,
         null,
-        selected.map((doc) => doc.id),
+        selected.map((doc) => Number(doc.id)),
       );
     } catch (error) {
       handleBackendError(error, "خطا در دریافت پاسخ چت");
@@ -323,11 +327,28 @@ export default function DocumentsPage() {
     }
   }
 
-  if (loading) {
+  if (checkingAccess || (hasAccess && loading)) {
     return (
       <div className={styles.loadingContainer}>
         <div className={styles.spinner}></div>
-        <p>در حال بارگذاری اسناد...</p>
+        <p>در حال بررسی دسترسی و بارگذاری...</p>
+      </div>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className={styles.notFoundContainer}>
+        <div className={styles.notFoundContent}>
+          <span className={styles.errorCode}>404</span>
+          <h1 className={styles.errorTitle}>فضای کاری یافت نشد</h1>
+          <p className={styles.errorDesc}>
+            شما به این فضای کاری یا قابلیت اسناد دسترسی ندارید.
+          </p>
+          <Link href="/workspaces" className={styles.backButton}>
+            بازگشت به لیست فضاهای کاری
+          </Link>
+        </div>
       </div>
     );
   }
@@ -509,9 +530,16 @@ export default function DocumentsPage() {
                           ) : (
                             chatLoading &&
                             msg.role === "assistant" && (
-                              <span className={styles.typingIndicator}>
-                                در حال تایپ...
-                              </span>
+                              <div className={styles.thinkingContainer}>
+                                <div className={styles.thinkingDots}>
+                                  <span></span>
+                                  <span></span>
+                                  <span></span>
+                                </div>
+                                <span className={styles.thinkingText}>
+                                  دستیار در حال پردازش و تفکر...
+                                </span>
+                              </div>
                             )
                           )}
                         </div>

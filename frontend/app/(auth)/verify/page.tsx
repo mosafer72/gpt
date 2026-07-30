@@ -1,16 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import VerifyForm from '@/components/Auth/VerifyForm';
 
-export default function VerifyPage() {
+function VerifyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [phone, setPhone] = useState('');
 
   useEffect(() => {
-    // دریافت شماره از sessionStorage یا پارامتر URL
     const storedPhone = sessionStorage.getItem('verify_phone');
     const urlPhone = searchParams.get('phone');
     const finalPhone = storedPhone || urlPhone || '';
@@ -43,5 +42,17 @@ export default function VerifyPage() {
       onBack={handleBack}
       onSuccess={handleVerifySuccess}
     />
+  );
+}
+
+export default function VerifyPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <p>در حال بارگذاری...</p>
+      </div>
+    }>
+      <VerifyContent />
+    </Suspense>
   );
 }

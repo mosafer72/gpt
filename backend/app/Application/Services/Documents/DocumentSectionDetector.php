@@ -2,699 +2,365 @@
 
 namespace App\Application\Services\Documents;
 
-
 class DocumentSectionDetector
 {
-
-
-    protected array $knownSections = [
-
-        'abstract',
-        'introduction',
-        'background',
-        'related work',
-        'literature review',
-        'preliminaries',
-
-        'method',
-        'methods',
-        'methodology',
-        'approach',
-        'framework',
-        'architecture',
-        'model',
-        'implementation',
-
-        'dataset',
-
-        'experiment',
-        'experiments',
-        'experimental setup',
-
-        'evaluation',
-
-        'results',
-        'discussion',
-
-        'conclusion',
-        'future work',
-        'limitations',
-
-        'references',
-        'bibliography',
-
-        'appendix',
-
+    protected array $patterns=[
+        'abstract'=>['abstract','summary','overview'],
+        'introduction'=>['introduction','motivation','problem statement','research background'],
+        'related_work'=>['related work','related studies','literature review','previous work','state of the art','background'],
+        'methodology'=>['method','methods','methodology','approach','proposed method','proposed approach','framework','architecture','model','algorithm','design'],
+        'dataset'=>['dataset','datasets','data collection','corpus','benchmark','data description'],
+        'implementation'=>['implementation','system implementation','development','engineering'],
+        'experiment'=>['experiment','experiments','experimental setup','evaluation setup','experimental design'],
+        'results'=>['results','findings','performance','analysis','comparison','evaluation'],
+        'discussion'=>['discussion','limitations','implications'],
+        'conclusion'=>['conclusion','concluding remarks','future work'],
+        'references'=>['references','bibliography','citations'],
+        'appendix'=>['appendix']
     ];
 
+    public function detect(string $text):array
+    {
+        $text=trim(str_replace("\r","",$text));
+
+        if(blank($text))return [];
+
+        $lines=explode("\n",$text);
+
+        if(count($lines)<10){
+
+            return [[
+                'title'=>'Article',
+                'normalized'=>'article',
+                'level'=>1,
+                'content'=>$text,
+                'start_line'=>0,
+                'end_line'=>count($lines)
+            ]];
+        }
+
+        $heads=[];
+
+        foreach($lines as $i=>$line){
+
+            $line=trim($line);
+
+            if(blank($line))continue;
+
+            $heading=$this->detectHeading($line);
+
+            if($heading){
+
+                if($heading['type']==='references'){
+                    continue;
+                }
+
+                $heads[]=[
+                    'line'=>$i,
+                    'title'=>$heading['title'],
+                    'type'=>$heading['type'],
+                    'level'=>$heading['level']
+                ];
+            }
+        }
 
 
+        if(empty($heads)){
+
+            return [[
+                'title'=>'Article',
+                'normalized'=>'article',
+                'level'=>1,
+                'content'=>$text,
+                'start_line'=>0,
+                'end_line'=>count($lines)
+            ]];
+        }
 
 
+        $sections=[];
 
 
+        foreach($heads as $i=>$head){
+
+            $start=$head['line'];
+
+            $end=$heads[$i+1]['line']??count($lines);
 
 
-    public function __invoke(
-        string $text
-    ): array {
-
-
-        return $this->detect($text);
-
-    }
-
-
-
-
-
-
-
-
-
-    public function detect(
-        string $text
-    ): array {
-
-
-        $text =
-            trim(
-                str_replace(
-                    "\r",
-                    "",
-                    $text
+            $content=trim(
+                implode(
+                    "\n",
+                    array_slice(
+                        $lines,
+                        $start,
+                        $end-$start
+                    )
                 )
             );
 
 
-
-        if (blank($text)) {
-
-            return [];
-
-        }
-
-
-
-
-        $lines =
-            explode(
-                "\n",
-                $text
-            );
-
-
-
-
-        $headings = [];
-
-
-
-
-
-        foreach ($lines as $index => $line) {
-
-
-            $line = trim($line);
-
-
-
-            if ($line === '') {
-
+            if(
+                $head['type']==='references'
+                ||
+                $this->wordCount($content)<30
+            ){
                 continue;
-
             }
 
 
-
-
-            $heading =
-                $this->detectHeading(
-                    $line
-                );
-
-
-
-
-            if ($heading) {
-
-
-                $headings[] = [
-
-                    'line' =>
-                        $index,
-
-
-                    'title' =>
-                        $heading['title'],
-
-
-                    'normalized' =>
-                        $this->normalize(
-                            $heading['title']
-                        ),
-
-
-                    'level' =>
-                        $heading['level'],
-
-
-                    'type' =>
-                        $heading['type'],
-
-
-                    'confidence' =>
-                        $heading['confidence']
-
-                ];
-
-
-            }
-
-
+            $sections[]=[
+                'title'=>$head['title'],
+                'normalized'=>$head['type'],
+                'level'=>$head['level'],
+                'content'=>$content,
+                'start_line'=>$start,
+                'end_line'=>$end
+            ];
         }
 
 
+        if(empty($sections)){
+
+            return [[
+                'title'=>'Article',
+                'normalized'=>'article',
+                'level'=>1,
+                'content'=>$text,
+                'start_line'=>0,
+                'end_line'=>count($lines)
+            ]];
+        }
 
 
+        return $this->mergeShortSections($sections);
+    }
 
-        return $this->buildSections(
 
-            $lines,
+    protected function detectHeading(string $line):?array
+    {
+        if(
+            preg_match('/https?:\/\//i',$line)
+            ||
+            str_contains($line,'@')
+        ){
+            return null;
+        }
 
-            $headings
 
+        if(mb_strlen($line)>80)return null;
+
+
+        if($this->looksLikeSentence($line))return null;
+
+
+        $clean=trim(
+            preg_replace(
+                '/^[\d\.\-\s]+/',
+                '',
+                $line
+            )
         );
 
 
-    }
+        if(blank($clean))return null;
 
 
+        $type=$this->classify($clean);
 
 
-
-
-
-
-
-    protected function buildSections(
-
-        array $lines,
-
-        array $headings
-
-    ): array {
-
-
-        if (empty($headings)) {
-
+        if($type!=='unknown'){
 
             return [
-
-                [
-
-                    'title' =>
-                        'Document',
-
-
-                    'normalized' =>
-                        'general',
-
-
-                    'level' =>
-                        1,
-
-
-                    'detection_type' =>
-                        'fallback',
-
-
-                    'confidence' =>
-                        0.3,
-
-
-                    'heading_path' =>
-                        [],
-
-
-                    'content' =>
-                        implode(
-                            "\n",
-                            $lines
-                        )
-
-                ]
-
+                'title'=>$clean,
+                'type'=>$type,
+                'level'=>$this->level($line)
             ];
-
-
         }
 
 
-
-
-
-        $sections = [];
-
-        $stack = [];
-
-
-
-
-
-
-
-        foreach ($headings as $index => $heading) {
-
-
-
-            $start =
-                $heading['line'] + 1;
-
-
-
-            $end =
-                $headings[$index + 1]['line']
-                ??
-                count($lines);
-
-
-
-
-
-            $content =
-                trim(
-
-                    implode(
-
-                        "\n",
-
-                        array_slice(
-
-                            $lines,
-
-                            $start,
-
-                            $end - $start
-
-                        )
-
-                    )
-
-                );
-
-
-
-
-
-            if ($content === '') {
-
-                continue;
-
-            }
-
-
-
-
-
-
-            while (
-
-                count($stack)
-
-                >=
-
-                $heading['level']
-
-            ) {
-
-
-                array_pop($stack);
-
-
-            }
-
-
-
-
-
-            $stack[] =
-                $heading['title'];
-
-
-
-
-
-
-
-            $sections[] = [
-
-                'title' =>
-                    $heading['title'],
-
-
-                'normalized' =>
-                    $heading['normalized'],
-
-
-                'level' =>
-                    $heading['level'],
-
-
-                'detection_type' =>
-                    $heading['type'],
-
-
-                'confidence' =>
-                    $heading['confidence'],
-
-
-                'heading_path' =>
-                    $stack,
-
-
-                'content' =>
-                    $content,
-
-
-                'start_line' =>
-                    $start,
-
-
-                'end_line' =>
-                    $end
-
-
-            ];
-
-
-        }
-
-
-
-
-        return $sections;
-
-
-    }
-
-
-
-
-
-
-
-
-
-    protected function detectHeading(
-        string $line
-    ): ?array {
-
-
-
-        if (
-            mb_strlen($line) > 120
-        ) {
-
-            return null;
-
-        }
-
-
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Numbered heading
-        |--------------------------------------------------------------------------
-        */
-
-
-        if (
-
+        if(
             preg_match(
-
-                '/^(\d+(\.\d+)*)[\.\)]?\s+(.+)$/',
-
+                '/^(\d+(\.\d+)*)\s+(.+)$/',
                 $line,
-
-                $matches
-
+                $m
             )
+        ){
 
-        ) {
-
-
-
-            $number =
-                $matches[1];
+            $candidate=trim($m[3]);
 
 
+            if(!$this->looksLikeSentence($candidate)){
 
-            $title =
-                trim(
-                    $matches[3]
-                );
+                $type=$this->classify($candidate);
 
+                if($type!=='unknown'){
 
-
-            return [
-
-                'title' =>
-                    $title,
-
-
-                'level' =>
-                    substr_count(
-                        $number,
-                        '.'
-                    ) + 1,
-
-
-                'type' =>
-                    'numbered',
-
-
-                'confidence' =>
-                    0.95
-
-            ];
-
-
+                    return [
+                        'title'=>$candidate,
+                        'type'=>$type,
+                        'level'=>substr_count($m[1],'.')+1
+                    ];
+                }
+            }
         }
 
 
-
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Uppercase heading
-        |--------------------------------------------------------------------------
-        */
-
-
-        if (
-
-            mb_strlen($line) < 80
-
+        if(
+            mb_strlen($clean)<50
             &&
+            strtoupper($clean)===$clean
+        ){
 
-            strtoupper($line)===$line
+            $type=$this->classify($clean);
 
-            &&
-
-            preg_match(
-                '/[A-Z]/',
-                $line
-            )
-
-        ) {
-
-
-            return [
-
-                'title' =>
-                    $line,
-
-
-                'level'=>1,
-
-
-                'type'=>
-                    'uppercase',
-
-
-                'confidence'=>
-                    0.85
-
-            ];
-
-
-        }
-
-
-
-
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Academic heading
-        |--------------------------------------------------------------------------
-        */
-
-
-        $normalized =
-            $this->normalize($line);
-
-
-
-
-        foreach ($this->knownSections as $section) {
-
-
-
-            if (
-
-                str_contains(
-
-                    $normalized,
-
-                    $this->normalize(
-                        $section
-                    )
-
-                )
-
-            ) {
-
+            if($type!=='unknown'){
 
                 return [
-
-                    'title'=>
-                        $line,
-
-
-                    'level'=>1,
-
-
-                    'type'=>
-                        'academic',
-
-
-                    'confidence'=>
-                        0.90
-
+                    'title'=>$clean,
+                    'type'=>$type,
+                    'level'=>1
                 ];
-
-
             }
-
-
         }
-
-
-
-
-
-
-
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Short heading
-        |--------------------------------------------------------------------------
-        */
-
-
-        if (
-
-            mb_strlen($line)<60
-
-            &&
-
-            str_word_count($line)<=6
-
-        ) {
-
-
-            return [
-
-                'title'=>
-                    $line,
-
-
-                'level'=>1,
-
-
-                'type'=>
-                    'heuristic',
-
-
-                'confidence'=>
-                    0.55
-
-            ];
-
-
-        }
-
-
-
-
-
 
 
         return null;
-
-
     }
 
 
+    protected function classify(string $title):string
+    {
+        $title=$this->normalize($title);
 
 
+        foreach($this->patterns as $type=>$words){
+
+            foreach($words as $word){
+
+                $word=$this->normalize($word);
 
 
+                if($title===$word){
+                    return $type;
+                }
 
 
+                if(
+                    mb_strlen($title)<40
+                    &&
+                    str_contains($title,$word)
+                ){
+                    return $type;
+                }
+            }
+        }
 
-    protected function normalize(
-        string $value
-    ): string {
+
+        return 'unknown';
+    }
 
 
-        return strtolower(
+    protected function looksLikeSentence(string $line):bool
+    {
+        $words=preg_split('/\s+/u',trim($line));
 
-            trim(
 
-                preg_replace(
+        if(count($words)>8){
+            return true;
+        }
 
-                    '/[^a-zA-Z0-9\s]/',
 
-                    '',
+        if(str_ends_with($line,'.')){
+            return true;
+        }
 
-                    $value
 
-                )
-
+        if(
+            preg_match(
+                '/\b(is|are|was|were|which|that|can|show|we|this|these|using)\b/i',
+                $line
             )
+        ){
+            return true;
+        }
 
-        );
 
-
+        return false;
     }
 
 
+    protected function mergeShortSections(array $sections):array
+    {
+        $result=[];
 
+
+        foreach($sections as $section){
+
+            if(
+                !empty($result)
+                &&
+                $this->wordCount($section['content'])<50
+            ){
+
+                $last=count($result)-1;
+
+                $result[$last]['content'].=
+                    "\n\n".
+                    $section['content'];
+
+                continue;
+            }
+
+
+            $result[]=$section;
+        }
+
+
+        return $result;
+    }
+
+
+    protected function wordCount(string $text):int
+    {
+        if(blank($text))return 0;
+
+        return count(
+            preg_split(
+                '/\s+/u',
+                trim($text)
+            )
+        );
+    }
+
+
+    protected function level(string $line):int
+    {
+        if(
+            preg_match(
+                '/^(\d+(\.\d+)*)/',
+                $line,
+                $m
+            )
+        ){
+
+            return substr_count($m[1],'.')+1;
+        }
+
+        return 1;
+    }
+
+
+    protected function normalize(string $value):string
+    {
+        return mb_strtolower(
+            trim(
+                preg_replace(
+                    '/[^\p{L}\p{N}\s]/u',
+                    '',
+                    $value
+                )
+            )
+        );
+    }
 }

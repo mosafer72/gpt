@@ -7,6 +7,7 @@ use App\Application\Services\WorkspaceService;
 use App\Application\Services\WorkspaceSubscriptionService;
 use App\Application\Services\TokenWalletService;
 use App\Models\Usage;
+use App\Models\WorkspaceType;
 use Illuminate\Http\Request;
 
 
@@ -118,7 +119,7 @@ class DashboardController extends Controller
 
         }
 
-
+        $workspace_types=WorkspaceType::with("plans")->get();
 
 
 
@@ -129,6 +130,8 @@ class DashboardController extends Controller
 
 
             'workspace' => $workspace,
+
+            'workspace_types'=>$workspace_types,
 
 
             'subscription' => $subscription,

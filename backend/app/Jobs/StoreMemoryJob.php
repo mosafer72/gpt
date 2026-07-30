@@ -36,7 +36,6 @@ class StoreMemoryJob implements ShouldQueue
         );
 
 
-        // \Log::info('STORE MEMORY JOB DONE');
 
     }
 }
