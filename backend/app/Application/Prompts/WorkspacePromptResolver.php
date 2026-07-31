@@ -11,7 +11,7 @@ class WorkspacePromptResolver
      */
     protected static array $map = [
         'student' => StudentSystemPrompt::class,
-        'chat' => DocumentSystemPrompt::class,
+        'chat' => SystemPrompt::class,
     ];
 
     public static function resolve(Workspace $workspace): string
@@ -33,6 +33,6 @@ class WorkspacePromptResolver
         }
 
         // ۳. اولویت سوم: فال‌بک به پرامپت پیش‌فرض اسناد
-        return DocumentSystemPrompt::build();
+        return SystemPrompt::build();
     }
 }

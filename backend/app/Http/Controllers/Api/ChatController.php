@@ -33,7 +33,6 @@ class ChatController extends Controller
 
         $feature = $request->query('feature');
 
-        // ۱. بررسی اینکه آیا این workspace متعلق به کاربر است و فعال می‌باشد
         $workspace = $user->workspaces()
             ->with(['workspaceType', 'plan.models'])
             ->where('workspaces.id', $id)
@@ -47,18 +46,22 @@ class ChatController extends Controller
             ], 403);
         }
 
-        // ۲. اگر فیلتر feature ارسال شده بود، بررسی کن که آیا در آرایه features آن نوع ورک‌اسپیس وجود دارد یا خیر
         if ($feature) {
             $workspaceType = $workspace->workspaceType;
 
-            // چک کردن اینکه آیا ستون features به صورت آرایه وجود دارد و شامل مقدار مورد نظر است
-            if (!$workspaceType || !is_array($workspaceType->features) || !in_array($feature, $workspaceType->features)) {
+            $features = $workspaceType?->features;
+
+            $hasFeature = is_array($features) && collect($features)
+                ->contains(fn($item) => ($item['key'] ?? null) === $feature);
+
+            if (!$hasFeature) {
                 return response()->json([
                     'has_access' => false,
                     'message' => 'Feature not available in this workspace type'
                 ], 403);
             }
         }
+
 
         return response()->json([
             'has_access' => true,
@@ -75,7 +78,7 @@ class ChatController extends Controller
             $cacheKey,
             now()->addMinutes(10),
             function () use ($userId, $workspace_id) {
-                return Chat::where(['user_id' => $userId], ["workspace_id" => $workspace_id])
+                return Chat::where(['user_id' => $userId, "workspace_id" => $workspace_id])
                     ->with([
                         'messages' => function ($q) {
                             $q->latest()->limit(1);
@@ -145,7 +148,9 @@ class ChatController extends Controller
         // بررسی و گرفتن Workspace فعال کاربر در همان ابتدا
         $workspace = $user->workspaces()
             ->where('is_active', true)
+            ->where('workspaces.id', $request->workspace_id) // بررسی دقیق شناسه ورک‌پیس
             ->first();
+
 
         if (!$workspace) {
             return response()->json([
@@ -208,7 +213,9 @@ class ChatController extends Controller
             ], 422);
         }
 
-        $subscription = $workspace->activeSubscription();
+        $subscription = $workspace
+            ->activeSubscription()
+            ->first();
 
         if (!$subscription) {
             return response()->json([
@@ -219,8 +226,8 @@ class ChatController extends Controller
         $subscription->load('workspacePlan.models');
 
         $aiModel = $subscription->workspacePlan
-            ->models
-            ->firstWhere('id', $request->model_id);
+            ?->models
+                ?->firstWhere('id', (int) $request->model_id);
 
         if (!$aiModel) {
             return response()->json([
@@ -247,6 +254,7 @@ class ChatController extends Controller
                 'title' => mb_substr($content, 0, 50)
             ]);
         }
+
 
         Cache::forget("user:{$user->id}:chats:last20");
 
@@ -282,6 +290,7 @@ class ChatController extends Controller
         ]);
 
         $pipeline = $this->pipelineFactory->make($workspace["type"]);
+
 
         return response()->stream(
             function () use ($pipeline, $context) {
@@ -328,8 +337,10 @@ class ChatController extends Controller
         ]);
     }
 
-    public function destroy(Chat $chat): JsonResponse
+    public function destroy($workspace_id,$chat): JsonResponse
     {
+        $chat=Chat::findOrFail($chat);
+
         if ($chat->user_id !== auth()->id()) {
             return response()->json([
                 'error' => 'Forbidden'

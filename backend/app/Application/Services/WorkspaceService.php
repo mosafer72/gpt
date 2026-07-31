@@ -24,7 +24,22 @@ class WorkspaceService
 
 
 
-
+    public function activeWorkspaces(User $user)
+    {
+        return $user
+            ->workspaces()
+            ->with([
+                'workspaceType',
+                'wallet',
+                'workspaceSubscriptions' => function ($query) {
+                    $query->where('is_active', true)
+                        ->where('expires_at', '>', now())
+                        ->with(['workspacePlan.models']);
+                }
+            ])
+            ->where('is_active', true)
+            ->get(); // استفاده از get به جای first
+    }
 
 
 
@@ -196,7 +211,7 @@ class WorkspaceService
 
 
         $workspace->load(
-                'workspaceSubscriptions.workspacePlan.models'
+            'workspaceSubscriptions.workspacePlan.models'
         );
 
 

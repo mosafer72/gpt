@@ -16,6 +16,17 @@ Route::prefix('admin')
     ->middleware(['auth:sanctum', 'admin']) // فرض بر این است که یک میدلور برای چک کردن دسترسی ادمین دارید
     ->group(function () {
 
+        //
+
+        Route::get('/users/{user}/workspaces', [UserController::class, 'getUserWorkspaces']);
+        Route::post('/users/{user}/assign-workspace', [UserController::class, 'assignWorkspace']);
+        Route::post('/users/{user}/workspaces/{workspace}/cancel', [UserController::class, 'cancelWorkspaceSubscription']);
+
+        // کیف پول
+        Route::post('/users/{user}/wallet', [UserController::class, 'updateWallet']);
+
+
+
         Route::get('/workspace-types', [WorkspaceTypeController::class, 'index']);
         Route::post('/workspace-types', [WorkspaceTypeController::class, 'store']);
         Route::put('/workspace-types/{id}', [WorkspaceTypeController::class, 'update']);
@@ -39,7 +50,7 @@ Route::prefix('admin')
 
         Route::apiResource('users', UserController::class);
 
-    // مسیرهای جدید کاربران
+        // مسیرهای جدید کاربران
         Route::post('users/{user}/login-as', [UserController::class, 'loginAs']);
         Route::get('users/{user}/workspaces', [UserController::class, 'workspaces']);
         Route::post('users/{user}/assign-workspace', [UserController::class, 'assignWorkspace']);

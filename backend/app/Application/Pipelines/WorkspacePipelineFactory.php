@@ -10,15 +10,15 @@ use App\Domain\Workspace\WorkspaceType;
 class WorkspacePipelineFactory
 {
     public function __construct(
-        protected ChatWorkspacePipeline $chat,
+        protected ChatWorkspacePipeline $personal,
         protected StudentWorkspacePipeline $academic
     ){}
 
     public function make(string $type):WorkspacePipeline
     {
-        return $this->academic;
+
         return match($type){
-            WorkspaceType::CHAT->value => $this->chat,
+            WorkspaceType::CHAT->value => $this->personal,
             WorkspaceType::ACADEMIC->value,
             'student' => $this->academic,
             default => throw new \Exception("Unsupported workspace type {$type}")

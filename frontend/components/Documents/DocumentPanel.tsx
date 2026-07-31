@@ -1,8 +1,9 @@
 "use client";
 
+import { DocumentItem } from "@/app/workspace/[id]/library/components/types/types";
 import styles from "./DocumentPanel.module.css";
 
-import { DocumentItem } from "@/types/index";
+
 
 interface Props {
   documents: DocumentItem[];

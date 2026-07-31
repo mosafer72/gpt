@@ -9,51 +9,63 @@ import {
   initiateWorkspacePayment,
 } from "@/lib/api";
 
-const tools = [
-  {
+// نقشه پیش‌فرض برای ابزارهای استاندارد (Fallback)
+const allToolsMap: Record<string, { icon: string; title: string; desc: string; path: string }> = {
+  document: {
     icon: "📄",
     title: "Documents",
     desc: "آپلود و تحلیل جزوه و فایل‌های PDF",
     path: "documents",
   },
-  {
+  documents: {
+    icon: "📄",
+    title: "Documents",
+    desc: "آپلود و تحلیل جزوه و فایل‌های PDF",
+    path: "documents",
+  },
+  library: {
     icon: "📚",
     title: "Paper Library",
     desc: "مدیریت و جستجوی مقالات علمی",
     path: "library",
   },
-  {
+  summarizer: {
     icon: "📝",
     title: "Summarizer",
     desc: "خلاصه‌سازی متن و استخراج نکات مهم",
     path: "summarizer",
   },
-  {
+  solver: {
     icon: "🧮",
     title: "AI Solver",
     desc: "حل تمرین و توضیح مرحله به مرحله",
     path: "solver",
   },
-  {
+  research: {
     icon: "🔍",
     title: "Research",
     desc: "تحقیق، مقاله و جمع‌آوری منابع",
     path: "research",
   },
-  {
+  memory: {
     icon: "🧠",
     title: "Memory",
     desc: "حافظه هوشمند دانشجویی",
     path: "memory",
   },
-];
+  chat: {
+    icon: "💬",
+    title: "Chat",
+    desc: "گفتگو با هوش مصنوعی",
+    path: "chat",
+  },
+};
 
-// تعیین آیکون جذاب بر اساس نام یا نوع پلن
 function getPlanIcon(planName: string) {
-  const name = planName.toLowerCase();
+  const name = (planName || "").toLowerCase();
   if (name.includes("advanced") || name.includes("پیشرفته")) return "⚡";
   if (name.includes("pro") || name.includes("حرفه‌ای")) return "💎";
-  return "🌱"; // برای پلن‌های پایه (Basic)
+  return "🌱";
 }
 
 export default function WorkspacePage() {
@@ -61,7 +73,7 @@ export default function WorkspacePage() {
   const router = useRouter();
   const id = Number(params?.id);
 
-  const [workspace, setWorkspace] = useState<any>(null);
+  const [workspaceData, setWorkspaceData] = useState<any>(null);
   const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [upgradingId, setUpgradingId] = useState<number | null>(null);
@@ -73,7 +85,7 @@ export default function WorkspacePage() {
         getWorkspace(id),
         getWorkspacePlans(id),
       ]);
-      setWorkspace(wsData.workspace);
+      setWorkspaceData(wsData);
       setPlans(plansData.data ?? plansData);
     } catch (error) {
       console.log("Error loading workspace data:", error);
@@ -111,17 +123,62 @@ export default function WorkspacePage() {
     return <div className={styles.loading}>در حال بارگذاری Workspace...</div>;
   }
 
-  if (!workspace) {
+  if (!workspaceData) {
     return <div className={styles.loading}>Workspace پیدا نشد</div>;
   }
 
+  // استخراج ساختارها بر اساس خروجی‌های مختلف احتمالی بک‌اند
+  const workspace = workspaceData.workspace ?? workspaceData;
   const type = workspace.workspace_type ?? {};
-  const currentPlan = workspace.plan ?? {};
-  const wallet = workspace.wallet ?? {
+  
+  // استخراج ایمن پلن فعال و اطلاعات اشتراک از ساختارهای مختلف
+  const currentPlan = 
+    workspaceData.plan ?? 
+    workspace.plan ?? 
+    workspaceData.subscription?.workspace_plan ?? 
+    workspace.subscription?.workspace_plan ?? 
+    workspace.workspace_subscriptions?.[0]?.workspace_plan ?? 
+    {};
+
+  const activeSubscription = 
+    workspaceData.subscription ?? 
+    workspace.subscription ?? 
+    workspace.workspace_subscriptions?.[0] ?? 
+    {};
+
+  const wallet = workspaceData.wallet ?? workspace.wallet ?? {
     total_tokens: 0,
     used_tokens: 0,
     remaining_tokens: 0,
   };
+
+  // پردازش و نرمال‌سازی ابزارها
+  const workspaceFeatures = Array.isArray(type.features) ? type.features : [];
+  const activeTools = workspaceFeatures
+    .map((feat: any) => {
+      if (typeof feat === "object" && feat !== null) {
+        return {
+          icon: feat.icon || "🧩",
+          title: feat.title || feat.key,
+          desc: feat.desc || "ابزار هوشمند فضای کاری",
+          path: feat.path || feat.key,
+        };
+      }
+      if (typeof feat === "string") {
+        const lowerKey = feat.toLowerCase();
+        if (allToolsMap[lowerKey]) {
+          return allToolsMap[lowerKey];
+        }
+        return {
+          icon: "🧩",
+          title: feat,
+          desc: "ابزار هوشمند فضای کاری",
+          path: lowerKey.replace(/\s+/g, "_"),
+        };
+      }
+      return null;
+    })
+    .filter(Boolean);
 
   return (
     <div className={styles.container}>
@@ -129,11 +186,7 @@ export default function WorkspacePage() {
         <div className={styles.icon}>{type.icon ?? "🚀"}</div>
         <div>
           <h1>{workspace.name}</h1>
-          <p>
-            {type.display_name}
-            {" - "}
-            {type.description}
-          </p>
+          <p>{type.display_name} - {type.description}</p>
         </div>
       </header>
 
@@ -141,10 +194,14 @@ export default function WorkspacePage() {
       <section className={styles.planCard}>
         <div>
           <span>پلن فعال فضای کاری</span>
-          <h2>{currentPlan.display_name ?? currentPlan.name ?? "بدون پلن"}</h2>
+          <h2>
+            {currentPlan.display_name ?? currentPlan.name ?? "پلن رایگان / بدون پلن فعال"}
+          </h2>
           <p>
             پایان اشتراک:{" "}
-            {workspace.expires_at
+            {activeSubscription.expires_at
+              ? new Date(activeSubscription.expires_at).toLocaleDateString("fa-IR")
+              : workspace.expires_at
               ? new Date(workspace.expires_at).toLocaleDateString("fa-IR")
               : "دائمی / نامحدود"}
           </p>
@@ -153,52 +210,33 @@ export default function WorkspacePage() {
       </section>
 
       <section className={styles.stats}>
-        <Stat
-          title="کل توکن"
-          value={currentPlan.token_limit?.toLocaleString()}
-        />
+        <Stat title="کل توکن" value={currentPlan.token_limit?.toLocaleString()} />
         <Stat title="مصرف شده" value={wallet.used_tokens?.toLocaleString()} />
-        <Stat
-          title="باقی مانده"
-          value={wallet.remaining_tokens?.toLocaleString()}
-        />
+        <Stat title="باقی مانده" value={wallet.remaining_tokens?.toLocaleString()} />
       </section>
 
-      <section className={styles.card}>
-        <h2>امکانات Workspace</h2>
-        <div className={styles.features}>
-          {type.features?.map((item: string, index: number) => (
-            <div key={index} className={styles.feature}>
-              ✓ {item}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <div
-        style={{
-          maxWidth: "1200px",
-          margin: "40px auto 20px",
-          position: "relative",
-          zIndex: 2,
-        }}
-      >
-        <h2>ابزارهای هوشمند دانشجویی</h2>
+      {/* نمایش ابزارهای هوشمند فیلترشده */}
+      <div style={{ maxWidth: "1200px", margin: "40px auto 20px", position: "relative", zIndex: 2 }}>
+        <h2>ابزارهای هوشمند این فضا</h2>
       </div>
 
       <section className={styles.grid} style={{ marginBottom: "40px" }}>
-        {tools.map((tool) => (
-          <Tool
-            key={tool.path}
-            icon={tool.icon}
-            title={tool.title}
-            desc={tool.desc}
-            click={() => router.push(`/workspace/${id}/${tool.path}`)}
-          />
-        ))}
+        {activeTools.length > 0 ? (
+          activeTools.map((tool: any) => (
+            <Tool
+              key={tool.path}
+              icon={tool.icon}
+              title={tool.title}
+              desc={tool.desc}
+              click={() => router.push(`/workspace/${id}/${tool.path}`)}
+            />
+          ))
+        ) : (
+          <p style={{ color: "#94a3b8", gridColumn: "1 / -1" }}>هیچ ابزاری برای این فضای کاری فعال نشده است.</p>
+        )}
       </section>
 
-      {/* بخش مدیریت و خرید پلن‌ها همراه با آیکون‌های اختصاصی */}
+      {/* بخش ارتقا و خرید پلن‌ها */}
       <section className={styles.card} style={{ marginTop: "25px" }}>
         <h2 style={{ marginBottom: "10px" }}>ارتقا و خرید پلن‌های فضای کاری</h2>
         <p style={{ color: "#94a3b8", marginBottom: "25px" }}>
@@ -207,67 +245,29 @@ export default function WorkspacePage() {
 
         <div className={styles.gridPlans}>
           {plans.map((plan) => {
-            const isCurrent = currentPlan.id === plan.id;
+            const isCurrent = 
+              (currentPlan.id === plan.id) || 
+              (activeSubscription.workspace_plan_id === plan.id);
             const isBusy = upgradingId === plan.id;
             const planIcon = getPlanIcon(plan.name);
 
             return (
-              <div
-                key={plan.id}
-                className={`${styles.planItemCard} ${isCurrent ? styles.activePlanBorder : ""}`}
-              >
+              <div key={plan.id} className={`${styles.planItemCard} ${isCurrent ? styles.activePlanBorder : ""}`}>
                 <div>
-                  {/* هدر کارت پلن شامل آیکون و بج وضعیت */}
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      marginBottom: "16px",
-                    }}
-                  >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
                     <div className={styles.planIconBox}>{planIcon}</div>
-                    {isCurrent && (
-                      <span className={styles.currentBadge}>پلن فعلی</span>
-                    )}
+                    {isCurrent && <span className={styles.currentBadge}>پلن فعلی</span>}
                   </div>
 
                   <h3 style={{ margin: "0 0 8px 0", fontSize: "20px" }}>
                     {plan.display_name ?? plan.name}
                   </h3>
-
                   <p className={styles.planPrice}>
-                    {plan.price > 0
-                      ? `${Number(plan.price).toLocaleString()} تومان`
-                      : "رایگان"}
+                    {plan.price > 0 ? `${Number(plan.price).toLocaleString()} تومان` : "رایگان"}
                   </p>
-
-                  <p
-                    style={{
-                      fontSize: "14px",
-                      color: "#94a3b8",
-                      marginBottom: "15px",
-                    }}
-                  >
-                    سقف توکن:{" "}
-                    <strong style={{ color: "#fff" }}>
-                      {plan.token_limit?.toLocaleString()}
-                    </strong>
+                  <p style={{ fontSize: "14px", color: "#94a3b8", marginBottom: "15px" }}>
+                    سقف توکن: <strong style={{ color: "#fff" }}>{plan.token_limit?.toLocaleString()}</strong>
                   </p>
-
-                  <div className={styles.planFeaturesList}>
-                    {plan.features && plan.features.length > 0 ? (
-                      plan.features.map((feat: string, idx: number) => (
-                        <div key={idx} style={{ marginBottom: "6px" }}>
-                          ✓ {feat}
-                        </div>
-                      ))
-                    ) : (
-                      <div style={{ color: "#64748b", fontSize: "13px" }}>
-                        دسترسی به قابلیت‌های این سطح
-                      </div>
-                    )}
-                  </div>
                 </div>
 
                 <button
@@ -275,18 +275,12 @@ export default function WorkspacePage() {
                   onClick={() => handleUpgrade(plan.id)}
                   className={styles.planButton}
                   style={{
-                    background: isCurrent
-                      ? "rgba(255, 255, 255, 0.1)"
-                      : "linear-gradient(135deg, #2563eb, #7c3aed)",
+                    background: isCurrent ? "rgba(255, 255, 255, 0.1)" : "linear-gradient(135deg, #2563eb, #7c3aed)",
                     color: isCurrent ? "#94a3b8" : "#fff",
                     cursor: isCurrent ? "not-allowed" : "pointer",
                   }}
                 >
-                  {isCurrent
-                    ? "پلن فعلی شما"
-                    : isBusy
-                      ? "در حال انتقال..."
-                      : "انتخاب و خرید"}
+                  {isCurrent ? "پلن فعلی شما" : isBusy ? "در حال انتقال..." : "انتخاب و خرید"}
                 </button>
               </div>
             );
@@ -308,7 +302,7 @@ function Stat({ title, value }: any) {
 
 function Tool({ icon, title, desc, click }: any) {
   return (
-    <div>
+    <div className={styles.toolCard}>
       <div style={{ fontSize: "32px", marginBottom: "12px" }}>{icon}</div>
       <h3>{title}</h3>
       <p>{desc}</p>

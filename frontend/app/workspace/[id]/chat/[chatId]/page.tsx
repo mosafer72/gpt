@@ -2,68 +2,64 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-
 import ChatInterface from "@/components/Chat/ChatInterface";
-
-import { getChat, getWorkspace, getAvailableModels } from "@/lib/api";
+import { getWorkspace, getAvailableModels } from "@/lib/api";
 
 export default function ChatByIdPage() {
   const params = useParams();
-
   const workspaceId = Number(params.id);
-
   const chatId = Number(params.chatId);
 
   const [workspace, setWorkspace] = useState<any>(null);
-
-  const [chat, setChat] = useState<any>(null);
-
   const [models, setModels] = useState<any[]>([]);
-
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       try {
         const workspaceResponse = await getWorkspace(workspaceId);
-
-        const chatResponse = await getChat(workspaceId, chatId);
-
         const modelsResponse = await getAvailableModels(workspaceId);
 
         setWorkspace(workspaceResponse.workspace);
-
-        const chatData = chatResponse;
-
-        setChat({
-          ...chatData,
-
-          messages: [...(chatData.messages ?? [])].sort(
-            (a, b) =>
-              new Date(a.created_at).getTime() -
-              new Date(b.created_at).getTime(),
-          ),
-        });
-
         setModels(modelsResponse.models ?? []);
       } catch (error) {
-        console.log("Chat Load Error:", error);
+        console.log("Workspace Load Error:", error);
       } finally {
         setLoading(false);
       }
     }
 
-    if (workspaceId && chatId) {
+    if (workspaceId) {
       load();
     }
-  }, [workspaceId, chatId]);
+  }, [workspaceId]);
 
-  if (loading) {
-    return <div>در حال بارگذاری چت...</div>;
-  }
-
-  if (!chat) {
-    return <div>چت پیدا نشد</div>;
+  if (loading || !workspace) {
+    return (
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        height: "100vh",
+        background: "#0f172a",
+        color: "#94a3b8",
+        gap: "16px"
+      }}>
+        <div style={{
+          width: "40px",
+          height: "40px",
+          border: "3px solid rgba(59, 130, 246, 0.2)",
+          borderTopColor: "#3b82f6",
+          borderRadius: "50%",
+          animation: "spin 0.8s linear infinite"
+        }}></div>
+        <span>در حال بارگذاری...</span>
+        <style jsx>{`
+          @keyframes spin { to { transform: rotate(360deg); } }
+        `}</style>
+      </div>
+    );
   }
 
   return (
@@ -71,7 +67,7 @@ export default function ChatByIdPage() {
       workspace={workspace}
       workspaceId={workspaceId}
       models={models}
-      initialChat={chat}
+      initialChat={null} // اجازه می‌دهیم خود ChatInterface چت مربوط به URL را مدیریت کند
     />
   );
 }

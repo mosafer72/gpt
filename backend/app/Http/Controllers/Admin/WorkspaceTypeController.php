@@ -14,7 +14,7 @@ class WorkspaceTypeController extends Controller
      */
     public function index(): JsonResponse
     {
-        $types = WorkspaceType::latest()->get();
+        $types = WorkspaceType::with("plans")->latest()->get();
         return response()->json($types);
     }
 
@@ -23,13 +23,18 @@ class WorkspaceTypeController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        // اعتبارسنجی بر اساس فیلدهای fillable مدل WorkspaceType[cite: 5]
         $validated = $request->validate([
             'key' => 'required|string|unique:workspace_types,key',
             'name' => 'required|string|max:255',
             'display_name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'icon' => 'nullable|string',
+            'features' => 'nullable|array',
+            'features.*.key' => 'required_with:features|string',
+            'features.*.icon' => 'nullable|string',
+            'features.*.title' => 'required_with:features|string|max:255',
+            'features.*.desc' => 'nullable|string',
+            'features.*.path' => 'nullable|string',
         ]);
 
         $workspaceType = WorkspaceType::create($validated);
@@ -40,9 +45,6 @@ class WorkspaceTypeController extends Controller
         ], 201);
     }
 
-    /**
-     * ویرایش اطلاعات نوع فضای کاری
-     */
     public function update(Request $request, $id): JsonResponse
     {
         $workspaceType = WorkspaceType::findOrFail($id);
@@ -53,7 +55,18 @@ class WorkspaceTypeController extends Controller
             'display_name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'icon' => 'nullable|string',
+            'features' => 'nullable|array',
+            'features.*.key' => 'required_with:features|string',
+            'features.*.icon' => 'nullable|string',
+            'features.*.title' => 'required_with:features|string|max:255',
+            'features.*.desc' => 'nullable|string',
+            'features.*.path' => 'nullable|string',
         ]);
+
+        // اگر پکیج فرم خالی فرستاد، آرایه خالی ذخیره شود
+        if (!isset($validated['features'])) {
+            $validated['features'] = [];
+        }
 
         $workspaceType->update($validated);
 
@@ -63,8 +76,9 @@ class WorkspaceTypeController extends Controller
         ]);
     }
 
+
     /**
-     * تغییر وضعیت فعال/غیرفعال (بر اساس فیلد کست شده is_active[cite: 5])
+     * تغییر وضعیت فعال/غیرفعال
      */
     public function toggleStatus(Request $request, $id): JsonResponse
     {

@@ -20,6 +20,7 @@ import {
   sendMessageStream,
   deleteDocument,
   checkWorkspaceAccess,
+  getDashboard,
   DocumentItem,
 } from "@/lib/api";
 
@@ -37,6 +38,13 @@ export default function DocumentsPage() {
   // Access States
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+
+  // Workspace & Plan Features Switcher State
+  const [featureOptions, setFeatureOptions] = useState<any[]>([]);
+
+  // Models State
+  const [models, setModels] = useState<any[]>([]);
+  const [selectedModelId, setSelectedModelId] = useState<number | null>(null);
 
   // Document States
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -60,7 +68,6 @@ export default function DocumentsPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Ref اختصاصی برای جلوگیری از Re-render رگباری React هنگام Stream
   const currentAiMessageRef = useRef<string>("");
 
   const scrollToBottom = () => {
@@ -71,7 +78,6 @@ export default function DocumentsPage() {
     scrollToBottom();
   }, [messages, chatLoading]);
 
-  // مدیریت خطاهای بک‌اند
   const handleBackendError = useCallback(
     (error: any, defaultMessage: string) => {
       console.error(error);
@@ -93,37 +99,129 @@ export default function DocumentsPage() {
     [],
   );
 
-  // بررسی دسترسی اولیه به ورک‌اسپیس با ویژگی document
   useEffect(() => {
-    async function verifyAccess() {
+    let isMounted = true;
+
+    async function verifyAccessAndExtractFeatures() {
       if (!workspaceId) {
-        setHasAccess(false);
-        setCheckingAccess(false);
-        setLoading(false);
+        if (isMounted) {
+          setHasAccess(false);
+          setCheckingAccess(false);
+          setLoading(false);
+        }
         return;
       }
 
+      if (isMounted) {
+        setCheckingAccess(true);
+        setLoading(true);
+        setSelected([]);
+        setMessages([]);
+        setActiveChatId(null);
+      }
+
       try {
-        const response = await checkWorkspaceAccess(workspaceId, "document");
-        if (response.has_access) {
-          setHasAccess(true);
-        } else {
-          setHasAccess(false);
+        const dashboardData = await getDashboard();
+
+        if (isMounted && dashboardData?.workspaces) {
+          const options: any[] = [];
+
+          dashboardData.workspaces.forEach((ws: any) => {
+            if (Number(ws.id) === workspaceId) {
+              let activeModels: any[] = [];
+
+              if (
+                ws.models &&
+                Array.isArray(ws.models) &&
+                ws.models.length > 0
+              ) {
+                activeModels = ws.models;
+              } else if (
+                ws.plan?.models &&
+                Array.isArray(ws.plan.models) &&
+                ws.plan.models.length > 0
+              ) {
+                activeModels = ws.plan.models;
+              } else if (dashboardData.workspace_types) {
+                const matchedType = dashboardData.workspace_types.find(
+                  (wt: any) => wt.key === ws.type,
+                );
+                const matchedPlan = matchedType?.plans?.find(
+                  (p: any) => p.id === ws.plan?.id,
+                );
+                if (matchedPlan?.models) {
+                  activeModels = matchedPlan.models;
+                }
+              }
+
+              setModels(activeModels);
+              if (activeModels.length > 0) {
+                setSelectedModelId(activeModels[0].id);
+              }
+            }
+
+            const workspaceFeatures = ws.workspace_type?.features || [];
+            const planCapabilities = ws.plan?.capabilities || {};
+
+            workspaceFeatures.forEach((feature: any) => {
+              const key = (feature.key || "").toLowerCase();
+
+              const isAllowed =
+                planCapabilities[key] === true ||
+                planCapabilities[key] === undefined ||
+                key === "chat";
+
+              if (isAllowed) {
+                const optionValue = `${ws.id}-${ws.name}-${key}`;
+                const optionLabel = `${ws.display_name || ws.name} - ${feature.title || feature.key} (${ws.type})`;
+
+                if (!options.some((f) => f.uniqueKey === optionValue)) {
+                  options.push({
+                    workspaceId: ws.id,
+                    workspaceName: ws.name,
+                    featureTitle: feature.title || feature.key,
+                    path: feature.path || key,
+                    uniqueKey: optionValue,
+                    label: optionLabel,
+                  });
+                }
+              }
+            });
+          });
+
+          setFeatureOptions(options);
+        }
+
+        const response = await checkWorkspaceAccess(workspaceId, "documents");
+        if (isMounted) {
+          if (response.has_access) {
+            setHasAccess(true);
+          } else {
+            setHasAccess(false);
+          }
         }
       } catch (error) {
         console.error("Access check failed:", error);
-        setHasAccess(false);
+        if (isMounted) {
+          setHasAccess(false);
+        }
       } finally {
-        setCheckingAccess(false);
+        if (isMounted) {
+          setCheckingAccess(false);
+        }
       }
     }
 
-    verifyAccess();
+    verifyAccessAndExtractFeatures();
+
+    return () => {
+      isMounted = false;
+    };
   }, [workspaceId]);
 
-  // دریافت لیست اسناد
   const loadDocuments = useCallback(
     async (showGlobalLoading = false) => {
+      if (!workspaceId) return;
       if (showGlobalLoading) setLoading(true);
       try {
         const response = await getDocuments(workspaceId);
@@ -137,14 +235,12 @@ export default function DocumentsPage() {
     [workspaceId, handleBackendError],
   );
 
-  // بارگذاری اسناد بعد از تایید دسترسی
   useEffect(() => {
     if (hasAccess && workspaceId) {
       loadDocuments(true);
     }
   }, [hasAccess, workspaceId, loadDocuments]);
 
-  // Polling بهینه‌شده اسناد
   useEffect(() => {
     const hasPendingDoc = documents.some(
       (doc) => doc.status !== "completed" && doc.status !== "failed",
@@ -158,8 +254,6 @@ export default function DocumentsPage() {
 
     return () => clearInterval(interval);
   }, [documents, loadDocuments]);
-
-  // انتخاب یا عدم انتخاب سند
   async function toggleDocument(document: DocumentItem) {
     let updatedSelected: DocumentItem[] = [];
     const exists = selected.some((item) => item.id === document.id);
@@ -176,7 +270,7 @@ export default function DocumentsPage() {
       try {
         const response = await createChat(workspaceId, {
           document_ids: updatedSelected.map((x) => x.id),
-          model_id: 16,
+          model_id: selectedModelId ?? (models.length > 0 ? models[0].id : 16),
         });
         if (response.chat?.id) {
           setActiveChatId(response.chat.id);
@@ -189,14 +283,13 @@ export default function DocumentsPage() {
       setMessages([]);
     }
   }
-
-  // آپلود فایل
   async function handleUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
 
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("workspace_id", String(workspaceId));
 
     try {
       setUploading(true);
@@ -232,7 +325,6 @@ export default function DocumentsPage() {
     }
   }
 
-  // حذف سند
   async function handleDeleteDocument(
     e: React.MouseEvent,
     docId: number | string,
@@ -253,11 +345,6 @@ export default function DocumentsPage() {
     }
   }
 
-  /*
-  |--------------------------------------------------------------------------
-  | ارسال پیام چت و پردازش ایمن استریم (پشتیبانی کامل از توکن‌های متصل)
-  |--------------------------------------------------------------------------
-  */
   async function handleSendMessage(e: FormEvent) {
     e.preventDefault();
     if (!input.trim() || chatLoading || selected.length === 0) return;
@@ -294,13 +381,16 @@ export default function DocumentsPage() {
       renderScheduled = false;
     };
 
+    const targetModelId =
+      selectedModelId ?? (models.length > 0 ? models[0].id : 16);
+
     try {
       await sendMessageStream(
         userText,
         workspaceId,
         activeChatId ?? undefined,
         null,
-        16,
+        targetModelId,
         (chunk) => {
           if (!chunk) return;
 
@@ -381,16 +471,109 @@ export default function DocumentsPage() {
       )}
 
       <header className={styles.header}>
-        <div className={styles.headerLeft}>
-          <button className={styles.backBtn} onClick={() => router.back()}>
-            ← بازگشت
-          </button>
-          <div>
+        <div
+          className={styles.headerLeft}
+          style={{ display: "flex", flexDirection: "column", gap: "10px" }}
+        >
+          <div
+            style={{
+              display: "flex",
+              gap: "15px",
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            <button className={styles.backBtn} onClick={() => router.back()}>
+              ← بازگشت
+            </button>
             <h1>📚 دستیار هوشمند اسناد</h1>
-            <p>
-              اسناد مورد نظر خود را انتخاب کرده و بلافاصله گفتگو را شروع کنید
-            </p>
+
+            {featureOptions.length > 0 && (
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "6px" }}
+              >
+                <span style={{ fontSize: "13px", color: "#94a3b8" }}>
+                  پلن و فیچر:
+                </span>
+                <select
+                  value={
+                    featureOptions.find(
+                      (opt) =>
+                        opt.workspaceId === workspaceId &&
+                        opt.path === "documents",
+                    )?.uniqueKey || ""
+                  }
+                  onChange={(e) => {
+                    const selectedUniqueKey = e.target.value;
+                    const matchedOption = featureOptions.find(
+                      (opt) => opt.uniqueKey === selectedUniqueKey,
+                    );
+                    if (matchedOption) {
+                      router.push(
+                        `/workspace/${matchedOption.workspaceId}/${matchedOption.path}`,
+                      );
+                    }
+                  }}
+                  style={{
+                    background: "rgba(59, 130, 246, 0.1)",
+                    border: "1px solid rgba(59, 130, 246, 0.4)",
+                    color: "#fff",
+                    padding: "6px 12px",
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    outline: "none",
+                    fontWeight: 600,
+                  }}
+                >
+                  <option
+                    value=""
+                    disabled
+                    style={{ background: "#1e293b", color: "#94a3b8" }}
+                  >
+                    انتخاب پلن و فیچر...
+                  </option>
+                  {featureOptions.map((opt) => (
+                    <option
+                      key={opt.uniqueKey}
+                      value={opt.uniqueKey}
+                      style={{ background: "#1e293b", color: "#fff" }}
+                    >
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* {models.length > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ fontSize: "13px", color: "#94a3b8" }}>مدل:</span>
+                <select
+                  value={selectedModelId ?? models[0].id}
+                  onChange={(e) => setSelectedModelId(Number(e.target.value))}
+                  style={{
+                    background: "rgba(16, 185, 129, 0.1)",
+                    border: "1px solid rgba(16, 185, 129, 0.4)",
+                    color: "#fff",
+                    padding: "6px 12px",
+                    borderRadius: "8px",
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    outline: "none",
+                    fontWeight: 600,
+                  }}
+                >
+                  {models.map((model) => (
+                    <option key={model.id} value={model.id} style={{ background: "#1e293b", color: "#fff" }}>
+                      {model.name || model.display_name || `مدل ${model.id}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )} */}
           </div>
+          <p>اسناد مورد نظر خود را انتخاب کرده و بلافاصله گفتگو را شروع کنید</p>
         </div>
 
         <div className={styles.actions}>
@@ -409,7 +592,6 @@ export default function DocumentsPage() {
       </header>
 
       <div className={styles.layout}>
-        {/* پنل راست: لیست اسناد */}
         <aside className={styles.sidebar}>
           <div className={styles.sidebarHeader}>
             <h2>اسناد شما</h2>
@@ -475,7 +657,6 @@ export default function DocumentsPage() {
           </div>
         </aside>
 
-        {/* پنل چپ: چت و نمایش مارک‌داون */}
         <main className={styles.chatMain}>
           {selected.length === 0 ? (
             <div className={styles.selectPrompt}>

@@ -4,6 +4,6 @@ namespace App\Domain\Workspace;
 
 enum WorkspaceType:string
 {
-    case CHAT='chat';
+    case CHAT='personal';
     case ACADEMIC='student';
 }

@@ -42,7 +42,6 @@ class StudentWorkspacePipeline implements WorkspacePipeline
 
     public function handle(ChatContext $context): ChatContext
     {
-        die("sfdjkh");
 
         $user = $this->prepareContext($context);
 
@@ -247,16 +246,15 @@ class StudentWorkspacePipeline implements WorkspacePipeline
             return [];
         }
 
-        $subscription = is_object($workspace) && method_exists($workspace, 'activeSubscription')
-            ? $workspace->activeSubscription()
-            : null;
+        $subscription = $workspace->activeSubscription()->first();
 
         if (!$subscription) {
             return [];
         }
 
         $subscription->loadMissing('workspacePlan.models');
-        $allModels = $subscription->workspacePlan->models ?? collect();
+
+        $allModels = $subscription->workspacePlan?->models ?? collect();
 
         if ($allModels->isEmpty()) {
             return [];
@@ -268,13 +266,19 @@ class StudentWorkspacePipeline implements WorkspacePipeline
             ?? $allModels->firstWhere('id', $requestedModelKey);
 
         if ($primaryModel) {
-            $fallbackModels = $allModels->reject(fn($m) => $m->id === $primaryModel->id)->values();
-            return array_merge([$primaryModel], $fallbackModels->all());
+
+            $fallbackModels = $allModels
+                ->reject(fn($m) => $m->id === $primaryModel->id)
+                ->values();
+
+            return array_merge(
+                [$primaryModel],
+                $fallbackModels->all()
+            );
         }
 
         return $allModels->all();
     }
-
     protected function prepareDocuments(ChatContext $context): void
     {
         $documents = $this->retrieveDocuments($context);
@@ -344,7 +348,7 @@ class StudentWorkspacePipeline implements WorkspacePipeline
             messages: $messages,
             model: $modelName,
             temperature: 0.3,
-            maxTokens: 2000
+            maxTokens: 5000
         );
     }
 

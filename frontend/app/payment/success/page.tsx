@@ -1,7 +1,6 @@
 // app/payment/success/page.tsx
 
 import Link from "next/link";
-
 import {
   CheckCircle,
   Calendar,
@@ -10,10 +9,35 @@ import {
   ArrowLeft,
   Hash,
 } from "lucide-react";
-
 import styles from "./PaymentSuccess.module.css";
 
-import { Subscription } from "@/types";
+// تعریف تایپ‌های مورد نیاز برای این صفحه
+interface PlanModel {
+  id: number;
+  name: string;
+}
+
+interface Plan {
+  id: number;
+  display_name: string;
+  name: string;
+  price: number | string;
+  daily_message_limit: number;
+  models?: PlanModel[];
+  features?: string[];
+}
+
+interface SubscriptionInfo {
+  started_at: string;
+  expires_at: string;
+  days_remaining: number;
+  plan: Plan;
+}
+
+interface SubscriptionData {
+  subscription: SubscriptionInfo;
+  transaction_id?: string;
+}
 
 export default async function PaymentSuccessPage({
   searchParams,
@@ -25,7 +49,6 @@ export default async function PaymentSuccessPage({
   const params = await searchParams;
 
   const refId = params.ref_id as string;
-
   const authority = params.authority as string;
 
   if (!refId && !authority) {
@@ -33,11 +56,8 @@ export default async function PaymentSuccessPage({
       <div className={styles.container}>
         <div className={styles.card}>
           <div className={styles.errorIcon}>⚠️</div>
-
           <h1 className={styles.errorTitle}>خطا</h1>
-
           <p className={styles.errorMessage}>کد پیگیری یافت نشد</p>
-
           <Link href="/" className={styles.secondaryButton}>
             بازگشت به سایت
           </Link>
@@ -48,14 +68,12 @@ export default async function PaymentSuccessPage({
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://accountsara.ir";
 
-  let subscription: Subscription | null = null;
-
+  let subscription: SubscriptionData | null = null;
   let error: string | null = null;
 
   try {
     const res = await fetch(
       `${apiUrl}/api/payment/status?ref_id=${refId || ""}&authority=${authority || ""}`,
-
       {
         cache: "no-store",
       },
@@ -77,11 +95,8 @@ export default async function PaymentSuccessPage({
       <div className={styles.container}>
         <div className={styles.card}>
           <div className={styles.errorIcon}>⚠️</div>
-
           <h1 className={styles.errorTitle}>خطا</h1>
-
           <p className={styles.errorMessage}>{error}</p>
-
           <Link href="/" className={styles.secondaryButton}>
             بازگشت به سایت
           </Link>
@@ -95,7 +110,6 @@ export default async function PaymentSuccessPage({
       <div className={styles.container}>
         <div className={styles.card}>
           <div className={styles.loadingSpinner} />
-
           <p className={styles.loadingText}>
             در حال بارگذاری اطلاعات پرداخت...
           </p>
@@ -105,7 +119,6 @@ export default async function PaymentSuccessPage({
   }
 
   const subscriptionInfo = subscription.subscription;
-
   const plan = subscriptionInfo?.plan;
 
   if (!plan) {
@@ -137,17 +150,13 @@ export default async function PaymentSuccessPage({
           <div className={styles.iconWrapper}>
             <CheckCircle size={72} className={styles.successIcon} />
           </div>
-
           <h1 className={styles.title}>🎉 پرداخت موفق</h1>
-
           <p className={styles.subtitle}>اشتراک شما با موفقیت فعال شد</p>
         </div>
 
         <div className={styles.trackingBox}>
           <Hash size={18} className={styles.trackingIcon} />
-
           <span className={styles.trackingLabel}>کد پیگیری:</span>
-
           <span className={styles.trackingCode}>
             {refId || subscription.transaction_id || "-"}
           </span>
@@ -156,20 +165,17 @@ export default async function PaymentSuccessPage({
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <Zap size={20} className={styles.sectionIcon} />
-
             <h2>اطلاعات اشتراک</h2>
           </div>
 
           <div className={styles.infoGrid}>
             <div className={styles.infoItem}>
               <span className={styles.infoLabel}>طرح</span>
-
               <span className={styles.infoValue}>{plan.display_name}</span>
             </div>
 
             <div className={styles.infoItem}>
               <span className={styles.infoLabel}>مدل</span>
-
               <span className={styles.infoValue}>
                 {plan.models?.map((model) => model.name).join(" , ") || "-"}
               </span>
@@ -177,7 +183,6 @@ export default async function PaymentSuccessPage({
 
             <div className={styles.infoItem}>
               <span className={styles.infoLabel}>مبلغ</span>
-
               <span className={styles.infoValue}>
                 {Number(plan.price).toLocaleString()} تومان
               </span>
@@ -185,7 +190,6 @@ export default async function PaymentSuccessPage({
 
             <div className={styles.infoItem}>
               <span className={styles.infoLabel}>پیام‌های روزانه</span>
-
               <span className={styles.infoValue}>
                 {plan.daily_message_limit}
               </span>
@@ -196,14 +200,12 @@ export default async function PaymentSuccessPage({
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <Calendar size={20} className={styles.sectionIcon} />
-
             <h2>بازه فعال‌سازی</h2>
           </div>
 
           <div className={styles.dateGrid}>
             <div className={styles.dateItem}>
               <span className={styles.dateLabel}>شروع</span>
-
               <span className={styles.dateValue}>
                 {formatDate(subscriptionInfo?.started_at ?? "")}
               </span>
@@ -211,7 +213,6 @@ export default async function PaymentSuccessPage({
 
             <div className={styles.dateItem}>
               <span className={styles.dateLabel}>انقضا</span>
-
               <span className={styles.dateValue}>
                 {formatDate(subscriptionInfo?.expires_at ?? "")}
               </span>
@@ -220,7 +221,6 @@ export default async function PaymentSuccessPage({
 
           <div className={styles.daysRemaining}>
             <Clock size={18} />
-
             <span>
               {daysRemaining > 0
                 ? `${daysRemaining} روز تا پایان اشتراک`
@@ -232,7 +232,6 @@ export default async function PaymentSuccessPage({
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
             <Zap size={20} className={styles.sectionIcon} />
-
             <h2>ویژگی‌های طرح</h2>
           </div>
 
@@ -240,7 +239,6 @@ export default async function PaymentSuccessPage({
             {plan.features?.map((feature: string, idx: number) => (
               <div key={idx} className={styles.featureItem}>
                 <span className={styles.featureBullet}>✓</span>
-
                 {feature}
               </div>
             ))}
@@ -252,7 +250,6 @@ export default async function PaymentSuccessPage({
             رفتن به داشبورد
             <ArrowLeft size={18} />
           </Link>
-
           <Link href="/" className={styles.secondaryButton}>
             بازگشت به صفحه اصلی
           </Link>

@@ -9,7 +9,7 @@ import {
   ChangeEvent,
   FormEvent,
 } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -25,6 +25,7 @@ import {
   createChat,
   sendMessageStream,
   deleteDocument,
+  getDashboard,
 } from "@/lib/api";
 import DocumentCard from "./components/DocumentCard";
 
@@ -35,6 +36,7 @@ interface Message {
 }
 
 export default function LibraryPage() {
+  const router = useRouter();
   const params = useParams();
   const workspaceId = Number(params.id);
 
@@ -50,6 +52,9 @@ export default function LibraryPage() {
   // Upload States
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Workspace Switcher Options State
+  const [featureOptions, setFeatureOptions] = useState<any[]>([]);
 
   // Chat Modal States
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -98,6 +103,46 @@ export default function LibraryPage() {
       }
 
       try {
+        // ۱. دریافت داشبورد برای ساخت دراپ‌دان هوشمند فیچرها و پلن‌ها
+        const dashboardData = await getDashboard();
+        if (dashboardData?.workspaces) {
+          const options: any[] = [];
+
+          dashboardData.workspaces.forEach((ws: any) => {
+            const planName = ws.plan?.display_name || ws.plan?.name || ws.workspace_type?.display_name || ws.workspace_type?.name || "پلن فعال";
+            const workspaceFeatures = ws.workspace_type?.features || [];
+            const planCapabilities = ws.plan?.capabilities || {};
+
+            workspaceFeatures.forEach((feature: any) => {
+              const key = (feature.key || "").toLowerCase();
+              const isAllowed = 
+                planCapabilities[key] === true || 
+                planCapabilities[key] === undefined || 
+                key === "library";
+
+              if (isAllowed) {
+                const optionValue = `${ws.id}-${ws.name}-${key}`;
+                const optionLabel = `${ws.display_name || ws.name} - ${feature.title || feature.key} (${ws.type})`;
+
+                if (!options.some((f) => f.uniqueKey === optionValue)) {
+                  options.push({
+                    workspaceId: ws.id,
+                    workspaceName: ws.name,
+                    planName: planName,
+                    featureTitle: feature.title || feature.key,
+                    path: feature.path || key,
+                    uniqueKey: optionValue,
+                    label: optionLabel
+                  });
+                }
+              }
+            });
+          });
+
+          setFeatureOptions(options);
+        }
+
+        // ۲. بررسی دسترسی به کتابخانه
         const response = await checkWorkspaceAccess(workspaceId, "library");
         if (response.has_access) {
           setHasAccess(true);
@@ -447,9 +492,52 @@ export default function LibraryPage() {
       )}
 
       <header className={styles.header}>
-        <div>
-          <h1>📚 Paper Library</h1>
-          <p>مدیریت مقالات، جزوات و فایل‌های آموزشی</p>
+        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+          <div>
+            <h1>📚 Paper Library</h1>
+            <p>مدیریت مقالات، جزوات و فایل‌های آموزشی</p>
+          </div>
+
+          {/* دراپ‌دان هوشمند پلن‌ها و فیبرها (در کنار هدر مشابه صفحه چت) */}
+          {featureOptions.length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ fontSize: "13px", color: "#94a3b8" }}>پلن و فیچر:</span>
+              <select
+                value={
+                  featureOptions.find(
+                    (opt) => opt.workspaceId === workspaceId && opt.path === "library"
+                  )?.uniqueKey || ""
+                }
+                onChange={(e) => {
+                  const selectedUniqueKey = e.target.value;
+                  const matchedOption = featureOptions.find((opt) => opt.uniqueKey === selectedUniqueKey);
+                  if (matchedOption) {
+                    router.push(`/workspace/${matchedOption.workspaceId}/${matchedOption.path}`);
+                  }
+                }}
+                style={{
+                  background: "rgba(59, 130, 246, 0.1)",
+                  border: "1px solid rgba(59, 130, 246, 0.4)",
+                  color: "#fff",
+                  padding: "6px 12px",
+                  borderRadius: "8px",
+                  fontSize: "13px",
+                  cursor: "pointer",
+                  outline: "none",
+                  fontWeight: 600,
+                }}
+              >
+                <option value="" disabled style={{ background: "#1e293b", color: "#94a3b8" }}>
+                  انتخاب پلن و فیچر...
+                </option>
+                {featureOptions.map((opt) => (
+                  <option key={opt.uniqueKey} value={opt.uniqueKey} style={{ background: "#1e293b", color: "#fff" }}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <label className={styles.uploadBtn}>

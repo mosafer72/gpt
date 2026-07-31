@@ -37,9 +37,9 @@ export interface DocumentItem {
 
   error?:string|null;
 
-
   metadata?:DocumentMetadata|null;
 
+  pages?: number;
 
   created_at:string;
 

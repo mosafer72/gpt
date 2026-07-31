@@ -83,7 +83,6 @@ export async function toggleWorkspaceStatus(workspaceId: number, currentStatus: 
     body: JSON.stringify({ is_active: !currentStatus }),
   });
 }
-// این توابع را به فایل ../services اضافه کنید
 
 export async function createWorkspace(data: any) {
   return request("/admin/workspaces", {
@@ -94,12 +93,12 @@ export async function createWorkspace(data: any) {
 
 export async function updateWorkspace(id: number, data: any) {
   return request(`/admin/workspaces/${id}`, {
-    method: "PUT", // یا PATCH
+    method: "PUT",
     body: JSON.stringify(data),
   });
 }
 
-// دریافت انواع فضای کاری
+// دریافت انواع فضای کاری همراه با پلن‌ها
 export async function getWorkspaceTypes() {
   return request("/admin/workspace-types");
 }
@@ -261,9 +260,28 @@ export async function getUserWorkspaces(userId: number) {
   return request(`/admin/users/${userId}/workspaces`);
 }
 
-export async function assignWorkspaceToUser(userId: number, workspaceId: number) {
+/**
+ * ایجاد و انتساب فضای کاری به همراه نوع و پلن اشتراک به کاربر
+ */
+export async function assignWorkspaceToUser(userId: number, data: { workspace_type_id: string | number; workspace_plan_id: string | number; name?: string }) {
   return request(`/admin/users/${userId}/assign-workspace`, {
     method: "POST",
-    body: JSON.stringify({ workspace_id: workspaceId }),
+    body: JSON.stringify(data),
+  });
+}
+
+/**
+ * مدیریت کیف پول (افزایش، کاهش یا صفر کردن توکن‌های فضای کاری کاربر)
+ */
+export async function updateUserWallet(userId: number, data: { workspace_id: number; amount: number; action: 'add' | 'subtract' | 'set' }) {
+  return request(`/admin/users/${userId}/wallet`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function cancelUserWorkspace(userId: number, workspaceId: number) {
+  return request(`/admin/users/${userId}/workspaces/${workspaceId}/cancel`, {
+    method: "POST",
   });
 }

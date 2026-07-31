@@ -104,7 +104,7 @@ class DocumentService
          * Chunking
          * Embedding (later)
          */
-        // ExtractDocumentTextJob::dispatch($document);
+        ExtractDocumentTextJob::dispatch($document);
 
         // ProcessDocumentJob::dispatch(
         //     $document

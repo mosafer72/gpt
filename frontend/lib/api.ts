@@ -315,7 +315,7 @@ export async function checkWorkspaceAccess(workspaceId: number | string, feature
 export function getAvailableModels(workspace_id:number) {
   return request<{
     models: AIModel[];
-  }>(`/models/${workspace_id}`);
+  }>(`/workspace/${workspace_id}/models`);
 }
 
 // ============================

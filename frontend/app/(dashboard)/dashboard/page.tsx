@@ -26,7 +26,7 @@ export default function DashboardPage() {
       const dashboardData = await getDashboard();
       setDashboard(dashboardData);
     } catch (error) {
-      console.log("Error loading dashboard data:", error);
+      console.error("Error loading dashboard data:", error);
     } finally {
       setLoading(false);
     }
@@ -44,9 +44,7 @@ export default function DashboardPage() {
     try {
       setUpgradingId(planId);
 
-      // آرگومان اول باید یک عدد (شناسه) باشد، نه آبجکت
       const targetId = existingWorkspaceId || workspaceTypeId;
-
       const response = await initiateWorkspacePayment(targetId, planId);
 
       if (response?.payment_url) {
@@ -78,24 +76,8 @@ export default function DashboardPage() {
   }
 
   const user = dashboard.user;
-  const wallet = dashboard.wallet;
-  const usage = dashboard.today_usage;
-  const workspaceTypes =
-    dashboard.workspace_types ?? dashboard.available_workspace_types ?? [];
-
-  // اطلاعات ورک‌پیس و پلن‌های فعال کاربر
-  const activeWorkspaces =
-    dashboard.workspaces ?? (dashboard.workspace ? [dashboard.workspace] : []);
-  const activeWorkspaceTypeId = dashboard.workspace?.workspace_type_id;
-
-  // محاسبه کل توکن ولت
-  const totalTokens = wallet?.total_tokens || 1;
-  const usedTokens = wallet?.used_tokens || 0;
-  const remainingTokens = wallet?.remaining_tokens || 0;
-  const usagePercent = Math.min(
-    Math.round((usedTokens / totalTokens) * 100),
-    100,
-  );
+  const workspaceTypes = dashboard.workspace_types ?? [];
+  const activeWorkspaces = dashboard.workspaces ?? [];
 
   return (
     <div className={styles.container}>
@@ -112,36 +94,16 @@ export default function DashboardPage() {
         <div className={styles.userBox}>
           <strong>{user?.name ?? "کاربر"}</strong>
           <span>{user?.phone}</span>
-          <button onClick={logout}>خروج</button>
+          <button className={styles.logout} onClick={logout}>خروج</button>
         </div>
       </header>
 
       <main className={styles.content}>
-        {/* Token / Usage Overview */}
-        <section className={styles.statsGrid}>
-          <div className={styles.statCard}>
-            <span>توکن باقیمانده کیف پول</span>
-            <strong>{remainingTokens.toLocaleString()}</strong>
-          </div>
-
-          <div className={styles.statCard}>
-            <span>درخواست‌های امروز</span>
-            <strong>{usage?.requests ?? 0}</strong>
-          </div>
-
-          <div className={styles.statCard}>
-            <span>توکن مصرفی امروز</span>
-            <strong>{usage?.total_tokens?.toLocaleString() ?? 0}</strong>
-          </div>
-        </section>
-
         {/* ---------------- بخش پلن‌های فعال کاربر (کارت‌های مربعی) ---------------- */}
         {activeWorkspaces.length > 0 && (
           <section style={{ marginTop: "30px" }}>
             <div style={{ marginBottom: "16px" }}>
-              <h2
-                style={{ fontSize: "22px", marginBottom: "4px", color: "#fff" }}
-              >
+              <h2 style={{ fontSize: "22px", marginBottom: "4px", color: "#fff" }}>
                 پلن‌های فعال کاربر
               </h2>
               <p style={{ color: "#94a3b8", fontSize: "13px" }}>
@@ -157,13 +119,24 @@ export default function DashboardPage() {
               }}
             >
               {activeWorkspaces.map((ws: any, index: number) => {
-                const activeSubscription = ws.workspace_subscriptions?.[0];
-                const activePlan =
-                  activeSubscription?.workspace_plan ??
-                  activeSubscription?.plan;
-                const planName =
-                  activePlan?.display_name || activePlan?.name || "پلن فعال";
+                const activePlan = ws.plan;
+                const planName = activePlan?.display_name || activePlan?.name || "پلن فعال";
                 const planIcon = getPlanIcon(planName);
+
+                const wallet = ws.wallet;
+                const usage = ws.today_usage;
+
+                const totalTokens = wallet?.total_tokens > 0 ? wallet.total_tokens : 1;
+                const usedTokens = wallet?.used_tokens || 0;
+                const remainingTokens = wallet?.remaining_tokens || 0;
+                const usagePercent = Math.min(
+                  Math.round((usedTokens / totalTokens) * 100),
+                  100,
+                );
+
+                const wsTypeObj = ws.workspace_type;
+                const typeDisplayName = wsTypeObj?.display_name || "محیط کاری";
+                const wsIcon = wsTypeObj?.icon || planIcon || "🚀";
 
                 return (
                   <div
@@ -196,9 +169,7 @@ export default function DashboardPage() {
                             gap: "10px",
                           }}
                         >
-                          <div style={{ fontSize: "26px" }}>
-                            {ws.workspace_type?.icon || planIcon || "🚀"}
-                          </div>
+                          <div style={{ fontSize: "26px" }}>{wsIcon}</div>
                           <div>
                             <h3
                               style={{
@@ -209,10 +180,8 @@ export default function DashboardPage() {
                             >
                               {ws.name}
                             </h3>
-                            <span
-                              style={{ fontSize: "12px", color: "#94a3b8" }}
-                            >
-                              {ws.workspace_type?.display_name || "محیط کاری"}
+                            <span style={{ fontSize: "12px", color: "#94a3b8" }}>
+                              {typeDisplayName}
                             </span>
                           </div>
                         </div>
@@ -226,8 +195,31 @@ export default function DashboardPage() {
                             fontWeight: 600,
                           }}
                         >
-                          {planName}
+                          فعال
                         </span>
+                      </div>
+
+                      {/* آمار مصرف روزانه */}
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(3, 1fr)",
+                          gap: "8px",
+                          marginBottom: "10px",
+                        }}
+                      >
+                        <div style={{ background: "rgba(0,0,0,0.2)", padding: "6px", borderRadius: "8px", textAlign: "center" }}>
+                          <span style={{ fontSize: "10px", color: "#94a3b8", display: "block" }}>باقیمانده</span>
+                          <strong style={{ fontSize: "11px", color: "#4ade80" }}>{remainingTokens.toLocaleString()}</strong>
+                        </div>
+                        <div style={{ background: "rgba(0,0,0,0.2)", padding: "6px", borderRadius: "8px", textAlign: "center" }}>
+                          <span style={{ fontSize: "10px", color: "#94a3b8", display: "block" }}>درخواست</span>
+                          <strong style={{ fontSize: "11px", color: "#fff" }}>{usage?.requests ?? 0}</strong>
+                        </div>
+                        <div style={{ background: "rgba(0,0,0,0.2)", padding: "6px", borderRadius: "8px", textAlign: "center" }}>
+                          <span style={{ fontSize: "10px", color: "#94a3b8", display: "block" }}>مصرف امروز</span>
+                          <strong style={{ fontSize: "11px", color: "#60a5fa" }}>{usage?.total_tokens?.toLocaleString() ?? 0}</strong>
+                        </div>
                       </div>
 
                       {/* باکس داخلی با پروگرس‌بار */}
@@ -236,8 +228,7 @@ export default function DashboardPage() {
                           background: "rgba(0, 0, 0, 0.2)",
                           border: "1px solid rgba(255, 255, 255, 0.08)",
                           borderRadius: "12px",
-                          padding: "12px",
-                          marginTop: "10px",
+                          padding: "10px",
                         }}
                       >
                         <div
@@ -250,31 +241,9 @@ export default function DashboardPage() {
                           }}
                         >
                           <span>
-                            مصرف:{" "}
+                            مصرف کل:{" "}
                             <strong style={{ color: "#fff" }}>
                               {usedTokens.toLocaleString()}
-                            </strong>
-                          </span>
-                          <span>
-                            باقیمانده:{" "}
-                            <strong style={{ color: "#4ade80" }}>
-                              {remainingTokens.toLocaleString()}
-                            </strong>
-                          </span>
-                        </div>
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            fontSize: "12px",
-                            marginBottom: "6px",
-                            color: "#cbd5e1",
-                          }}
-                        >
-                          <span>
-                            کل سهمیه:{" "}
-                            <strong style={{ color: "#60a5fa" }}>
-                              {totalTokens.toLocaleString()}
                             </strong>
                           </span>
                           <span>({usagePercent}%)</span>
@@ -294,8 +263,7 @@ export default function DashboardPage() {
                             style={{
                               width: `${usagePercent}%`,
                               height: "100%",
-                              background:
-                                "linear-gradient(90deg, #3b82f6, #8b5cf6)",
+                              background: "linear-gradient(90deg, #3b82f6, #8b5cf6)",
                               borderRadius: "4px",
                               transition: "width 0.4s ease",
                             }}
@@ -335,21 +303,18 @@ export default function DashboardPage() {
               محیط‌های کاری و پلن‌ها
             </h2>
             <p style={{ color: "#94a3b8", fontSize: "14px" }}>
-              پلن فعال خود را مدیریت کنید یا برای ارتقاء و تغییر محیط کاری اقدام
-              نمایید.
+              پلن فعال خود را مدیریت کنید یا برای ارتقاء و تغییر محیط کاری اقدام نمایید.
             </p>
           </div>
 
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "25px" }}
-          >
+          <div style={{ display: "flex", flexDirection: "column", gap: "25px" }}>
             {workspaceTypes.map((wsType: any) => {
-              const isCurrentWorkspaceType =
-                wsType.id === activeWorkspaceTypeId;
-              // پیدا کردن ورک‌پیس مرتبط با این نوع در صورت وجود
-              const matchedWorkspace = activeWorkspaces.find(
-                (w: any) => w.workspace_type_id === wsType.id,
+              const matchedWorkspaces = activeWorkspaces.filter(
+                (w: any) => w.workspace_type?.id === wsType.id
               );
+              
+              const hasActiveWorkspace = matchedWorkspaces.length > 0;
+              const primaryMatchedWorkspace = matchedWorkspaces[0];
 
               return (
                 <div
@@ -357,14 +322,13 @@ export default function DashboardPage() {
                   className={styles.card}
                   style={{
                     background: "rgba(255, 255, 255, 0.03)",
-                    border: isCurrentWorkspaceType
+                    border: hasActiveWorkspace
                       ? "1px solid rgba(59, 130, 246, 0.4)"
                       : "1px solid rgba(255, 255, 255, 0.08)",
                     borderRadius: "20px",
                     padding: "20px",
                   }}
                 >
-                  {/* هدر ورک‌پیس تایپ همراه با نمایش وضعیت اکتیو */}
                   <div
                     style={{
                       marginBottom: "18px",
@@ -411,7 +375,7 @@ export default function DashboardPage() {
                         </div>
                       </div>
 
-                      {isCurrentWorkspaceType && (
+                      {hasActiveWorkspace && (
                         <span
                           style={{
                             background: "rgba(34, 197, 94, 0.15)",
@@ -428,27 +392,25 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  {/* لیست پلن‌ها */}
                   <div
                     style={{
                       display: "grid",
-                      gridTemplateColumns:
-                        "repeat(auto-fit, minmax(240px, 1fr))",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
                       gap: "15px",
                     }}
                   >
                     {wsType.plans?.map((plan: any) => {
                       const isBusy = upgradingId === plan.id;
-                      const planIcon = getPlanIcon(
-                        plan.name || plan.display_name,
+                      const planIcon = getPlanIcon(plan.name || plan.display_name);
+
+                      // تطبیق دقیق پلن فعال بر اساس Workspace مربوط به همین Type
+                      const isCurrentPlanActive = matchedWorkspaces.some(
+                        (ws: any) => ws.plan?.id === plan.id
                       );
 
-                      // بررسی اینکه آیا این پلن خاص در این تایپ فعال است یا خیر
-                      const activeSubscription =
-                        matchedWorkspace?.workspace_subscriptions?.[0];
-                      const isCurrentPlanActive =
-                        activeSubscription?.workspace_plan_id === plan.id ||
-                        activeSubscription?.plan_id === plan.id;
+                      const targetWorkspace =
+                        matchedWorkspaces.find((ws: any) => ws.plan?.id === plan.id) ||
+                        primaryMatchedWorkspace;
 
                       return (
                         <div
@@ -525,19 +487,15 @@ export default function DashboardPage() {
                             >
                               سقف توکن:{" "}
                               <strong style={{ color: "#fff" }}>
-                                {plan.token_limit?.toLocaleString() ??
-                                  "نامحدود"}
+                                {plan.token_limit?.toLocaleString() ?? "نامحدود"}
                               </strong>
                             </p>
                           </div>
 
-                          {/* تغییر دکمه و ارسال شناسه صحیح محیط کاری */}
                           {isCurrentPlanActive ? (
                             <button
                               onClick={() =>
-                                router.push(
-                                  `/workspace/${matchedWorkspace?.id ?? activeWorkspaces[0]?.id}`,
-                                )
+                                router.push(`/workspace/${targetWorkspace?.id}`)
                               }
                               style={{
                                 width: "100%",
@@ -556,11 +514,16 @@ export default function DashboardPage() {
                           ) : (
                             <button
                               disabled={isBusy}
-                              onClick={() => handlePurchase(plan.id, wsType.id)}
+                              onClick={() =>
+                                handlePurchase(
+                                  plan.id,
+                                  wsType.id,
+                                  targetWorkspace?.id
+                                )
+                              }
                               style={{
                                 width: "100%",
-                                background:
-                                  "linear-gradient(135deg, #2563eb, #7c3aed)",
+                                background: "linear-gradient(135deg, #2563eb, #7c3aed)",
                                 color: "#fff",
                                 border: "none",
                                 padding: "11px",

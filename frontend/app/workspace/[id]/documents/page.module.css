@@ -728,3 +728,57 @@
     border: 1px solid #ddd;
     padding: 8px;
 }
+
+.notFoundContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: #0f172a;
+  color: #f8fafc;
+  font-family: inherit;
+  direction: rtl;
+}
+
+.notFoundContent {
+  text-align: center;
+  padding: 2rem;
+  max-width: 400px;
+}
+
+.errorCode {
+  font-size: 6rem;
+  font-weight: 800;
+  color: #6366f1;
+  line-height: 1;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+.errorTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.errorDesc {
+  color: #94a3b8;
+  font-size: 0.95rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.backButton {
+  display: inline-block;
+  background-color: #6366f1;
+  color: #ffffff;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+}
+
+.backButton:hover {
+  background-color: #4f46e5;
+}

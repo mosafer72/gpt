@@ -113,18 +113,6 @@ class Workspace extends Model
     /**
      * Active Subscription
      */
-    public function activeSubscription()
-    {
-        return $this
-            ->workspaceSubscriptions()
-            ->where('is_active', true)
-            ->where('expires_at', '>', now())
-            ->with([
-                'workspacePlan.models.provider'
-            ])
-            ->first();
-    }
-
 
     /**
      * Current Plan
@@ -167,4 +155,18 @@ class Workspace extends Model
             'workspace_id'
         );
     }
+    public function activeSubscription()
+    {
+        return $this
+            ->workspaceSubscriptions()
+            ->where('is_active', true)
+            ->where('expires_at', '>', now())
+            ->get();
+    }
+
+    public function tokenWallet()
+    {
+        return $this->hasOne(TokenWallet::class);
+    }
+
 }

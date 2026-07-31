@@ -4,7 +4,7 @@ namespace App\Application\Prompts;
 
 class SystemPrompt
 {
-    public static function default(): string
+    public static function build(): string
     {
         return <<<'PROMPT'
 You are an AI assistant specialized in answering questions about user-uploaded documents.
