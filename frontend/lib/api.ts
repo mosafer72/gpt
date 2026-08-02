@@ -18,24 +18,27 @@ if (!API_BASE) {
 }
 
 // ============================
-// Auth
+// Auth & Redirect Helpers
 // ============================
 
 function getToken() {
   if (typeof window === "undefined") {
     return null;
   }
-
   return localStorage.getItem("auth_token");
 }
-
-function logout() {
+export async function logout() {
   if (typeof window !== "undefined") {
     localStorage.removeItem("auth_token");
-
     localStorage.removeItem("user");
-
     window.location.href = "/login";
+  }
+}
+
+// ✅ تابع کمکی برای هدایت به صفحه ۴۰۴
+function redirectToNotFound() {
+  if (typeof window !== "undefined") {
+    window.location.href = "/404";
   }
 }
 
@@ -46,9 +49,7 @@ function headers(json = true) {
     ...(token && {
       Authorization: `Bearer ${token}`,
     }),
-
     Accept: "application/json",
-
     ...(json && {
       "Content-Type": "application/json",
     }),
@@ -65,13 +66,10 @@ async function request<T>(
 ): Promise<T> {
   const response = await fetch(
     `${API_BASE}${endpoint}`,
-
     {
       ...options,
-
       headers: {
         ...headers(!(options.body instanceof FormData)),
-
         ...options.headers,
       },
     },
@@ -79,13 +77,17 @@ async function request<T>(
 
   if (response.status === 401) {
     logout();
-
     throw new Error("Unauthorized");
+  }
+
+  // ✅ مدیریت خودکار خطای ۴۰۴ در تمام درخواست‌های استاندارد
+  if (response.status === 404) {
+    redirectToNotFound();
+    throw new Error("Resource not found");
   }
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-
     throw new Error(error?.message ?? "API Request Failed");
   }
 
@@ -133,7 +135,6 @@ export async function getDashboardData() {
 
   return {
     plans: Array.isArray(plansResponse) ? plansResponse : plansResponse.data,
-
     subscription,
   };
 }
@@ -156,13 +157,9 @@ export function getUserStatus() {
 
 export async function getTodayUsage() {
   const data = await request<any>("/usage/today");
-
   return data.data ?? data;
 }
 
-// ============================
-// Chat Stream
-// ============================
 // ============================
 // Chat Stream
 // ============================
@@ -174,7 +171,7 @@ export async function sendMessageStream(
   modelId?: number,
   onChunk?: (text: string) => void,
   signal?: AbortSignal,
-  file?: UploadedFileResponse | null,
+  file?: any | null,
   documentIds?: number[],
 ) {
   const formData = new FormData();
@@ -192,6 +189,14 @@ export async function sendMessageStream(
 
   if (image) {
     formData.append("image", image);
+  }
+
+  if (file) {
+    if (file instanceof File) {
+      formData.append("pdf", file);
+    } else if (file.file instanceof File) {
+      formData.append("pdf", file.file);
+    }
   }
 
   if (file?.paper?.id) {
@@ -216,6 +221,12 @@ export async function sendMessageStream(
     throw new Error("Unauthorized");
   }
 
+  // ✅ بررسی خطای ۴۰۴ در زمان ارسال پیام/استریم (مثلاً چت نامعتبر)
+  if (response.status === 404) {
+    redirectToNotFound();
+    throw new Error("Chat not found");
+  }
+
   if (!response.ok) {
     const error = await response.json().catch(() => null);
     throw new Error(error?.message ?? "Chat error");
@@ -233,17 +244,12 @@ export async function sendMessageStream(
     const { done, value } = await reader.read();
     if (done) break;
 
-    // ۱. حتماً stream: true برای جلوگیری از شکستن حروف فارسی
     buffer += decoder.decode(value, { stream: true });
-
     const lines = buffer.split(/\r?\n/);
-
-    // نگه داشتن بخش ناقص در بافر
     buffer = lines.pop() || "";
 
     for (const line of lines) {
       const trimmedLine = line.trim();
-
       if (!trimmedLine || !trimmedLine.startsWith("data:")) continue;
 
       const payload = trimmedLine.replace(/^data:\s*/, "").trim();
@@ -259,10 +265,8 @@ export async function sendMessageStream(
           throw new Error(json.error);
         }
 
-        // ۲. استخراج صحیح متن بر اساس ساختار OpenAI / Ollama و همچنین ساختار مستقیم
         const content = json?.choices?.[0]?.delta?.content ?? json?.content;
 
-        // ۳. ارسال متن خالص به فرانت‌اند بدون JSON.stringify
         if (typeof content === "string" && content.length > 0) {
           onChunk?.(content);
         }
@@ -272,6 +276,7 @@ export async function sendMessageStream(
     }
   }
 }
+
 // ============================
 // Chats
 // ============================
@@ -282,7 +287,6 @@ export function getChats(workspaceId: number) {
 
 export function getChat(
   workspaceId: number,
-
   id: number,
 ) {
   return request<Chat>(`/workspaces/${workspaceId}/chats/${id}`);
@@ -290,18 +294,15 @@ export function getChat(
 
 export function deleteChat(
   workspaceId: number,
-
   id: number,
 ) {
   return request(
     `/workspaces/${workspaceId}/chats/${id}`,
-
     {
       method: "DELETE",
     },
   );
 }
-
 
 export async function checkWorkspaceAccess(workspaceId: number | string, feature?: string) {
   const query = feature ? `?feature=${encodeURIComponent(feature)}` : "";
@@ -312,7 +313,7 @@ export async function checkWorkspaceAccess(workspaceId: number | string, feature
 // Models
 // ============================
 
-export function getAvailableModels(workspace_id:number) {
+export function getAvailableModels(workspace_id: number) {
   return request<{
     models: AIModel[];
   }>(`/workspace/${workspace_id}/models`);
@@ -324,32 +325,24 @@ export function getAvailableModels(workspace_id:number) {
 
 export interface UploadedFileResponse {
   success: boolean;
-
   paper: {
     id: number;
-
     title: string;
-
     url: string;
-
     size: number;
   };
 }
 
 export async function uploadFile(
   file: File,
-
   conversationId: number,
 ) {
   const formData = new FormData();
-
   formData.append("file", file);
-
   formData.append("conversation_id", String(conversationId));
 
   return request("/files/upload", {
     method: "POST",
-
     body: formData,
   });
 }
@@ -360,7 +353,6 @@ export async function uploadFile(
 
 export interface WorkspaceResponse {
   success: boolean;
-
   workspace: Workspace;
 }
 
@@ -375,7 +367,6 @@ export function getWorkspaces() {
 export function getMyWorkspace() {
   return request<{
     success: boolean;
-
     data: Workspace;
   }>("/workspace/my");
 }
@@ -387,7 +378,6 @@ export function getMyWorkspace() {
 export function getWorkspacePlans(workspaceId: number) {
   return request<{
     success: boolean;
-
     data: WorkspacePlan[];
   }>(`/workspace-types/${workspaceId}/workspace_plans`);
 }
@@ -398,15 +388,11 @@ export function getWorkspacePlans(workspaceId: number) {
 
 export interface WorkspaceModelsResponse {
   success: boolean;
-
   workspace: {
     id: number;
-
     name: string;
   };
-
   plan: WorkspacePlan;
-
   models: AIModel[];
 }
 
@@ -421,10 +407,8 @@ export function getWorkspaceModels(id: number) {
 export function subscribeWorkspace(workspacePlanId: number) {
   return request(
     "/workspace/subscribe",
-
     {
       method: "POST",
-
       body: JSON.stringify({
         workspace_plan_id: workspacePlanId,
       }),
@@ -435,25 +419,21 @@ export function subscribeWorkspace(workspacePlanId: number) {
 export function cancelWorkspace() {
   return request(
     "/workspace/cancel",
-
     {
       method: "POST",
     },
   );
 }
+
 // ============================
 // Workspace Payment
 // ============================
 
 export interface WorkspacePaymentResponse {
   success?: boolean;
-
   payment_url?: string;
-
   authority?: string;
-
   amount?: number;
-
   message?: string;
 }
 
@@ -463,37 +443,29 @@ export function initiateWorkspacePayment(
 ) {
   return request<WorkspacePaymentResponse>("/workspace/subscription/payment", {
     method: "POST",
-
     body: JSON.stringify({
       workspace_id: workspaceId,
-
       workspace_plan_id: workspacePlanId,
     }),
   });
 }
+
 // ============================
 // Documents
 // ============================
 
 export interface DocumentItem {
   id: number;
-
   name: string;
-
   path?: string;
-
   mime_type?: string;
-
   size?: number;
-
   status?: string;
-
   created_at?: string;
 }
 
 export interface DocumentsResponse {
   success: boolean;
-
   data: DocumentItem[];
 }
 
@@ -503,22 +475,16 @@ export function getDocuments(workspaceId: number) {
 
 export async function uploadDocument(workspaceId: number, file: File) {
   const formData = new FormData();
-
   formData.append("file", file);
 
   return request(`/workspaces/${workspaceId}/documents`, {
     method: "POST",
-
     body: formData,
   });
 }
 
 // ============================
 // Document Chat
-// ============================
-
-// ============================
-// Document Chat (Streaming response)
 // ============================
 
 export async function createChat(
@@ -545,6 +511,12 @@ export async function createChat(
     throw new Error("Unauthorized");
   }
 
+  // ✅ مدیریت هدایت به صفحه ۴۰۴ برای ایجاد چت یا ورک‌اسپیس نامعتبر
+  if (response.status === 404) {
+    redirectToNotFound();
+    throw new Error("Not found");
+  }
+
   if (!response.ok) {
     throw new Error("خطا در پاسخ سرور");
   }
@@ -553,7 +525,6 @@ export async function createChat(
     throw new Error("استریم دریافتی خالی است");
   }
 
-  // خواندن استریم برای استخراج chat_id یا اولین دیتا
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
@@ -578,7 +549,6 @@ export async function createChat(
       try {
         const parsed = JSON.parse(payload);
 
-        // اگر بک‌اند chat_id یا id یا اطلاعات چت را ارسال کرده باشد
         if (parsed.chat_id) {
           chatId = parsed.chat_id;
         } else if (parsed.chat?.id) {
@@ -587,12 +557,11 @@ export async function createChat(
           chatId = parsed.id;
         }
       } catch (e) {
-        // نادیده گرفتن خطوط غیر معتبر
+        // نادیده گرفتن خطوط نامعتبر
       }
     }
   }
 
-  // اگر شناسه چت در استریم پیدا نشد، کاربر را به صفحه چت اصلی ورک‌اسپیس هدایت می‌کنیم
   return {
     success: true,
     chat: {
@@ -606,15 +575,18 @@ export async function deleteDocument(
   documentId: number | string,
 ) {
   const response = await fetch(
-    `/api/workspaces/${workspaceId}/documents/${documentId}`,
+    `${API_BASE}/workspaces/${workspaceId}/documents/${documentId}`,
     {
       method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        // در صورت وجود Authorization header آن را اضافه کنید
-      },
+      headers: headers(true),
     },
   );
+
+  // ✅ مدیریت ۴۰۴ در حذف مستندات
+  if (response.status === 404) {
+    redirectToNotFound();
+    throw new Error("Document not found");
+  }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));

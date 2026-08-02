@@ -3,15 +3,16 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import styles from "./Header.module.css";
-
+import { usePathname } from "next/navigation";
+import { logout } from "@/lib/api";
 export default function Header() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const pathname = usePathname();
+  const isDashboard = pathname?.startsWith("/dashboard");
 
   useEffect(() => {
     setIsAuthenticated(Boolean(localStorage.getItem("auth_token")));
   }, []);
-
-  
   return (
     <header className={styles.header}>
       <Link href="/" className={styles.logoWrapper}>
@@ -30,9 +31,17 @@ export default function Header() {
 
       <div className={styles.nav}>
         {isAuthenticated ? (
-          <Link href="/dashboard" className={styles.btnOutline}>
-            داشبورد
-          </Link>
+          isDashboard ? (
+            // اگر در داشبورد بودیم، دکمه خروج نمایش داده شود
+            <button onClick={logout} className={styles.btnOutline}>
+              خروج
+            </button>
+          ) : (
+            // در سایر صفحات، دکمه داشبورد نمایش داده شود
+            <Link href="/dashboard" className={styles.btnOutline}>
+              داشبورد
+            </Link>
+          )
         ) : (
           <Link href="/login" className={styles.btnOutline}>
             ورود / ثبت‌نام

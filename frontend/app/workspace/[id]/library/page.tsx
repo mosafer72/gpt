@@ -26,8 +26,10 @@ import {
   sendMessageStream,
   deleteDocument,
   getDashboard,
+  getWorkspaceModels,
 } from "@/lib/api";
 import DocumentCard from "./components/DocumentCard";
+import { AIModel } from "@/types";
 
 interface Message {
   id: string | number;
@@ -45,6 +47,9 @@ export default function LibraryPage() {
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
 
+  // User Name State extracted from Dashboard
+  const [userName, setUserName] = useState<string>("کاربر عزیز");
+
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -55,6 +60,10 @@ export default function LibraryPage() {
 
   // Workspace Switcher Options State
   const [featureOptions, setFeatureOptions] = useState<any[]>([]);
+
+  // Models States
+  const [models, setModels] = useState<AIModel[]>([]);
+  const [activeModel, setActiveModel] = useState<AIModel | null>(null);
 
   // Chat Modal States
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -94,7 +103,7 @@ export default function LibraryPage() {
   );
 
   useEffect(() => {
-    async function verifyAccess() {
+    async function verifyAccessAndLoadModels() {
       if (!workspaceId) {
         setHasAccess(false);
         setCheckingAccess(false);
@@ -103,8 +112,19 @@ export default function LibraryPage() {
       }
 
       try {
-        // ۱. دریافت داشبورد برای ساخت دراپ‌دان هوشمند فیچرها و پلن‌ها
         const dashboardData = await getDashboard();
+        
+        if (dashboardData) {
+          const fetchedName =
+            dashboardData.user?.name ||
+            dashboardData.name ||
+            dashboardData.user_name ||
+            dashboardData.user?.full_name;
+          if (fetchedName) {
+            setUserName(fetchedName);
+          }
+        }
+
         if (dashboardData?.workspaces) {
           const options: any[] = [];
 
@@ -142,10 +162,23 @@ export default function LibraryPage() {
           setFeatureOptions(options);
         }
 
-        // ۲. بررسی دسترسی به کتابخانه
         const response = await checkWorkspaceAccess(workspaceId, "library");
         if (response.has_access) {
           setHasAccess(true);
+
+          try {
+            const modelsResponse: any = await getWorkspaceModels(workspaceId);
+            const fetchedModels: AIModel[] = modelsResponse?.models || modelsResponse?.data || modelsResponse || [];
+            setModels(fetchedModels);
+            if (fetchedModels && fetchedModels.length > 0) {
+              const defaultModel =
+                fetchedModels.find((m: any) => m.pivot?.is_default === 1) ??
+                fetchedModels[0];
+              setActiveModel(defaultModel);
+            }
+          } catch (modelErr) {
+            console.error("Error fetching workspace models:", modelErr);
+          }
         } else {
           setHasAccess(false);
         }
@@ -157,7 +190,7 @@ export default function LibraryPage() {
       }
     }
 
-    verifyAccess();
+    verifyAccessAndLoadModels();
   }, [workspaceId]);
 
   const loadDocuments = useCallback(
@@ -206,11 +239,35 @@ export default function LibraryPage() {
     try {
       const response = await createChat(workspaceId, {
         document_ids: [Number(doc.id)],
-        model_id: 16,
+        model_id: activeModel?.id,
+        workspace_id: workspaceId,
       });
       if (response.chat?.id) {
         setActiveChatId(response.chat.id);
       }
+
+      const welcomeText = `سلام ${userName} عزیز، بهم بگو چطور کمکت کنم؟`;
+      const tempAiMsgId = Date.now();
+
+      setMessages([{ id: tempAiMsgId, role: "assistant", content: "" }]);
+
+      let index = 0;
+      const streamInterval = setInterval(() => {
+        if (index < welcomeText.length) {
+          const char = welcomeText.charAt(index);
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === tempAiMsgId
+                ? { ...msg, content: msg.content + char }
+                : msg
+            )
+          );
+          index++;
+        } else {
+          clearInterval(streamInterval);
+        }
+      }, 25);
+
     } catch (error) {
       handleBackendError(error, "خطا در ایجاد نشست گفتگو با مقاله");
     }
@@ -277,7 +334,7 @@ export default function LibraryPage() {
 
   async function handleSendMessage(e: FormEvent) {
     e.preventDefault();
-    if (!input.trim() || chatLoading || !activeDocument) return;
+    if (!input.trim() || chatLoading || !activeDocument || !activeModel) return;
 
     const userText = input.trim();
     setInput("");
@@ -317,7 +374,7 @@ export default function LibraryPage() {
         workspaceId,
         activeChatId ?? undefined,
         null,
-        16,
+        activeModel.id,
         (chunk) => {
           if (!chunk) return;
           currentAiMessageRef.current += chunk;
@@ -405,7 +462,7 @@ export default function LibraryPage() {
         </div>
       )}
 
-      {/* پاپ‌آپ چت با مقاله با استایل دارک و حرفه‌ای */}
+      {/* پاپ‌آپ چت با مقاله */}
       {isChatOpen && activeDocument && (
         <div className={styles.modalOverlay}>
           <div className={styles.chatModalContainer}>
@@ -424,6 +481,26 @@ export default function LibraryPage() {
               >
                 ✕
               </button>
+            </div>
+
+            {/* بنر هشدار عدم ذخیره‌سازی پیام‌ها در بالای لیست پیام‌ها */}
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              background: "rgba(245, 158, 11, 0.1)",
+              border: "1px solid rgba(245, 158, 11, 0.3)",
+              padding: "12px 16px",
+              borderRadius: "10px",
+              margin: "12px 16px 0 16px",
+              color: "#fbbf24",
+              fontSize: "13px"
+            }}>
+              <span style={{ fontSize: "18px" }}>⚠️</span>
+              <div>
+                <strong style={{ display: "block", marginBottom: "2px", color: "#fde68a" }}>اطلاع‌رسانی مهم:</strong>
+                <span>پیام‌های شما در چت با مقالات ذخیره نخواهند شد و با بستن پنجره پاک می‌شوند.</span>
+              </div>
             </div>
 
             <div className={styles.modalMessagesArea}>
@@ -498,10 +575,48 @@ export default function LibraryPage() {
             <p>مدیریت مقالات، جزوات و فایل‌های آموزشی</p>
           </div>
 
-          {/* دراپ‌دان هوشمند پلن‌ها و فیبرها (در کنار هدر مشابه صفحه چت) */}
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ fontSize: "13px", color: "#94a3b8" }}>مدل:</span>
+            <select
+              value={activeModel?.id ?? ""}
+              onChange={(e) => {
+                const selected = models.find(
+                  (m) => m.id === Number(e.target.value),
+                );
+                if (selected) setActiveModel(selected);
+              }}
+              style={{
+                background: "rgba(255, 255, 255, 0.08)",
+                border: "1px solid rgba(255, 255, 255, 0.15)",
+                color: "#fff",
+                padding: "6px 12px",
+                borderRadius: "8px",
+                fontSize: "13px",
+                cursor: "pointer",
+                outline: "none",
+              }}
+            >
+              {models.length === 0 ? (
+                <option value="" disabled>
+                  بدون مدل فعال
+                </option>
+              ) : (
+                models.map((model) => (
+                  <option
+                    key={model.id}
+                    value={model.id}
+                    style={{ background: "#1e293b", color: "#fff" }}
+                  >
+                    {model.name}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+
           {featureOptions.length > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span style={{ fontSize: "13px", color: "#94a3b8" }}>پلن و فیچر:</span>
+              <span style={{ fontSize: "13px", color: "#94a3b8" }}>میانبر بین فضاها</span>
               <select
                 value={
                   featureOptions.find(

@@ -34,7 +34,6 @@ class ChatWorkspacePipeline implements WorkspacePipeline
     protected bool $useSmallModel = true;
 
     public function __construct(
-
         protected ConversationRepository $conversationRepository,
         protected ConversationLoader $conversationLoader,
         protected MemoryPipeline $memoryPipeline,
@@ -73,28 +72,14 @@ class ChatWorkspacePipeline implements WorkspacePipeline
         return $context;
     }
 
-    public function stream(ChatContext $context, callable $send): void
+ public function stream(ChatContext $context, callable $send): void
     {
-
-
-
         if (session()->isStarted()) {
             session()->save();
         }
         $user = $this->prepareContext($context);
         $this->checkWorkspaceAccess($context, $user);
         $this->runPreProcessing($context, $user);
-
-        if ($this->isImageRequest($context)) {
-            $response = $this->generateImageResponse($context);
-            $send(['type' => 'image', 'image_url' => $response->metadata['image_url'] ?? null]);
-            return;
-        }
-
-        // if ($this->handleIntentResponse($context)) {
-        //     $send(['choices' => [['delta' => ['content' => $context->assistantResponse]]], 'done' => true]);
-        //     return;
-        // }
 
         $this->promptPipeline->build($context);
 
@@ -104,7 +89,7 @@ class ChatWorkspacePipeline implements WorkspacePipeline
         );
 
         $request = $this->createRequest($context, $user, $model);
-
+        \Log::info("all_request", $request->toArray());
         $stream = $this->gapgptprovider->stream($request);
 
         $fullContent = '';
@@ -126,19 +111,18 @@ class ChatWorkspacePipeline implements WorkspacePipeline
             'created_at' => now()->toDateTimeString()
         ]);
 
-
         foreach ($stream as $chunk) {
-
-
             if (is_object($chunk) && isset($chunk->usage)) {
                 $promptTokens = $chunk->usage->promptTokens ?? $promptTokens;
                 $completionTokens = $chunk->usage->completionTokens ?? $completionTokens;
+            } elseif (is_array($chunk) && isset($chunk['usage'])) {
+                $promptTokens = $chunk['usage']['prompt_tokens'] ?? $promptTokens;
+                $completionTokens = $chunk['usage']['completion_tokens'] ?? $completionTokens;
             }
 
             $content = null;
 
             if (is_object($chunk)) {
-                // ابتدا content و در صورت خالی بودن reasoning را چک کن
                 $content = $chunk->choices[0]->delta->content ?? null;
                 if (empty($content)) {
                     $content = $chunk->choices[0]->delta->reasoning ?? null;
@@ -173,7 +157,6 @@ class ChatWorkspacePipeline implements WorkspacePipeline
         }
 
         if ($fullContent !== '') {
-
             if ($promptTokens === 0) {
                 $promptTokens = (int) ceil(mb_strlen($context->currentMessage) / 4);
             }
@@ -193,6 +176,7 @@ class ChatWorkspacePipeline implements WorkspacePipeline
                 )
             );
 
+            // ✅ اضافه شدن کسر توکن در حالت استریم (مشابه متد عادی)
             $this->tokenUsageService->consume(
                 workspace: $context->workspace,
                 model: $model,
@@ -228,11 +212,14 @@ class ChatWorkspacePipeline implements WorkspacePipeline
 
         $send(['done' => true]);
     }
+
     protected function checkWorkspaceAccess(ChatContext $context, User $user): void
     {
         $this->workspaceAccessService->check(
             user: $user,
-            modelKey: $context->model
+            modelKey: $context->model,
+            estimatedTokens: 0,
+            workspaceId: $context->workspace->id ?? null
         );
     }
 
@@ -245,27 +232,9 @@ class ChatWorkspacePipeline implements WorkspacePipeline
             $capabilities
         );
 
-        // ۱. پلنر غیرفعال شد تا هیچ پردازش و دستیابی به intent صورت نگیرد
-        /*
-        if ($capabilities['planner'] ?? false) {
-            $this->intentPipeline->process(
-                $context,
-                true
-            );
-        }
-        */
-
-        // ۲. بارگذاری حافظه (در صورت نیاز می‌توانید این را نگه دارید یا کامنت کنید)
         if (($capabilities['memory'] ?? false) && mb_strlen(trim($context->currentMessage)) > 5) {
             $this->loadMemory($context);
         }
-
-        // ۳. غیرفعال‌سازی بازنویسی پیام جهت ارسال پیام به‌صورت کاملاً خام
-
-        if (!empty($context->metadata['rewritten_message'])) {
-            $context->currentMessage = $context->metadata['rewritten_message'];
-        }
-
     }
 
     protected function loadMemory(ChatContext $context): void
@@ -284,16 +253,15 @@ class ChatWorkspacePipeline implements WorkspacePipeline
             $context->currentMessage
         );
     }
+
     protected function generateImageResponse(ChatContext $context): ChatContext
     {
         $intent = $this->imageIntentDetector->detect(
             $context->currentMessage
         );
-
         $model = AiModel::where('type', 'image')
             ->where('is_active', true)
             ->firstOrFail();
-        echo ("sfdsfsdf");
 
         $result = $this->imageGenerationService->generate(
             prompt: $intent['prompt'],
@@ -334,7 +302,6 @@ class ChatWorkspacePipeline implements WorkspacePipeline
         return $context;
     }
 
-
     protected function generateResponse(ChatContext $context, User $user): ChatResponse
     {
         $model = $this->workspaceAccessService->resolveModel(
@@ -352,7 +319,6 @@ class ChatWorkspacePipeline implements WorkspacePipeline
             ? $this->gapgptprovider->chat($request)
             : $this->llmProvider->chat($request);
 
-
         $context->setAssistantResponse(
             $response->content,
             [
@@ -362,7 +328,6 @@ class ChatWorkspacePipeline implements WorkspacePipeline
             ]
         );
 
-
         $this->tokenUsageService->consume(
             workspace: $context->workspace,
             model: $model,
@@ -370,10 +335,8 @@ class ChatWorkspacePipeline implements WorkspacePipeline
             conversationId: $context->conversationId
         );
 
-
         return $response;
     }
-
 
     protected function afterResponse(ChatContext $context, User $user, ChatResponse $response): void
     {
@@ -391,9 +354,7 @@ class ChatWorkspacePipeline implements WorkspacePipeline
             'created_at' => now()->toDateTimeString()
         ]);
 
-
         if ($this->capabilityResolver->enabled($user, 'memory')) {
-
             StoreMemoryJob::dispatch(
                 userId: $context->userId,
                 message: $context->currentMessage
@@ -401,38 +362,23 @@ class ChatWorkspacePipeline implements WorkspacePipeline
         }
     }
 
-
     protected function prepareContext(ChatContext $context): User
     {
-
         $this->ensureConversation($context);
-
         $this->loadConversationEntity($context);
-
         $this->loadConversation($context);
 
-
-        $user = User::findOrFail(
-            $context->userId
-        );
-
-
-        $workspace = $this->workspaceService->current($user);
-
+        $user = User::findOrFail($context->userId);
+        $workspace = $this->workspaceService->current($user, $context->workspace->id);
 
         if (!$workspace) {
-            throw new \RuntimeException(
-                'Workspace not found'
-            );
+            throw new \RuntimeException('Workspace not found');
         }
-
 
         $context->setWorkspace($workspace);
 
-
         return $user;
     }
-
 
     protected function ensureConversation(ChatContext $context): void
     {
@@ -440,41 +386,23 @@ class ChatWorkspacePipeline implements WorkspacePipeline
             return;
         }
 
-
         $conversation = $this->conversationRepository->create(
             userId: $context->userId,
-            title: mb_substr(
-                $context->currentMessage,
-                0,
-                100
-            )
+            title: mb_substr($context->currentMessage, 0, 100)
         );
-
 
         $context->conversationId = $conversation->id;
-
-        $context->setConversation(
-            $conversation
-        );
+        $context->setConversation($conversation);
     }
-
 
     protected function loadConversationEntity(ChatContext $context): void
     {
-        $conversation = $this->conversationRepository->find(
-            $context->conversationId
-        );
-
-
-        $context->setConversation(
-            $conversation
-        );
+        $conversation = $this->conversationRepository->find($context->conversationId);
+        $context->setConversation($conversation);
     }
-
 
     protected function loadConversation(ChatContext $context): void
     {
-        // ۱. اگر چت وجود ندارد یا لود نشده، آرایه خالی ست شود
         if (!$context->conversationId) {
             $context->setMessages([]);
             return;
@@ -485,7 +413,6 @@ class ChatWorkspacePipeline implements WorkspacePipeline
             limit: 10
         );
 
-        // ۲. اطمینان از صحت داده‌های بازگشتی
         if (empty($messages)) {
             $context->setMessages([]);
             return;
@@ -514,27 +441,78 @@ class ChatWorkspacePipeline implements WorkspacePipeline
     {
         $messages = [];
 
+        // ۱. افزودن حافظه‌ها (Memories) به عنوان پیام سیستمی در صورت وجود
         if (!empty($context->memories)) {
             $memoryText = collect($context->memories)
                 ->pluck('content')
                 ->implode("\n");
 
-            $messages[] = new ChatMessage(
-                role: 'system',
-                content: "اطلاعاتی از حافظه کاربر:\n" . $memoryText
-            );
+            $messages[] = ChatMessage::system("اطلاعاتی از حافظه کاربر:\n" . $memoryText);
         }
 
+        $currentMessageContent = $context->currentMessage;
+        $parsedContent = json_decode($currentMessageContent, true);
 
-        $messages[] = new ChatMessage(
-            role: 'user',
-            content: $context->currentMessage
-        );
+        // ۲. پردازش هوشمند پیام در صورت ساختار JSON (متن + تصویر یا فایل)
+        if (json_last_error() === JSON_ERROR_NONE && is_array($parsedContent)) {
+            $textPart = !empty($parsedContent['text'])
+                ? $parsedContent['text']
+                : 'این پیوست را بررسی و تحلیل کن.';
 
+            $hasImage = !empty($parsedContent['image']);
+            $hasFile = !empty($parsedContent['file']);
 
+            if ($hasImage || $hasFile) {
+                $multimodalContent = [
+                    [
+                        'type' => 'text',
+                        'text' => $textPart
+                    ]
+                ];
+
+                // پیوست تصویر
+                if ($hasImage) {
+                    $multimodalContent[] = [
+                        'type' => 'image_url',
+                        'image_url' => [
+                            'url' => $parsedContent['image']
+                        ]
+                    ];
+                }
+
+                // پیوست فایل/سند (PDF یا متن استخراج شده)
+                if ($hasFile) {
+                    $fileData = $parsedContent['file'];
+
+                    // بررسی اینکه آیا فایل یک تصویر است یا سند متنی/PDF
+                    if (str_starts_with($fileData, 'data:image/')) {
+                        $multimodalContent[] = [
+                            'type' => 'image_url',
+                            'image_url' => [
+                                'url' => $fileData
+                            ]
+                        ];
+                    } else {
+                        // اگر سند است (مثل متن استخراج‌شده PDF)، به عنوان متن مکمل به پرامتر اضافه می‌شود
+                        $multimodalContent[] = [
+                            'type' => 'text',
+                            'text' => "\n[محتوای سند پیوست‌شده]:\n" . $fileData
+                        ];
+                    }
+                }
+
+                $messages[] = ChatMessage::user($multimodalContent);
+            } else {
+                $messages[] = ChatMessage::user($textPart);
+            }
+        } else {
+            // پیام متنی ساده
+            $messages[] = ChatMessage::user($context->currentMessage);
+        }
+
+        // ۳. تنظیمات پلن و توکن‌های خروجی
         $subscription = $context->workspace->currentSubscription;
         $plan = $subscription?->workspacePlan;
-
 
         return new ChatRequest(
             messages: $messages,
@@ -543,63 +521,28 @@ class ChatWorkspacePipeline implements WorkspacePipeline
             maxTokens: data_get(
                 $plan?->capabilities,
                 'max_tokens',
-                80000
+                4000
             )
         );
     }
-
-    //     protected function createRequest(ChatContext $context,User $user,$model):ChatRequest
-    // {
-    //     $messages=[];
-
-
-    //     foreach($context->prompt as $message){
-
-    //         $messages[]=new ChatMessage(
-    //             role:$message['role'],
-    //             content:$message['content']
-    //         );
-    //     }
-
-
-    //     $subscription=$context->workspace->currentSubscription;
-
-    //     $plan=$subscription?->workspacePlan;
-
-
-    //     return new ChatRequest(
-    //         messages:$messages,
-    //         model:$model->model_name,
-    //         temperature:0.7,
-    //         maxTokens:data_get(
-    //             $plan?->capabilities,
-    //             'max_tokens',
-    //             4000
-    //         )
-    //     );
-    // }
-
-
     protected function estimateUsage(ChatRequest $request, string $response): Usage
     {
         $prompt = '';
 
-
         foreach ($request->messages as $message) {
-
-            $prompt .= $message->content . "\n";
+            if (is_string($message->content)) {
+                $prompt .= $message->content . "\n";
+            } elseif (is_array($message->content)) {
+                foreach ($message->content as $part) {
+                    if (isset($part['text'])) {
+                        $prompt .= $part['text'] . "\n";
+                    }
+                }
+            }
         }
 
-
-        $inputTokens = (int) ceil(
-            mb_strlen($prompt) / 4
-        );
-
-
-        $outputTokens = (int) ceil(
-            mb_strlen($response) / 4
-        );
-
+        $inputTokens = (int) ceil(mb_strlen($prompt) / 4);
+        $outputTokens = (int) ceil(mb_strlen($response) / 4);
 
         return new Usage(
             inputTokens: $inputTokens,
@@ -608,19 +551,15 @@ class ChatWorkspacePipeline implements WorkspacePipeline
         );
     }
 
-
     protected function handleIntentResponse(ChatContext $context): bool
     {
         $intent = $context->getMetadata('intent');
-
 
         if (!$intent) {
             return false;
         }
 
-
         if (($intent['type'] ?? null) === 'title') {
-
             $context->setAssistantResponse(
                 'برای این درخواست نیاز به پردازش سند دارید.',
                 [
@@ -630,16 +569,9 @@ class ChatWorkspacePipeline implements WorkspacePipeline
                 ]
             );
 
-
-            $context->addMetadata(
-                'direct_response',
-                true
-            );
-
-
+            $context->addMetadata('direct_response', true);
             return true;
         }
-
 
         return false;
     }

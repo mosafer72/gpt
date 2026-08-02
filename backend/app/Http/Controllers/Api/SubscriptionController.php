@@ -258,7 +258,7 @@ class SubscriptionController extends Controller
                     $workspace->id,
 
 
-                'plan_id'
+                'workspace_plan_id'
                 =>
                     $plan->id,
 

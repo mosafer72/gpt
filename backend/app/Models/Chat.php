@@ -10,7 +10,7 @@ class Chat extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['title', 'user_id', 'summery','workspace_id'];
+    protected $fillable = ['title', 'user_id', 'summery','workspace_id','model_id'];
 
     public function messages(): HasMany
     {

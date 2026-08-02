@@ -17,7 +17,7 @@ class PaymentTransaction extends Model
 
         'workspace_id',
 
-        'plan_id',
+        'workspace_plan_id',
 
         'amount',
 

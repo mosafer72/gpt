@@ -160,8 +160,7 @@ class Workspace extends Model
         return $this
             ->workspaceSubscriptions()
             ->where('is_active', true)
-            ->where('expires_at', '>', now())
-            ->get();
+            ->where('expires_at', '>', now());
     }
 
     public function tokenWallet()

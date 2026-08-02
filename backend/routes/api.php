@@ -478,43 +478,6 @@ Route::middleware('auth:sanctum')->group(function () {
     |--------------------------------------------------------------------------
     */
 
-
-    Route::get(
-        '/plans',
-        [
-            SubscriptionController::class,
-            'plans'
-        ]
-    );
-
-
-    Route::get(
-        '/my-subscription',
-        [
-            SubscriptionController::class,
-            'mySubscription'
-        ]
-    );
-
-
-    Route::post(
-        '/calculate-upgrade',
-        [
-            SubscriptionController::class,
-            'calculateUpgrade'
-        ]
-    );
-
-
-    Route::post(
-        '/initiate-payment',
-        [
-            SubscriptionController::class,
-            'initiatePayment'
-        ]
-    );
-
-
 });
 
 
@@ -531,11 +494,11 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::get(
     '/payment/callback',
     [
-        SubscriptionController::class,
+        WorkspaceSubscriptionController::class,
         'paymentCallback'
     ]
 )
-    ->name('payment.callback');
+    ->name('workspace.payment.callback');
 
 
 

@@ -19,6 +19,7 @@ export default function ChatByIdPage() {
       try {
         const workspaceResponse = await getWorkspace(workspaceId);
         const modelsResponse = await getAvailableModels(workspaceId);
+        console.log("sfdsdf");
 
         setWorkspace(workspaceResponse.workspace);
         setModels(modelsResponse.models ?? []);
@@ -60,7 +61,9 @@ export default function ChatByIdPage() {
         `}</style>
       </div>
     );
-  }
+  } 
+
+  
 
   return (
     <ChatInterface

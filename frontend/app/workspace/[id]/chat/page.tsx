@@ -79,7 +79,6 @@ export default function WorkspaceChatPage() {
    */
 
   const models = workspace.plan?.models ?? [];
-  console.log(workspace);
   return (
     <div className={styles.container}>
       <section className={styles.chatBox}>

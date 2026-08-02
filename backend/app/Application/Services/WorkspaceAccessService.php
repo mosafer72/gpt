@@ -35,20 +35,16 @@ class WorkspaceAccessService
 
 
     public function check(
-
         User $user,
-
         ?string $modelKey = null,
-
-        int $estimatedTokens = 0
-
+        int $estimatedTokens = 0,
+        ?int $workspaceId = null // اضافه شدن پارامتر ورک‌اسپیس
     ): Workspace {
 
-
+        // ارسال شناسه ورک‌اسپیس به متد current
         $workspace =
             $this->workspaceService
-                ->current($user);
-
+                ->current($user, $workspaceId);
 
 
         if (!$workspace) {
@@ -132,7 +128,6 @@ class WorkspaceAccessService
 
 
     }
-
 
 
 

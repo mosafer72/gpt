@@ -540,8 +540,6 @@ class WorkspaceSubscriptionController extends Controller
         $workspace =
             $transaction->workspace;
 
-
-
         $plan =
             WorkspacePlan::findOrFail(
                 $transaction->workspace_plan_id
@@ -549,42 +547,32 @@ class WorkspaceSubscriptionController extends Controller
 
 
 
+        // بررسی اشتراک فعال جهت تشخیص ارتقا (Upgrade) یا خرید جدید
+        $activeSubscription = $this->subscriptionService->active($workspace);
 
-
-
-
-        $subscription =
-            $this->subscriptionService
-                ->subscribe(
-
-                    $transaction->user,
-
-                    $workspace,
-
-                    $plan,
-
-                    $verify['ref_id']
-
-                );
-
-
-
-
-
-
-
-        $this->walletService
-            ->initialize(
-
+        if ($activeSubscription) {
+            // اگر کاربر از قبل اشتراک فعال دارد، پلن او را ارتقا می‌دهیم
+            $this->subscriptionService->upgrade(
+                $transaction->user,
                 $workspace,
-
-                $plan->token_limit
-
+                $plan,
+                $verify['ref_id']
+            );
+        } else {
+            // اگر اشتراک فعالی ندارد، اشتراک جدید ثبت می‌کنیم
+            $this->subscriptionService->subscribe(
+                $transaction->user,
+                $workspace,
+                $plan,
+                $verify['ref_id']
             );
 
-
-
-
+            // مقداردهی اولیه کیف پول برای خرید اولیه
+            $this->walletService->initialize(
+                $workspace,
+                $plan->token_limit
+            );
+        }
 
 
 

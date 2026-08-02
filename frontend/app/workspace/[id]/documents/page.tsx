@@ -48,7 +48,7 @@ export default function DocumentsPage() {
 
   // Document States
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
-  const [selected, setSelected] = useState<DocumentItem[]>([]);
+  const [selected, setSelected] = useState<DocumentItem | null>(null);
   const [loading, setLoading] = useState(true);
 
   // Upload States
@@ -115,7 +115,7 @@ export default function DocumentsPage() {
       if (isMounted) {
         setCheckingAccess(true);
         setLoading(true);
-        setSelected([]);
+        setSelected(null);
         setMessages([]);
         setActiveChatId(null);
       }
@@ -254,36 +254,33 @@ export default function DocumentsPage() {
 
     return () => clearInterval(interval);
   }, [documents, loadDocuments]);
-  async function toggleDocument(document: DocumentItem) {
-    let updatedSelected: DocumentItem[] = [];
-    const exists = selected.some((item) => item.id === document.id);
 
-    if (exists) {
-      updatedSelected = selected.filter((item) => item.id !== document.id);
-    } else {
-      updatedSelected = [...selected, document];
-    }
-
-    setSelected(updatedSelected);
-
-    if (updatedSelected.length > 0) {
-      try {
-        const response = await createChat(workspaceId, {
-          document_ids: updatedSelected.map((x) => x.id),
-          model_id: selectedModelId ?? (models.length > 0 ? models[0].id : 16),
-          workspace_id:workspaceId,
-        });
-        if (response.chat?.id) {
-          setActiveChatId(response.chat.id);
-        }
-      } catch (error) {
-        handleBackendError(error, "خطا در ایجاد نشست گفتگو");
-      }
-    } else {
+  async function handleSelectDocument(document: DocumentItem) {
+    if (selected?.id === document.id) {
+      // Deselect if already selected
+      setSelected(null);
       setActiveChatId(null);
       setMessages([]);
+      return;
+    }
+
+    setSelected(document);
+    setMessages([]);
+
+    try {
+      const response = await createChat(workspaceId, {
+        document_ids: [document.id],
+        model_id: selectedModelId ?? (models.length > 0 ? models[0].id : 16),
+        workspace_id: workspaceId,
+      });
+      if (response.chat?.id) {
+        setActiveChatId(response.chat.id);
+      }
+    } catch (error) {
+      handleBackendError(error, "خطا در ایجاد نشست گفتگو");
     }
   }
+
   async function handleUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -337,7 +334,11 @@ export default function DocumentsPage() {
     try {
       setDeletingId(docId);
       await deleteDocument(workspaceId, docId);
-      setSelected((prev) => prev.filter((doc) => doc.id !== docId));
+      if (selected?.id === docId) {
+        setSelected(null);
+        setActiveChatId(null);
+        setMessages([]);
+      }
       await loadDocuments(false);
     } catch (error) {
       handleBackendError(error, "خطا در حذف سند");
@@ -348,7 +349,7 @@ export default function DocumentsPage() {
 
   async function handleSendMessage(e: FormEvent) {
     e.preventDefault();
-    if (!input.trim() || chatLoading || selected.length === 0) return;
+    if (!input.trim() || chatLoading || !selected) return;
 
     const userText = input.trim();
     setInput("");
@@ -404,7 +405,7 @@ export default function DocumentsPage() {
         },
         controller.signal,
         null,
-        selected.map((doc) => Number(doc.id)),
+        [Number(selected.id)],
       );
     } catch (error) {
       handleBackendError(error, "خطا در دریافت پاسخ چت");
@@ -494,7 +495,7 @@ export default function DocumentsPage() {
                 style={{ display: "flex", alignItems: "center", gap: "6px" }}
               >
                 <span style={{ fontSize: "13px", color: "#94a3b8" }}>
-                  پلن و فیچر:
+                  میانبر بین فضاها
                 </span>
                 <select
                   value={
@@ -546,35 +547,8 @@ export default function DocumentsPage() {
                 </select>
               </div>
             )}
-
-            {/* {models.length > 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <span style={{ fontSize: "13px", color: "#94a3b8" }}>مدل:</span>
-                <select
-                  value={selectedModelId ?? models[0].id}
-                  onChange={(e) => setSelectedModelId(Number(e.target.value))}
-                  style={{
-                    background: "rgba(16, 185, 129, 0.1)",
-                    border: "1px solid rgba(16, 185, 129, 0.4)",
-                    color: "#fff",
-                    padding: "6px 12px",
-                    borderRadius: "8px",
-                    fontSize: "13px",
-                    cursor: "pointer",
-                    outline: "none",
-                    fontWeight: 600,
-                  }}
-                >
-                  {models.map((model) => (
-                    <option key={model.id} value={model.id} style={{ background: "#1e293b", color: "#fff" }}>
-                      {model.name || model.display_name || `مدل ${model.id}`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )} */}
           </div>
-          <p>اسناد مورد نظر خود را انتخاب کرده و بلافاصله گفتگو را شروع کنید</p>
+          <p>مقاله مورد نظر خود را انتخاب کرده و بلافاصله گفتگو را شروع کنید</p>
         </div>
 
         <div className={styles.actions}>
@@ -604,7 +578,7 @@ export default function DocumentsPage() {
               <div className={styles.emptySidebar}>هیچ سندی یافت نشد</div>
             ) : (
               documents.map((doc) => {
-                const isSelected = selected.some((x) => x.id === doc.id);
+                const isSelected = selected?.id === doc.id;
                 const isDeleting = deletingId === doc.id;
                 const isProcessing =
                   doc.status !== "completed" && doc.status !== "failed";
@@ -612,12 +586,12 @@ export default function DocumentsPage() {
                 return (
                   <div
                     key={doc.id}
-                    onClick={() => !isProcessing && toggleDocument(doc)}
+                    onClick={() => !isProcessing && handleSelectDocument(doc)}
                     className={`${styles.docCard} ${isSelected ? styles.docCardActive : ""} ${
                       isProcessing ? styles.docCardDisabled : ""
                     }`}
                   >
-                    <div className={styles.checkbox}>{isSelected && "✓"}</div>
+                    <div className={styles.checkbox} style={{ borderRadius: "50%" }}>{isSelected && "✓"}</div>
                     <div className={styles.docInfo}>
                       <h3>{doc.name}</h3>
                       <div className={styles.docMeta}>
@@ -659,26 +633,43 @@ export default function DocumentsPage() {
         </aside>
 
         <main className={styles.chatMain}>
-          {selected.length === 0 ? (
+          {!selected ? (
             <div className={styles.selectPrompt}>
               <div className={styles.promptIcon}>📄</div>
-              <h2>یک یا چند سند را انتخاب کنید</h2>
+              <h2>یک مقاله را انتخاب کنید</h2>
               <p>
-                برای شروع گفتگو با هوش مصنوعی، حداقل یک سند را از پنل سمت راست
-                انتخاب کنید.
+                برای شروع گفتگو با هوش مصنوعی، لطفاً یک مقاله را از پنل سمت راست انتخاب کنید.
               </p>
             </div>
           ) : (
             <div className={styles.chatContainer}>
               <div className={styles.chatHeaderBar}>
-                <span className={styles.chatHeaderTitle}>اسناد فعال:</span>
+                <span className={styles.chatHeaderTitle}>مقاله فعال:</span>
                 <div className={styles.chipContainer}>
-                  {selected.map((doc) => (
-                    <div key={doc.id} className={styles.docChip}>
-                      <span>📄 {doc.name}</span>
-                      <button onClick={() => toggleDocument(doc)}>×</button>
-                    </div>
-                  ))}
+                  <div className={styles.docChip}>
+                    <span>📄 {selected.name}</span>
+                    <button onClick={() => setSelected(null)}>×</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* بنر هشدار عدم ذخیره‌سازی پیام‌ها */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                background: "rgba(245, 158, 11, 0.1)",
+                border: "1px solid rgba(245, 158, 11, 0.3)",
+                padding: "12px 16px",
+                borderRadius: "10px",
+                margin: "12px 16px 0 16px",
+                color: "#fbbf24",
+                fontSize: "13px"
+              }}>
+                <span style={{ fontSize: "18px" }}>⚠️</span>
+                <div>
+                  <strong style={{ display: "block", marginBottom: "2px", color: "#fde68a" }}>اطلاع‌رسانی مهم:</strong>
+                  <span>پیام‌های شما در چت با اسناد ذخیره نخواهند شد و با تغییر یا بستن انتخاب سند پاک می‌شوند.</span>
                 </div>
               </div>
 
@@ -686,7 +677,7 @@ export default function DocumentsPage() {
                 {messages.length === 0 ? (
                   <div className={styles.emptyMessages}>
                     <span>💡</span>
-                    <p>سوال خود را درباره اسناد انتخاب‌شده بپرسید...</p>
+                    <p>سوال خود را درباره مقاله انتخاب‌شده بپرسید...</p>
                   </div>
                 ) : (
                   messages.map((msg) => (

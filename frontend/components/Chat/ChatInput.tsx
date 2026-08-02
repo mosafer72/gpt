@@ -22,7 +22,6 @@ interface ChatInputProps {
   onImageRemove: () => void;
   imageFile: File | null;
 
-  // جدید
   onFileUpload: (file: File) => void;
   onFileRemove: () => void;
   attachedFile: File | null;
@@ -32,6 +31,9 @@ interface ChatInputProps {
   onCancel?: () => void;
   inputRef?: RefObject<HTMLTextAreaElement | null>;
   onScrollToBottom: (behavior?: ScrollBehavior) => void;
+  
+  // جدید: درصد پیشرفت آپلود (بین 0 تا 100)؛ اگر null یا undefined باشد یعنی آپلودی در جریان نیست
+  uploadProgress?: number | null;
 }
 
 export default function ChatInput({
@@ -49,6 +51,7 @@ export default function ChatInput({
   onCancel,
   inputRef,
   onScrollToBottom,
+  uploadProgress = null,
 }: ChatInputProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -115,7 +118,7 @@ export default function ChatInput({
             if (!blob) return resolve(file);
 
             resolve(
-              new File([blob], file.name.replace(/\\.(png|jpg|jpeg)$/i, ".jpg"), {
+              new File([blob], file.name.replace(/\.(png|jpg|jpeg)$/i, ".jpg"), {
                 type: "image/jpeg",
               })
             );
@@ -129,7 +132,6 @@ export default function ChatInput({
     });
   };
 
-  // نسخه نهایی آپلود فایل
   const handleFileChange = async (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -155,6 +157,26 @@ export default function ChatInput({
 
   return (
     <div className={styles.inputArea}>
+      {/* 📊 نوار پیشرفت آپلود فایل/تصویر */}
+      {uploadProgress !== null && uploadProgress !== undefined && (
+        <div style={{ width: "100%", marginBottom: "8px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "4px", color: "var(--text-secondary, #888)" }}>
+            <span>در حال آپلود فایل...</span>
+            <span>{Math.round(uploadProgress)}%</span>
+          </div>
+          <div style={{ width: "100%", height: "4px", backgroundColor: "rgba(255,255,255,0.1)", borderRadius: "2px", overflow: "hidden" }}>
+            <div 
+              style={{ 
+                width: `${uploadProgress}%`, 
+                height: "100%", 
+                backgroundColor: "var(--primary-color, #3b82f6)", 
+                transition: "width 0.2s ease" 
+              }} 
+            />
+          </div>
+        </div>
+      )}
+
       {imageFile && (
         <div className={styles.preview}>
           <img src={previewUrl ?? undefined} alt="preview" />
@@ -176,14 +198,15 @@ export default function ChatInput({
           type="button"
           className={styles.uploadBtn}
           onClick={() => fileInputRef.current?.click()}
+          title="آپلود فایل یا تصویر"
         >
           📎
         </button>
 
+        {/* بدون محدودیت accept تا کاربر بتواند هر فایلی را انتخاب کند */}
         <input
           type="file"
           ref={fileInputRef}
-          accept="image/*,.pdf"
           onChange={handleFileChange}
           hidden
         />

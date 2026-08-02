@@ -44,21 +44,15 @@ class WorkspaceService
 
 
     public function current(
-        User $user
+        User $user,
+        ?int $workspaceId = null
     ): ?Workspace {
-
-
-        return $user
+        $query = $user
             ->workspaces()
             ->with([
-
                 'workspaceType',
-
                 'wallet',
-
                 'workspaceSubscriptions' => function ($query) {
-
-
                     $query
                         ->where(
                             'is_active',
@@ -70,24 +64,22 @@ class WorkspaceService
                             now()
                         )
                         ->with([
-
                             'workspacePlan.models'
-
                         ]);
-
                 }
-
             ])
             ->where(
                 'is_active',
                 true
-            )
-            ->first();
+            );
 
+        // اگر آیدی ورک‌اسپیس ارسال شده بود، بر اساس آن فیلتر کن
+        if ($workspaceId) {
+            $query->where('workspaces.id', $workspaceId);
+        }
+
+        return $query->first();
     }
-
-
-
 
 
 

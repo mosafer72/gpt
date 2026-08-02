@@ -103,14 +103,14 @@ export default function ChatInterface({
     }, 40);
   };
 
-  // مدیریت لود اولیه چت
   useEffect(() => {
     if (initialChat) {
       const chatObj = (initialChat as any)?.chat ?? initialChat;
       const rawMessages = chatObj?.messages ?? chatObj?.chat?.messages ?? [];
-      
+
       const sortedMessages = [...rawMessages].sort(
-        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
       );
 
       setCurrentChat({
@@ -127,7 +127,6 @@ export default function ChatInterface({
     }
   }, [initialChat]);
 
-  // مدیریت لود چت از طریق URL (هنگام تغییر مسیر یا رفرش)
   useEffect(() => {
     async function loadChatFromPath() {
       const segments = pathname.split("/");
@@ -142,11 +141,13 @@ export default function ChatInterface({
           try {
             const data = await getChat(workspaceId, chatIdFromUrl);
             const chatData = (data as any)?.chat ?? data;
-            
+
             if (chatData) {
               const rawMessages = chatData.messages ?? [];
               const sortedMessages = [...rawMessages].sort(
-                (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                (a, b) =>
+                  new Date(a.created_at).getTime() -
+                  new Date(b.created_at).getTime(),
               );
 
               setCurrentChat({
@@ -246,7 +247,8 @@ export default function ChatInterface({
         }
 
         const response: any = await getWorkspaceModels(workspaceId);
-        const fetchedModels: AIModel[] = response?.models || response?.data || response || [];
+        const fetchedModels: AIModel[] =
+          response?.models || response?.data || response || [];
         setModels(fetchedModels);
         if (fetchedModels && fetchedModels.length > 0) {
           const defaultModel =
@@ -264,7 +266,6 @@ export default function ChatInterface({
     initData();
   }, [workspaceId, initialModels]);
 
-  // فیکس کردن مدل فعال بر اساس چت انتخاب‌شده یا مدل ذخیره‌شده در چت
   useEffect(() => {
     if (currentChat && currentChat.id !== 0) {
       const modelId = currentChat.model_id ?? (currentChat as any).model?.id;
@@ -281,7 +282,6 @@ export default function ChatInterface({
     }
   }, [currentChat, models]);
 
-  // استریم پیام خوش‌آمدگویی تنها زمانی که تمام اطلاعات صفحه و لودینگ اولیه کامل شده باشد
   useEffect(() => {
     const segments = pathname.split("/");
     const chatIndex = segments.indexOf("chat");
@@ -295,7 +295,8 @@ export default function ChatInterface({
       (!currentChat || currentChat.id === 0) &&
       (!currentChat || currentChat.messages?.length === 0)
     ) {
-      streamWelcomeMessage(`سلام ${userName || "کاربر"} عزیز، چطور می‌تونم کمکت کنم؟`);
+      streamWelcomeMessage(`سلام ${userName || "کاربر"} عزیز، چطور می‌تونم کمکت کنم؟
+         لطفا اول مدلی که میخوای چت کنی رو انتخاب کن تا بتونیم بهتر به هدفت برسیم.`);
     }
   }, [isFullyLoaded, isDataInitialized, userName, initialChat, pathname]);
 
@@ -330,7 +331,8 @@ export default function ChatInterface({
     router.push(`/workspace/${workspaceId}/chat`);
 
     hasStreamedWelcome.current = false;
-    streamWelcomeMessage(`سلام ${userName || "کاربر"} عزیز، چطور می‌تونم کمکت کنم؟`);
+    streamWelcomeMessage(`سلام ${userName || "کاربر"} عزیز، چطور می‌تونم کمکت کنم؟
+       .لطفا اول مدلی که میخوای چت کنی رو انتخاب کن تا بتونیم بهتر به هدفت برسیم`);
 
     if (onNewChat) {
       onNewChat();
@@ -351,6 +353,58 @@ export default function ChatInterface({
     }
   };
 
+  // ✅ تابع کمکی برای فشرده‌سازی عکس و تبدیل آن به آبجکت File استاندارد
+  const compressImageFile = (file: File): Promise<File> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const compressedFile = new File([blob], file.name, {
+                  type: "image/jpeg",
+                  lastModified: Date.now(),
+                });
+                resolve(compressedFile);
+              } else {
+                resolve(file); // اگر خطایی رخ داد فایل اصلی برگردانده شود
+              }
+            },
+            "image/jpeg",
+            0.75, // کیفیت فشرده‌سازی (75 درصد)
+          );
+        };
+        img.src = event.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   async function send(e: FormEvent) {
     e.preventDefault();
 
@@ -362,9 +416,21 @@ export default function ChatInterface({
     abortRef.current = controller;
 
     const text = input.trim();
+    let fileToSend = imageFile;
+    let documentToSend = attachedFile; // ✅ متغیر برای نگهداری فایل غیر تصویری (مثل PDF)
+
     setInput("");
     setImageFile(null);
     setAttachedFile(null);
+
+    // اعمال فشرده‌سازی روی عکس در صورت وجود
+    if (fileToSend) {
+      try {
+        fileToSend = await compressImageFile(fileToSend);
+      } catch (err) {
+        console.error("Image compression failed:", err);
+      }
+    }
 
     const tempId = Date.now();
     const isNewChat = !currentChat || currentChat.id === 0;
@@ -409,11 +475,12 @@ export default function ChatInterface({
     setTimeout(scrollBottom, 50);
 
     try {
+      // ✅ ارسال فایل پیوست‌شده (documentToSend) به متد sendMessageStream
       await sendMessageStream(
         text,
         workspaceId,
         isNewChat ? undefined : currentChat?.id,
-        null,
+        fileToSend, // فایل عکس (یا null)
         activeModel.id,
         (pureTextChunk: string) => {
           setCurrentChat((prev) => {
@@ -436,6 +503,7 @@ export default function ChatInterface({
           scrollBottom();
         },
         controller.signal,
+        documentToSend, // ✅ ارسال فایل PDF یا داکیومنت به عنوان پارامتر جدید به تابع API
       );
 
       const latestChats = await getChats(workspaceId);
@@ -509,7 +577,7 @@ export default function ChatInterface({
           {featureOptions.length > 0 && (
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <span style={{ fontSize: "13px", color: "#94a3b8" }}>
-                پلن و فیچر:
+                میانبر بین فضاها
               </span>
               <select
                 value={
@@ -619,9 +687,7 @@ export default function ChatInterface({
                         <span className={styles.typingDot}></span>
                         <span className={styles.typingDot}></span>
                         <span className={styles.typingDot}></span>
-                        <span className={styles.typingText}>
-                          در حال تفکر...
-                        </span>
+                        <span className={styles.typingText}></span>
                       </div>
                     </div>
                   );

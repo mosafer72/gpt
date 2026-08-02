@@ -87,6 +87,7 @@ export default function WorkspacePage() {
         getWorkspace(id),
         getWorkspacePlans(id),
       ]);
+      console.log(wsData);
       setWorkspaceData(wsData);
       setPlans(plansData.data ?? plansData);
     } catch (error) {
