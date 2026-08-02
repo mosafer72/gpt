@@ -61,6 +61,7 @@ export default function ChatInterface({
       user_id: null,
       title: "چت جدید",
       summary: null,
+      model_id: null,
       messages: [
         {
           id: welcomeMsgId,
@@ -441,6 +442,7 @@ export default function ChatInterface({
         user_id: null,
         title: "چت جدید",
         summary: null,
+        model_id: null,
         messages: [],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

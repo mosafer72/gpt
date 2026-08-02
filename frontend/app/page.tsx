@@ -10,7 +10,7 @@ import styles from "./page.module.css";
 
 import { getDashboard, initiateWorkspacePayment } from "@/lib/api";
 import { services } from "@/lib/services";
-import { Workspace, WorkspaceType } from "@/types/dashboard";
+import { Workspace, WorkspaceType } from "@/types/index";
 
 function getPlanIcon(planName: string) {
   const name = planName?.toLowerCase() || "";

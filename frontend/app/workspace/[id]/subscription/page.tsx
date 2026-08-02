@@ -47,7 +47,7 @@ export default function SubscriptionPage() {
       const workspaceData = response.workspace;
 
       const plansResponse = await getWorkspacePlans(
-        workspaceData.workspace_type_id,
+        Number(workspaceData.workspace_type_id),
       );
 
       setWorkspace(workspaceData);

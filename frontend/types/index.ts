@@ -150,6 +150,7 @@ export interface Message {
 export interface Chat {
   id: number;
   user_id: number | null;
+  model_id: number | null;
   title: string | null;
   summary: string | null;
   created_at: string;

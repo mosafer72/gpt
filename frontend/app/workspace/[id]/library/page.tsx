@@ -116,10 +116,7 @@ export default function LibraryPage() {
         
         if (dashboardData) {
           const fetchedName =
-            dashboardData.user?.name ||
-            dashboardData.name ||
-            dashboardData.user_name ||
-            dashboardData.user?.full_name;
+            dashboardData.user.name
           if (fetchedName) {
             setUserName(fetchedName);
           }
@@ -239,7 +236,7 @@ export default function LibraryPage() {
     try {
       const response = await createChat(workspaceId, {
         document_ids: [Number(doc.id)],
-        model_id: activeModel?.id,
+        model_id: Number(activeModel?.id),
         workspace_id: workspaceId,
       });
       if (response.chat?.id) {
