@@ -42,12 +42,11 @@ export default function ChatInterface({
   const pathname = usePathname();
 
   const [chats, setChats] = useState<Chat[]>([]);
-  const [currentChat, setCurrentChat] = useState<Chat | null>(
-    initialChat ?? null,
-  );
+  const [currentChat, setCurrentChat] = useState<Chat | null>(null);
 
-  const [userName, setUserName] = useState<string>("کاربر");
+  const [userName, setUserName] = useState<string>("");
   const [isFullyLoaded, setIsFullyLoaded] = useState<boolean>(false);
+  const [isDataInitialized, setIsDataInitialized] = useState<boolean>(false);
   const [isSwitchingChat, setIsSwitchingChat] = useState<boolean>(false);
   const hasStreamedWelcome = useRef<boolean>(false);
 
@@ -104,19 +103,22 @@ export default function ChatInterface({
     }, 40);
   };
 
+  // مدیریت لود اولیه چت
   useEffect(() => {
     if (initialChat) {
-      const chatObj = (initialChat as any)?.chat || initialChat;
-      const sortedChat = {
+      const chatObj = (initialChat as any)?.chat ?? initialChat;
+      const rawMessages = chatObj?.messages ?? chatObj?.chat?.messages ?? [];
+      
+      const sortedMessages = [...rawMessages].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+
+      setCurrentChat({
         ...chatObj,
-        messages: [...(chatObj?.messages ?? [])].sort(
-          (a, b) =>
-            new Date(a.created_at).getTime() -
-            new Date(b.created_at).getTime(),
-        ),
-      };
-      setCurrentChat(sortedChat);
+        messages: sortedMessages,
+      });
       setIsFullyLoaded(true);
+      setIsSwitchingChat(false);
     } else {
       const timer = setTimeout(() => {
         setIsFullyLoaded(true);
@@ -125,6 +127,7 @@ export default function ChatInterface({
     }
   }, [initialChat]);
 
+  // مدیریت لود چت از طریق URL (هنگام تغییر مسیر یا رفرش)
   useEffect(() => {
     async function loadChatFromPath() {
       const segments = pathname.split("/");
@@ -136,19 +139,26 @@ export default function ChatInterface({
           (!currentChat || currentChat.id !== chatIdFromUrl)
         ) {
           setIsSwitchingChat(true);
-          const data = await getChat(workspaceId, chatIdFromUrl);
-          const chatData = data;
-          if (chatData) {
-            const sortedChat = {
-              ...chatData,
-              messages: [...(chatData.messages ?? [])].sort(
-                (a, b) =>
-                  new Date(a.created_at).getTime() -
-                  new Date(b.created_at).getTime(),
-              ),
-            };
-            setCurrentChat(sortedChat);
-            setIsFullyLoaded(true);
+          try {
+            const data = await getChat(workspaceId, chatIdFromUrl);
+            const chatData = (data as any)?.chat ?? data;
+            
+            if (chatData) {
+              const rawMessages = chatData.messages ?? [];
+              const sortedMessages = [...rawMessages].sort(
+                (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+              );
+
+              setCurrentChat({
+                ...chatData,
+                messages: sortedMessages,
+              });
+              setIsFullyLoaded(true);
+            }
+          } catch (error) {
+            console.error("Error loading chat from path:", error);
+          } finally {
+            setIsSwitchingChat(false);
           }
         }
       }
@@ -231,6 +241,7 @@ export default function ChatInterface({
             initialModels.find((m: any) => m.pivot?.is_default === 1) ??
             initialModels[0];
           setActiveModel(defaultModel);
+          setIsDataInitialized(true);
           return;
         }
 
@@ -245,21 +256,48 @@ export default function ChatInterface({
         }
       } catch (e) {
         console.error("Error initializing workspace data:", e);
+      } finally {
+        setIsDataInitialized(true);
       }
     }
 
     initData();
   }, [workspaceId, initialModels]);
 
+  // فیکس کردن مدل فعال بر اساس چت انتخاب‌شده یا مدل ذخیره‌شده در چت
   useEffect(() => {
+    if (currentChat && currentChat.id !== 0) {
+      const modelId = currentChat.model_id ?? (currentChat as any).model?.id;
+      if (modelId && models.length > 0) {
+        const found = models.find((m) => m.id === modelId);
+        if (found) {
+          setActiveModel(found);
+        }
+      }
+    } else if (models.length > 0 && !activeModel) {
+      const defaultModel =
+        models.find((m: any) => m.pivot?.is_default === 1) ?? models[0];
+      setActiveModel(defaultModel);
+    }
+  }, [currentChat, models]);
+
+  // استریم پیام خوش‌آمدگویی تنها زمانی که تمام اطلاعات صفحه و لودینگ اولیه کامل شده باشد
+  useEffect(() => {
+    const segments = pathname.split("/");
+    const chatIndex = segments.indexOf("chat");
+    const hasChatIdInUrl = chatIndex !== -1 && segments[chatIndex + 1];
+
     if (
       isFullyLoaded &&
-      (!initialChat || currentChat?.id === 0) &&
+      isDataInitialized &&
+      !initialChat &&
+      !hasChatIdInUrl &&
+      (!currentChat || currentChat.id === 0) &&
       (!currentChat || currentChat.messages?.length === 0)
     ) {
-      streamWelcomeMessage(`سلام ${userName} عزیز، چطور می‌تونم کمکت کنم؟`);
+      streamWelcomeMessage(`سلام ${userName || "کاربر"} عزیز، چطور می‌تونم کمکت کنم؟`);
     }
-  }, [isFullyLoaded, userName]);
+  }, [isFullyLoaded, isDataInitialized, userName, initialChat, pathname]);
 
   useEffect(() => {
     loadChats();
@@ -289,10 +327,10 @@ export default function ChatInterface({
     setImageFile(null);
     setAttachedFile(null);
 
-    router.push(`/workspace/${workspaceId}`);
+    router.push(`/workspace/${workspaceId}/chat`);
 
     hasStreamedWelcome.current = false;
-    streamWelcomeMessage(`سلام ${userName} عزیز، چطور می‌تونم کمکت کنم؟`);
+    streamWelcomeMessage(`سلام ${userName || "کاربر"} عزیز، چطور می‌تونم کمکت کنم؟`);
 
     if (onNewChat) {
       onNewChat();
@@ -426,8 +464,7 @@ export default function ChatInterface({
     }
   }
 
-  const messagesList =
-    currentChat?.messages || (currentChat as any)?.chat?.messages || [];
+  const messagesList = currentChat?.messages || [];
 
   return (
     <div className={styles.container}>
@@ -436,10 +473,10 @@ export default function ChatInterface({
           className={styles.headerLeft}
           style={{ display: "flex", gap: "15px", alignItems: "center" }}
         >
-          <span className={styles.logo}>✨ اکانتسرا</span>
+          <span className={styles.logo}>✨ دانا‌بوم</span>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <span style={{ fontSize: "13px", color: "#94a3b8" }}>مدل:</span>
+          <div className={styles.modelSelectorContainer}>
+            <span className={styles.modelSelectorLabel}>مدل:</span>
             <select
               value={activeModel?.id ?? ""}
               onChange={(e) => {
@@ -448,19 +485,11 @@ export default function ChatInterface({
                 );
                 if (selected) setActiveModel(selected);
               }}
-              style={{
-                background: "rgba(255, 255, 255, 0.08)",
-                border: "1px solid rgba(255, 255, 255, 0.15)",
-                color: "#fff",
-                padding: "6px 12px",
-                borderRadius: "8px",
-                fontSize: "13px",
-                cursor: "pointer",
-                outline: "none",
-              }}
+              disabled={Boolean(currentChat && currentChat.id !== 0)}
+              className={styles.modelSelect}
             >
               {models.length === 0 ? (
-                <option value="" disabled>
+                <option value="" disabled className={styles.modelOption}>
                   بدون مدل فعال
                 </option>
               ) : (
@@ -468,7 +497,7 @@ export default function ChatInterface({
                   <option
                     key={model.id}
                     value={model.id}
-                    style={{ background: "#1e293b", color: "#fff" }}
+                    className={styles.modelOption}
                   >
                     {model.name}
                   </option>

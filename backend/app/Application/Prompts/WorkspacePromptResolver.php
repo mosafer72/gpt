@@ -17,7 +17,6 @@ class WorkspacePromptResolver
     public static function resolve(Workspace $workspace): string
     {
 
-        \Log::info("system prompt",$workspace->toArray());
 
         // ۱. اولویت اول: اگر کاربر در دیتابیس پرامپت سفارشی ثبت کرده بود
         if (!empty($workspace->system_prompt)) {

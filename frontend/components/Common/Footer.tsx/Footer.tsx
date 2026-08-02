@@ -18,7 +18,7 @@ export default function Footer() {
 
             <div className={styles.logoIcon}>AI</div>
 
-            <span>اکانتسرا</span>
+            <span>دانا‌بوم</span>
 
           </div>
 
@@ -62,7 +62,7 @@ export default function Footer() {
 
       <div className={styles.bottom}>
 
-        <span>© 2026 اکانتسرا — تمامی حقوق محفوظ است</span>
+        <span>© 2026 دانا‌بوم — تمامی حقوق محفوظ است</span>
 
         <div className={styles.bottomLinks}>
 

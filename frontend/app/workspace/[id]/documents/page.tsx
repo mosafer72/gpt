@@ -271,6 +271,7 @@ export default function DocumentsPage() {
         const response = await createChat(workspaceId, {
           document_ids: updatedSelected.map((x) => x.id),
           model_id: selectedModelId ?? (models.length > 0 ? models[0].id : 16),
+          workspace_id:workspaceId,
         });
         if (response.chat?.id) {
           setActiveChatId(response.chat.id);

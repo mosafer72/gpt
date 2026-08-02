@@ -53,6 +53,7 @@ class DashboardController extends Controller
                     'key' => $type->key, // مثلا 'student' یا 'personal'
                     'display_name' => $type->display_name,
                     'icon' => $type->icon,
+                    'features' => $type->features,
                     'plans' => $type->plans->map(function ($plan) use ($type) {
                         return [
                             'id' => $plan->id,

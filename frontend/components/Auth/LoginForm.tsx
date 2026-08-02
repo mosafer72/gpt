@@ -121,7 +121,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
 
         <div className={styles.header}>
           <div className={styles.logo}>✨</div>
-          <h1>اکانتسرا</h1>
+          <h1>دانا‌بوم</h1>
           <p>
             {mode === 'login'
               ? 'ورود به پلتفرم هوش مصنوعی'

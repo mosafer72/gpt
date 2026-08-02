@@ -27,6 +27,9 @@
 }
 
 html,
+button,input,select {
+  font-family: 'IRANSansX', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
 body {
   font-family: 'IRANSansX', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   background-color: var(--bg-main);

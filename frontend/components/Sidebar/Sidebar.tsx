@@ -25,7 +25,7 @@ export default function Sidebar({
   return (
     <aside className={styles.sidebar}>
       <div className={styles.header}>
-        <span className={styles.logo}>✨ اکانتسرا</span>
+        <span className={styles.logo}>✨ دانا‌بوم</span>
         <button className={styles.newBtn} onClick={onNewChat}>
           + جدید
         </button>

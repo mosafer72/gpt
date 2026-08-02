@@ -8,6 +8,8 @@ import {
   getWorkspacePlans,
   initiateWorkspacePayment,
 } from "@/lib/api";
+import Header from "@/components/Common/header/Header";
+import Footer from "@/components/Common/Footer.tsx/Footer";
 
 // نقشه پیش‌فرض برای ابزارهای استاندارد (Fallback)
 const allToolsMap: Record<string, { icon: string; title: string; desc: string; path: string }> = {
@@ -182,13 +184,7 @@ export default function WorkspacePage() {
 
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
-        <div className={styles.icon}>{type.icon ?? "🚀"}</div>
-        <div>
-          <h1>{workspace.name}</h1>
-          <p>{type.display_name} - {type.description}</p>
-        </div>
-      </header>
+      <Header/>
 
       {/* بخش نمایش پلن فعال */}
       <section className={styles.planCard}>
@@ -287,6 +283,7 @@ export default function WorkspacePage() {
           })}
         </div>
       </section>
+      <Footer/>
     </div>
   );
 }

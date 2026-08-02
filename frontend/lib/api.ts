@@ -526,6 +526,7 @@ export async function createChat(
   data: {
     document_ids: number[];
     model_id: number;
+    workspace_id: number;
   },
 ) {
   const token = getToken();

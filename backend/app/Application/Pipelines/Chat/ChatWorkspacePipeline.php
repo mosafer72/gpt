@@ -256,16 +256,16 @@ class ChatWorkspacePipeline implements WorkspacePipeline
         */
 
         // ۲. بارگذاری حافظه (در صورت نیاز می‌توانید این را نگه دارید یا کامنت کنید)
-        if (($capabilities['memory'] ?? false) && mb_strlen(trim($context->currentMessage)) > 50) {
+        if (($capabilities['memory'] ?? false) && mb_strlen(trim($context->currentMessage)) > 5) {
             $this->loadMemory($context);
         }
 
         // ۳. غیرفعال‌سازی بازنویسی پیام جهت ارسال پیام به‌صورت کاملاً خام
-        /*
+
         if (!empty($context->metadata['rewritten_message'])) {
             $context->currentMessage = $context->metadata['rewritten_message'];
         }
-        */
+
     }
 
     protected function loadMemory(ChatContext $context): void
@@ -512,16 +512,29 @@ class ChatWorkspacePipeline implements WorkspacePipeline
 
     protected function createRequest(ChatContext $context, User $user, $model): ChatRequest
     {
-        // فقط پیام فعلی کاربر ارسال می‌شود (تاریخچه کامنت شده است)
-        $messages = [
-            new ChatMessage(
-                role: 'user',
-                content: $context->currentMessage
-            )
-        ];
+        $messages = [];
+
+        if (!empty($context->memories)) {
+            $memoryText = collect($context->memories)
+                ->pluck('content')
+                ->implode("\n");
+
+            $messages[] = new ChatMessage(
+                role: 'system',
+                content: "اطلاعاتی از حافظه کاربر:\n" . $memoryText
+            );
+        }
+
+
+        $messages[] = new ChatMessage(
+            role: 'user',
+            content: $context->currentMessage
+        );
+
 
         $subscription = $context->workspace->currentSubscription;
         $plan = $subscription?->workspacePlan;
+
 
         return new ChatRequest(
             messages: $messages,

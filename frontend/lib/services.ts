@@ -26,7 +26,7 @@ export const services = [
 
     features: ["اخبار روز", "تحلیل شبکه‌های اجتماعی", "پاسخ سریع", "Realtime"],
 
-    status: "soon",
+    status: "active",
 
     href: "#",
   },
@@ -42,7 +42,7 @@ export const services = [
 
     features: ["تحلیل PDF", "خلاصه کتاب", "اسناد طولانی", "Reasoning"],
 
-    status: "soon",
+    status: "active",
 
     href: "#",
   },
@@ -58,7 +58,7 @@ export const services = [
 
     features: ["تولید کد", "رفع باگ", "Refactor", "Review"],
 
-    status: "soon",
+    status: "active",
 
     href: "#",
   },

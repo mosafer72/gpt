@@ -1,4 +1,4 @@
-.container { min-height: 100vh; background: #0b1020; color: white; padding: 24px; }
+.container { min-height: 100vh; background: #0b1020; color: white; }
 
 .header { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
 
@@ -295,7 +295,7 @@
 
 .serviceButton {
 
-  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  background: linear-gradient(135deg, #25ebad, #7c3aed);
 
   color: white;
 
@@ -339,5 +339,27 @@
 
     grid-template-columns: 1fr;
 
+  }
+}
+.menu {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.menu a {
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: color .2s ease;
+}
+
+.menu a:hover {
+  color: var(--primary);
+}
+@media (max-width: 900px) {
+  .menu {
+    display: none;
   }
 }

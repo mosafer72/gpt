@@ -28,7 +28,7 @@ const iranSans = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'اکانتسرا‌ی هوش مصنوعی | ChatGPT Clone',
+  title: 'دانا‌بوم‌ی هوش مصنوعی | ChatGPT Clone',
   description: 'دستیار هوشمند برای دانشجویان، محققان و علاقه‌مندان به AI',
   keywords: 'هوش مصنوعی, ChatGPT, دانشجویان, یادگیری ماشین',
   authors: [{ name: 'تیم توسعه' }],

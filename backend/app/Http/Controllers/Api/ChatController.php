@@ -151,7 +151,6 @@ class ChatController extends Controller
             ->where('workspaces.id', $request->workspace_id) // بررسی دقیق شناسه ورک‌پیس
             ->first();
 
-
         if (!$workspace) {
             return response()->json([
                 'success' => false,
