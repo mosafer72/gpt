@@ -3,55 +3,130 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 
-export default function AuthGuard({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
 
   const [loading, setLoading] = useState(true);
 
-  // useEffect(() => {
-  //   const token = localStorage.getItem("auth_token");
+  useEffect(() => {
+    const token = localStorage.getItem("auth_token");
 
-  //   const user = JSON.parse(localStorage.getItem("user") || "{}");
+    let user = null;
 
-  //   const publicPaths = ["/login", "/verify","/"];
+    try {
+      user = JSON.parse(localStorage.getItem("user") || "null");
+    } catch {
+      user = null;
+    }
 
-  //   const isPublic = publicPaths.includes(pathname);
+    /*
+    |--------------------------------------------------------------------------
+    | Public Routes
+    |--------------------------------------------------------------------------
+    */
 
-  //   const isAdmin = pathname.startsWith("/admin");
+    const publicRoutes = [
+      "/",
+      "/about",
+      "/contact",
+      "/models",
+      "/login",
+      "/verify",
+      "/404",
+    ];
 
-  //   // صفحات عمومی
-  //   if (isPublic) {
-  //     if (token) {
-  //       router.replace("/dashboard");
-  //       return;
-  //     }
+    const isPublicRoute = publicRoutes.includes(pathname);
 
-  //     setLoading(false);
-  //     return;
-  //   }
+    /*
+    |--------------------------------------------------------------------------
+    | User Routes
+    |--------------------------------------------------------------------------
+    */
 
-  //   // صفحات خصوصی
-  //   if (!token) {
-  //     router.replace("/login");
-  //     return;
-  //   }
+    const isUserRoute =
+      pathname.startsWith("/dashboard") || pathname.startsWith("/workspace");
 
-  //   if (isAdmin && user.role !== "admin") {
-  //     router.replace("/dashboard");
-  //     return;
-  //   }
+    /*
+    |--------------------------------------------------------------------------
+    | Admin Routes
+    |--------------------------------------------------------------------------
+    */
 
-  //   setLoading(false);
-  // }, [pathname, router]);
+    const isAdminRoute = pathname.startsWith("/admin");
 
-  // if (loading) {
-  //   return <div>Loading...</div>;
-  // }
+    /*
+    |--------------------------------------------------------------------------
+    | Public Access
+    |--------------------------------------------------------------------------
+    */
+
+    if (isPublicRoute) {
+      setLoading(false);
+
+      return;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Admin Access
+    |--------------------------------------------------------------------------
+    */
+
+    if (isAdminRoute) {
+      // بدون لاگین
+      if (!token) {
+        router.replace("/login");
+
+        return;
+      }
+
+      // کاربر عادی
+      if (!user || user.role !== "admin") {
+        router.replace("/dashboard");
+
+        return;
+      }
+
+      setLoading(false);
+
+      return;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Authenticated User Access
+    |--------------------------------------------------------------------------
+    */
+
+    if (isUserRoute) {
+      if (!token) {
+        router.replace("/login");
+
+        return;
+      }
+
+      setLoading(false);
+
+      return;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Unknown Routes
+    |--------------------------------------------------------------------------
+    */
+
+    setLoading(false);
+  }, [pathname, router]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        Loading...
+      </div>
+    );
+  }
 
   return <>{children}</>;
 }
