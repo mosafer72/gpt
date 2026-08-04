@@ -478,7 +478,7 @@ class SubscriptionController extends Controller
 
 
 
-            Log::error(
+            \Log::error(
                 'Payment failed',
                 [
                     'authority' => $authority

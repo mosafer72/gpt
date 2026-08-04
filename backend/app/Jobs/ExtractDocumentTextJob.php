@@ -29,7 +29,7 @@ class ExtractDocumentTextJob implements ShouldQueue
         $relativePath = $this->document->path ?? $this->document->file_path;
 
         if (!$relativePath) {
-            Log::error("ExtractDocumentTextJob: Path is missing for Document ID {$this->document->id}");
+            \Log::error("ExtractDocumentTextJob: Path is missing for Document ID {$this->document->id}");
             return;
         }
 
@@ -37,7 +37,7 @@ class ExtractDocumentTextJob implements ShouldQueue
         $filePath = Storage::disk($this->document->disk ?? 'public')->path($relativePath);
 
         if (!file_exists($filePath)) {
-            Log::error("ExtractDocumentTextJob: File not found at {$filePath}");
+            \Log::error("ExtractDocumentTextJob: File not found at {$filePath}");
             return;
         }
 
@@ -53,14 +53,14 @@ class ExtractDocumentTextJob implements ShouldQueue
         $process->run();
 
         if (!$process->isSuccessful()) {
-            Log::error("ExtractDocumentTextJob Python Error: " . $process->getErrorOutput());
+            \Log::error("ExtractDocumentTextJob Python Error: " . $process->getErrorOutput());
             throw new ProcessFailedException($process);
         }
 
         $extractedText = trim($process->getOutput());
 
         if (empty($extractedText)) {
-            Log::warning("ExtractDocumentTextJob: No text extracted from Document ID {$this->document->id}");
+            \Log::warning("ExtractDocumentTextJob: No text extracted from Document ID {$this->document->id}");
             return;
         }
 

@@ -252,7 +252,7 @@ PROMPT;
                 if (!is_array($json)) {
 
 
-                    Log::warning(
+                    \Log::warning(
                         'Invalid planner JSON',
                         [
                             'section' => $sectionName,
@@ -428,7 +428,7 @@ PROMPT;
             } catch (\Throwable $e) {
 
 
-                Log::warning(
+                \Log::warning(
                     'Section planner failed',
                     [
                         'error' => $e->getMessage()

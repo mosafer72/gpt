@@ -2,9 +2,11 @@
 
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DocumentController;
+use App\Http\Controllers\Api\PresentationController;
 use App\Http\Controllers\Api\WorkspaceSubscriptionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+
 
 
 /*
@@ -502,6 +504,35 @@ Route::get(
 
 
 
+
+
+
+
+
+Route::middleware('auth:sanctum')
+    ->prefix('workspaces/{workspace}/presentations')
+    ->group(function () {
+
+
+        Route::get(
+            '/',
+            [PresentationController::class, 'index']
+        );
+
+
+        Route::post(
+            '/',
+            [PresentationController::class, 'store']
+        );
+
+
+        Route::get(
+            '/{document}/download',
+            [PresentationController::class, 'download']
+        );
+
+
+    });
 
 
 /*

@@ -83,7 +83,7 @@ class GapGPTProvider implements LlmProvider
 
 
         } catch (\Throwable $e) {
-            Log::error('LLM ERROR', ['message' => $e->getMessage()]);
+            \Log::error('LLM ERROR', ['message' => $e->getMessage()]);
             $log->update(['status' => 'failed']);
             throw $e;
         }

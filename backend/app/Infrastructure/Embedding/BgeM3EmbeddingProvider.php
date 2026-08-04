@@ -147,7 +147,7 @@ class BgeM3EmbeddingProvider implements EmbeddingProvider
         if (! $response->successful()) {
 
 
-            Log::error(
+            \Log::error(
                 'BGE-M3 embedding request failed',
                 [
                     'status' => $response->status(),
@@ -185,7 +185,7 @@ class BgeM3EmbeddingProvider implements EmbeddingProvider
 
 
 
-        Log::info(
+        \Log::info(
             'BGE-M3 embeddings processed',
             [
                 'chunks' => count($inputs),

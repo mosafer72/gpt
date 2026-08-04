@@ -159,7 +159,7 @@ class OpenAIProvider implements LlmProvider
 
             ]);
 
-            Log::error('OPENAI ERROR', [
+            \Log::error('OPENAI ERROR', [
 
                 'message' => $e->getMessage(),
 

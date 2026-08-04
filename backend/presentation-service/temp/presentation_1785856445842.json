@@ -1,0 +1,156 @@
+{
+  "theme": "modern",
+  "language": "fa",
+  "direction": "rtl",
+  "title": "معرفی هوش مصنوعی",
+  "subtitle": "یک ارائه تستی برای بررسی Pipeline",
+  "pages": [
+    {
+      "template": "cover",
+      "title": "هوش مصنوعی",
+      "subtitle": "آشنایی با مفاهیم پایه",
+      "elements": [
+        {
+          "type": "title",
+          "text": "هوش مصنوعی چیست؟"
+        },
+        {
+          "type": "subtitle",
+          "text": "تکنولوژی ساخت سیستم‌های هوشمند"
+        }
+      ]
+    },
+    {
+      "template": "cards",
+      "title": "شبکه عصبی چیست؟",
+      "subtitle": "ساختار اصلی یادگیری عمیق",
+      "elements": [
+        {
+          "type": "card",
+          "title": "نورون مصنوعی",
+          "description": "واحد پایه پردازش اطلاعات"
+        },
+        {
+          "type": "card",
+          "title": "لایه‌های شبکه",
+          "description": "ورودی، مخفی و خروجی"
+        }
+      ]
+    },
+    {
+      "template": "bullets",
+      "title": "کاربردهای هوش مصنوعی",
+      "elements": [
+        {
+          "type": "bullet",
+          "text": "پردازش زبان طبیعی"
+        },
+        {
+          "type": "bullet",
+          "text": "بینایی ماشین"
+        },
+        {
+          "type": "bullet",
+          "text": "سیستم‌های پیشنهاددهنده"
+        }
+      ]
+    },
+    {
+      "template": "compare",
+      "title": "مقایسه روش‌ها",
+      "elements": [
+        {
+          "type": "compare_box",
+          "title": "روش سنتی",
+          "description": "قوانین دستی و ثابت"
+        },
+        {
+          "type": "compare_box",
+          "title": "هوش مصنوعی",
+          "description": "یادگیری از داده‌ها"
+        }
+      ]
+    },
+    {
+      "template": "timeline",
+      "title": "تاریخچه هوش مصنوعی",
+      "elements": [
+        {
+          "type": "timeline_item",
+          "text": "شروع تحقیقات اولیه"
+        },
+        {
+          "type": "timeline_item",
+          "text": "ظهور یادگیری عمیق"
+        }
+      ]
+    },
+    {
+      "template": "cards",
+      "title": "مدل‌های معروف",
+      "elements": [
+        {
+          "type": "card",
+          "title": "GPT",
+          "description": "مدل زبانی بزرگ"
+        },
+        {
+          "type": "card",
+          "title": "BERT",
+          "description": "مدل درک زبان"
+        }
+      ]
+    },
+    {
+      "template": "bullets",
+      "title": "مزایای هوش مصنوعی",
+      "elements": [
+        {
+          "type": "bullet",
+          "text": "افزایش سرعت پردازش"
+        },
+        {
+          "type": "bullet",
+          "text": "کاهش خطای انسانی"
+        }
+      ]
+    },
+    {
+      "template": "compare",
+      "title": "چالش‌ها",
+      "elements": [
+        {
+          "type": "compare_box",
+          "title": "داده",
+          "description": "نیاز به داده با کیفیت"
+        },
+        {
+          "type": "compare_box",
+          "title": "پردازش",
+          "description": "نیاز به سخت افزار قدرتمند"
+        }
+      ]
+    },
+    {
+      "template": "cards",
+      "title": "آینده هوش مصنوعی",
+      "elements": [
+        {
+          "type": "card",
+          "title": "دستیار هوشمند",
+          "description": "کمک در فعالیت‌های روزانه"
+        }
+      ]
+    },
+    {
+      "template": "ending",
+      "title": "جمع‌بندی",
+      "elements": [
+        {
+          "type": "text",
+          "text": "هوش مصنوعی یکی از فناوری‌های کلیدی آینده است."
+        }
+      ]
+    }
+  ]
+}

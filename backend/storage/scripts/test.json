@@ -1,0 +1,40 @@
+{
+  "title": "هوش مصنوعی",
+
+  "theme": {
+    "background": null,
+    "font": "B-Nazanin"
+  },
+
+  "slides": [
+
+    {
+      "title": "مقدمه هوش مصنوعی",
+
+      "background": null,
+
+      "content": [
+        "هوش مصنوعی شاخه‌ای از علوم کامپیوتر است.",
+        "هدف آن ساخت سیستم‌های هوشمند است."
+      ],
+
+      "image": null
+    },
+
+
+    {
+      "title": "کاربردهای هوش مصنوعی",
+
+      "background": "images/bg.jpg",
+
+      "content": [
+        "پزشکی",
+        "رباتیک",
+        "تولید محتوا"
+      ],
+
+      "image": "images/ai.png"
+    }
+
+  ]
+}

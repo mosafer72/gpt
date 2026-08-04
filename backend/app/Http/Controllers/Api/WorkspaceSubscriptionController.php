@@ -500,7 +500,7 @@ class WorkspaceSubscriptionController extends Controller
 
 
 
-            Log::error(
+            \Log::error(
                 'Workspace Payment Failed',
                 [
                     'authority'=>$authority

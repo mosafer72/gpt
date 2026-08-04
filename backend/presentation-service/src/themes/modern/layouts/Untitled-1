@@ -1,0 +1,115 @@
+curl -X POST http://localhost:3001/generate \
+-H "Content-Type: application/json" \
+-d '{
+  "theme":"modern",
+  "title":"تست کامل سیستم قالب‌ها",
+  "subtitle":"بررسی تمام Layout و Component ها",
+
+  "slides":[
+
+    {
+      "layout":"cards",
+      "title":"اسلاید Cards",
+      "subtitle":"من Subtitle هستم",
+      "highlight":"من Highlight هستم",
+
+      "items":[
+        {
+          "heading":"من Heading شماره 1 هستم",
+          "description":"من Description شماره 1 هستم"
+        },
+        {
+          "heading":"من Heading شماره 2 هستم",
+          "description":"من Description شماره 2 هستم"
+        },
+        {
+          "heading":"من Heading شماره 3 هستم",
+          "description":"من Description شماره 3 هستم"
+        },
+        {
+          "heading":"من Heading شماره 4 هستم",
+          "description":"من Description شماره 4 هستم"
+        }
+      ]
+    },
+
+    {
+      "layout":"bullets",
+      "title":"اسلاید Bullets",
+      "subtitle":"من Subtitle هستم",
+
+      "items":[
+        "من Bullet شماره 1 هستم",
+        "من Bullet شماره 2 هستم",
+        "من Bullet شماره 3 هستم",
+        "من Bullet شماره 4 هستم",
+        "من Bullet شماره 5 هستم",
+        "من Bullet شماره 6 هستم"
+      ]
+    },
+
+    {
+      "layout":"compare",
+      "title":"اسلاید Compare",
+
+      "left":{
+        "title":"من ستون چپ هستم",
+        "items":[
+          "من آیتم چپ 1 هستم",
+          "من آیتم چپ 2 هستم",
+          "من آیتم چپ 3 هستم",
+          "من آیتم چپ 3 هستم",
+          "من آیتم چپ 3 هستم",
+          "من آیتم چپ 3 هستم"
+        ]
+      },
+
+      "right":{
+        "title":"من ستون راست هستم",
+        "items":[
+          "من آیتم راست 1 هستم",
+          "من آیتم راست 2 هستم",
+          "من آیتم راست 3 هستم",
+          "من آیتم راست 3 هستم",
+          "من آیتم راست 3 هستم",
+          "من آیتم راست 3 هستم"
+        ]
+      }
+    },
+
+    {
+      "layout":"timeline",
+      "title":"اسلاید Timeline",
+
+      "items":[
+        {
+          "year":"2020",
+          "text":"من Timeline شماره 1 هستم"
+        },
+        {
+          "year":"2021",
+          "text":"من Timeline شماره 2 هستم"
+        },
+        {
+          "year":"2022",
+          "text":"من Timeline شماره 3 هستم"
+        },
+        {
+          "year":"2023",
+          "text":"من Timeline شماره 4 هستم"
+        },
+        {
+          "year":"2024",
+          "text":"من Timeline شماره 5 هستم"
+        },
+        {
+          "year":"2025",
+          "text":"من Timeline شماره 5 هستم"
+        }
+      ]
+    }
+
+  ],
+
+  "summary":"من Summary صفحه آخر هستم"
+}'

@@ -4,24 +4,53 @@ namespace App\Application\Pipelines;
 
 use App\Application\Pipelines\Academic\StudentWorkspacePipeline;
 use App\Application\Pipelines\Chat\ChatWorkspacePipeline;
+use App\Application\Pipelines\Presentation\PresentationWorkspacePipeline;
+
 use App\Domain\Contracts\WorkspacePipeline;
 use App\Domain\Workspace\WorkspaceType;
 
+
 class WorkspacePipelineFactory
 {
-    public function __construct(
-        protected ChatWorkspacePipeline $personal,
-        protected StudentWorkspacePipeline $academic
-    ){}
 
-    public function make(string $type):WorkspacePipeline
+    public function __construct(
+
+        protected ChatWorkspacePipeline $personal,
+
+        protected StudentWorkspacePipeline $academic,
+
+        protected PresentationWorkspacePipeline $presentation
+
+    ) {
+    }
+
+
+
+    public function make(string $type): WorkspacePipeline
     {
 
-        return match($type){
-            WorkspaceType::CHAT->value => $this->personal,
+        return match ($type) {
+
+            WorkspaceType::CHAT->value =>
+            $this->personal,
+
+
             WorkspaceType::ACADEMIC->value,
-            'student' => $this->academic,
-            default => throw new \Exception("Unsupported workspace type {$type}")
+            'student' =>
+            $this->academic,
+
+
+            WorkspaceType::PRESENTATION->value =>
+            $this->presentation,
+
+
+            default =>
+            throw new \Exception(
+                "Unsupported workspace type {$type}"
+            )
+
         };
+
     }
+
 }

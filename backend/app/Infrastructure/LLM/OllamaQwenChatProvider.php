@@ -50,7 +50,7 @@ class OllamaQwenChatProvider implements SmallChatProvider
                 ]
             );
         } catch (\Throwable $e) {
-            Log::error('OLLAMA REQUEST FAILED', ['error' => $e->getMessage()]);
+            \Log::error('OLLAMA REQUEST FAILED', ['error' => $e->getMessage()]);
             throw $e;
         }
 

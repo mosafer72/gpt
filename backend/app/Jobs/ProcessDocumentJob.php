@@ -87,14 +87,14 @@ class ProcessDocumentJob implements ShouldQueue
                 }
 
                 if (!empty($planSections)) {
-                    Log::info('PLAN DATA', [
+                    \Log::info('PLAN DATA', [
                         'data' => $planSections
                     ]);
                     $sectionPlanRepository->storeBulk($planSections);
-                    Log::info('SECTION PLAN STORED SUCCESSFULLY', ['document_id' => $this->document->id, 'count' => count($planSections)]);
+                    \Log::info('SECTION PLAN STORED SUCCESSFULLY', ['document_id' => $this->document->id, 'count' => count($planSections)]);
                 }
             } catch (\Throwable $planEx) {
-                Log::error('CRITICAL: SECTION PLAN STORE FAILED', [
+                \Log::error('CRITICAL: SECTION PLAN STORE FAILED', [
                     'document_id' => $this->document->id,
                     'error_message' => $planEx->getMessage(),
                     'error_trace' => $planEx->getTraceAsString()
@@ -159,7 +159,7 @@ class ProcessDocumentJob implements ShouldQueue
                         ]);
                     }
                 } catch (\Throwable $e) {
-                    Log::warning('Embedding failed', ['document_id' => $this->document->id, 'error' => $e->getMessage()]);
+                    \Log::warning('Embedding failed', ['document_id' => $this->document->id, 'error' => $e->getMessage()]);
                 }
             }
 
@@ -167,7 +167,7 @@ class ProcessDocumentJob implements ShouldQueue
 
             // TranslateDocumentSectionsJob::dispatch($this->document);
 
-            Log::info('DOCUMENT PROCESSED', ['document_id' => $this->document->id, 'chunks' => count($chunks)]);
+            \Log::info('DOCUMENT PROCESSED', ['document_id' => $this->document->id, 'chunks' => count($chunks)]);
 
         } catch (\Throwable $e) {
             $this->document->update([
@@ -175,7 +175,7 @@ class ProcessDocumentJob implements ShouldQueue
                 'error' => $e->getMessage()
             ]);
 
-            Log::error('DOCUMENT PROCESS FAILED', ['document_id' => $this->document->id, 'error' => $e->getMessage()]);
+            \Log::error('DOCUMENT PROCESS FAILED', ['document_id' => $this->document->id, 'error' => $e->getMessage()]);
 
             throw $e;
         }

@@ -25,7 +25,15 @@ class Document extends Model
 
         'status',
 
-        'error'
+        'error',
+
+        'metadata'
+
+
+    ];
+    protected $casts = [
+
+        'metadata'=>'array'
 
     ];
 

@@ -39,7 +39,7 @@ class HybridDocumentRetrievalService
                 );
             }
         } catch (\Throwable $e) {
-            Log::warning('HYBRID VECTOR SEARCH FAILED', [
+            \Log::warning('HYBRID VECTOR SEARCH FAILED', [
                 'error' => $e->getMessage()
             ]);
         }

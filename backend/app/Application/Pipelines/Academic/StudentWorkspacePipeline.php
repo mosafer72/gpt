@@ -69,7 +69,7 @@ class StudentWorkspacePipeline implements WorkspacePipeline
                 $context->model = $model->key;
                 break;
             } catch (\Throwable $e) {
-                Log::warning("Model {$model->key} failed in handle(). Trying next model...", [
+                \Log::warning("Model {$model->key} failed in handle(). Trying next model...", [
                     'error' => $e->getMessage(),
                     'workspace_id' => $this->getWorkspaceId($context)
                 ]);
@@ -78,7 +78,7 @@ class StudentWorkspacePipeline implements WorkspacePipeline
         }
 
         if (!$response || !$successfulModel) {
-            Log::error("All models failed in StudentWorkspacePipeline::handle()", [
+            \Log::error("All models failed in StudentWorkspacePipeline::handle()", [
                 'error' => $lastException?->getMessage()
             ]);
             throw new \RuntimeException("تمام مدل‌های این پلن با خطا مواجه شدند. لطفاً دوباره تلاش کنید.", 0, $lastException);
@@ -201,14 +201,14 @@ class StudentWorkspacePipeline implements WorkspacePipeline
                 }
 
             } catch (\Throwable $e) {
-                Log::warning("Model {$model->key} failed. Retrying next model...", [
+                \Log::warning("Model {$model->key} failed. Retrying next model...", [
                     'error' => $e->getMessage()
                 ]);
             }
         }
 
         if (!$streamSuccess || !$successfulModel) {
-            Log::error("All available models in subscription plan failed during stream execution.");
+            \Log::error("All available models in subscription plan failed during stream execution.");
 
             $send([
                 'error' => 'تمام سرویس‌های هوش مصنوعی در حال حاضر با محدودیت یا خطا مواجه هستند. لطفاً لحظاتی بعد مجدداً تلاش کنید.'

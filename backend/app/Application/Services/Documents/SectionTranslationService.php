@@ -65,7 +65,7 @@ TEXT:
             $json = $this->parseJson($raw);
 
             if (!$json) {
-                Log::warning(
+                \Log::warning(
                     'TRANSLATION JSON FAILED',
                     [
                         'document_id' => $documentId,
@@ -79,7 +79,7 @@ TEXT:
             $translation = trim($json['translation'] ?? '');
 
             if (blank($translation)) {
-                Log::warning(
+                \Log::warning(
                     'EMPTY TRANSLATION',
                     [
                         'document_id' => $documentId
@@ -92,7 +92,7 @@ TEXT:
             try {
                 $vector = $this->embedding->embedDocument($translation);
             } catch (\Throwable $e) {
-                Log::error(
+                \Log::error(
                     'TRANSLATION EMBEDDING FAILED',
                     [
                         'document_id' => $documentId,
@@ -127,7 +127,7 @@ TEXT:
             return true;
 
         } catch (\Throwable $e) {
-            Log::error(
+            \Log::error(
                 'SECTION TRANSLATION ERROR',
                 [
                     'document_id' => $documentId,

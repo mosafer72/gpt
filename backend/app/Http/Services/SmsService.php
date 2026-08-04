@@ -28,7 +28,7 @@ class SmsService
             return true;
 
         } catch (\Exception $e) {
-            Log::error("SMS sending failed: " . $e->getMessage());
+            \Log::error("SMS sending failed: " . $e->getMessage());
             return false;
         }
     }

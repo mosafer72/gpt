@@ -119,7 +119,7 @@ class TranslateDocumentSectionsJob implements ShouldQueue
 
                     $failed++;
 
-                    Log::warning(
+                    \Log::warning(
                         'SECTION TRANSLATION FAILED',
                         [
                             'document_id' => $this->document->id,
@@ -141,7 +141,7 @@ class TranslateDocumentSectionsJob implements ShouldQueue
 
             // (اختیاری) اگر می‌خواهید حالتی که هیچ فایلی برای ترجمه نبوده را هم بررسی کنید:
             if ($success === 0 && $skipped > 0 && $failed === 0) {
-                Log::info('NO TRANSLATION NEEDED (All chunks were skipped)', [
+                \Log::info('NO TRANSLATION NEEDED (All chunks were skipped)', [
                     'document_id' => $this->document->id,
                     'skipped' => $skipped
                 ]);
@@ -156,7 +156,7 @@ class TranslateDocumentSectionsJob implements ShouldQueue
 
         } catch (\Throwable $e) {
 
-            Log::error(
+            \Log::error(
                 'DOCUMENT SECTION TRANSLATION FAILED',
                 [
                     'document_id' => $this->document->id,

@@ -50,11 +50,11 @@ class ZarinpalService
                 ];
             }
 
-            Log::error('Zarinpal request error', $result);
+            \Log::error('Zarinpal request error', $result);
             return ['success' => false, 'message' => $result['data']['message'] ?? 'خطا در ایجاد پرداخت'];
 
         } catch (\Exception $e) {
-            Log::error('Zarinpal request exception: ' . $e->getMessage());
+            \Log::error('Zarinpal request exception: ' . $e->getMessage());
             return ['success' => false, 'message' => 'خطا در ارتباط با درگاه پرداخت'];
         }
     }
@@ -82,11 +82,11 @@ class ZarinpalService
                 ];
             }
 
-            Log::error('Zarinpal verify error', $result);
+            \Log::error('Zarinpal verify error', $result);
             return ['success' => false, 'message' => $result['data']['message'] ?? 'پرداخت ناموفق'];
 
         } catch (\Exception $e) {
-            Log::error('Zarinpal verify exception: ' . $e->getMessage());
+            \Log::error('Zarinpal verify exception: ' . $e->getMessage());
             return ['success' => false, 'message' => 'خطا در تایید پرداخت'];
         }
     }

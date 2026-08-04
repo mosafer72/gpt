@@ -347,7 +347,7 @@ class ChatController extends Controller
             $process->run();
 
             if (!$process->isSuccessful()) {
-                Log::error("Python PDF Extraction Failed: " . $process->getErrorOutput());
+                \Log::error("Python PDF Extraction Failed: " . $process->getErrorOutput());
                 return ['text' => '[خطا در استخراج متن از فایل پیوست]'];
             }
 
@@ -428,7 +428,7 @@ class ChatController extends Controller
                         }
                     );
                 } catch (\Throwable $e) {
-                    Log::error("Pipeline Stream Error: " . $e->getMessage());
+                    \Log::error("Pipeline Stream Error: " . $e->getMessage());
                     echo "data: " . json_encode(['error' => 'خطا در پردازش درخواست.'], JSON_UNESCAPED_UNICODE) . "\n\n";
                     flush();
                 }

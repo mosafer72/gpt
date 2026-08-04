@@ -21,7 +21,7 @@ if (!API_BASE) {
 // Auth & Redirect Helpers
 // ============================
 
-function getToken() {
+export default function getToken() {
   if (typeof window === "undefined") {
     return null;
   }
