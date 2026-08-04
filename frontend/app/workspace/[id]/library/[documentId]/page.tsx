@@ -28,7 +28,7 @@ import ErrorPanel from "./components/ErrorPanel/ErrorPanel";
 import AllInsights from "./components/AIInsights/AIInsights";
 import DocumentHeader from "./components/DocumentHeader/DocumentHeader";
 import DocumentStructure from "./components/DocumentStructure/DocumentStructure";
-import { getDocumentOverview } from "../../components/lib/api";
+import { getDocumentOverview } from "../components/lib/api";
 
 export default function DocumentPage() {
   const params = useParams();
