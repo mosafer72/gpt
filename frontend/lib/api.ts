@@ -38,7 +38,7 @@ export async function logout() {
 // ✅ تابع کمکی برای هدایت به صفحه ۴۰۴
 function redirectToNotFound() {
   if (typeof window !== "undefined") {
-    // window.location.href = "/404";
+    window.location.href = "/404";
   }
 }
 
