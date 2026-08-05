@@ -183,7 +183,7 @@ class ChatController extends Controller
     protected function validateIncomingRequest(Request $request): void
     {
         $request->validate([
-            'workspace_id' => 'required|string',
+            'workspace_id' => 'required|integer',
             'message' => 'nullable|string|max:50000',
             'chat_id' => 'nullable|exists:chats,id',
             'model_id' => 'required|exists:ai_models,id',

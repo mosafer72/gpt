@@ -22,6 +22,21 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => AdminMiddleware::class,
         ]);
     })
+    ->withMiddleware(function (Middleware $middleware) {
+
+        $middleware->append(
+            \App\Http\Middleware\CorsMiddleware::class
+        );
+
+        $middleware->alias([
+
+            'admin' => AdminMiddleware::class,
+
+            'optional.auth' => \App\Http\Middleware\OptionalAuth::class,
+
+        ]);
+
+    })
     ->withExceptions(function (Exceptions $exceptions) {
 
         $exceptions->render(function (Throwable $e, Request $request) {

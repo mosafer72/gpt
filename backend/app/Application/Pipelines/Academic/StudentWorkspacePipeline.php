@@ -348,7 +348,7 @@ class StudentWorkspacePipeline implements WorkspacePipeline
             messages: $messages,
             model: $modelName,
             temperature: 0.3,
-            maxTokens: 5000
+            maxTokens: 100000
         );
     }
 

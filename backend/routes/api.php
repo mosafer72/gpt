@@ -481,7 +481,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 
-Route::get(
+Route::middleware('optional.auth')->get(
     '/dashboard',
     [DashboardController::class, 'index']
 );
