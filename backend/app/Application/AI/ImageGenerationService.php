@@ -2,63 +2,59 @@
 
 namespace App\Application\AI;
 
+
+use App\Infrastructure\LLM\CloudflareImageProvider;
 use App\Models\AiModel;
-use OpenAI;
+
+
 
 class ImageGenerationService
 {
+
+    public function __construct(
+        protected CloudflareImageProvider $provider
+    ) {
+
+    }
+
+
+
     public function generate(
         string $prompt,
         string $size,
         AiModel $model
     ): array {
 
+        $result =
+            $this->provider->generate(
 
-        $provider = $model->provider;
+                prompt: $prompt,
 
+                model: $model
 
-        $client = OpenAI::factory()
-
-            ->withApiKey(
-                $provider->api_key
-            )
-
-            ->withBaseUri(
-                $provider->base_url
-            )
-
-            ->make();
-
-
-
-        $response = $client
-            ->images()
-            ->create([
-
-                'model' =>
-                    $model->model_name,
-
-                'prompt' =>
-                    $prompt,
-
-                'size' =>
-                    $size,
-
-            ]);
+            );
 
 
 
         return [
 
             'url' =>
-                $response->data[0]->url,
+                $result['url'],
+
+
+            'path' =>
+                $result['path'],
+
 
             'model' =>
                 $model->model_name,
+
 
             'size' =>
                 $size,
 
         ];
+
     }
+
 }

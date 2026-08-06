@@ -23,71 +23,107 @@ function ChatMessage({
 }) {
   const isUser = message.role === "user";
 
-  // ✅ بررسی و استخراج محتوا در صورتی که به صورت JSON (متن + تصویر) ذخیره شده باشد
   let textContent = message.content || "";
-  let jsonImage = null;
+  let jsonImage: string | null = null;
 
+  /**
+   * اصلاح شده برای پشتیبانی از پاسخ‌های استریم و فرمت‌های JSON ارسالی سرور
+   */
   try {
-    if (textContent.trim().startsWith("{") && textContent.trim().endsWith("}")) {
-      const parsed = JSON.parse(textContent);
+    let trimmed = textContent.trim();
+
+    // اگر پیام با data: شروع شده بود، آن را پاک کنیم تا به JSON برسیم
+    if (trimmed.startsWith("data:")) {
+      trimmed = trimmed.replace(/^data:\s*/, "").trim();
+    }
+
+    if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+      const parsed = JSON.parse(trimmed);
+
+      // بررسی ساختار choices (استریم یا پاسخ‌های پکیج‌شده)
+      if (
+        parsed.choices &&
+        Array.isArray(parsed.choices) &&
+        parsed.choices.length > 0
+      ) {
+        const delta =
+          parsed.choices[0].delta || parsed.choices[0].message || {};
+        if (delta.content !== undefined) {
+          textContent = delta.content;
+        }
+        if (delta.image) {
+          jsonImage = delta.image;
+        }
+      }
+
+      // بررسی ساختار مستقیم text و image
       if (parsed.text !== undefined) {
         textContent = parsed.text;
       }
+
       if (parsed.image) {
         jsonImage = parsed.image;
       }
     }
   } catch (e) {
-    // اگر JSON نبود، به صورت متن معمولی در نظر گرفته می‌شود
+    // اگر JSON نبود، متن به همان شکل عادی رندر می‌شود
   }
 
-  // ✅ پشتیبانی کامل از چندین منبع تصویر (Base64 یا URL مستقیم)
+  /**
+   * تمام حالت‌های ممکن تصویر
+   */
   const imageUrl =
     jsonImage ||
+    // stream response
+    (message as any).image ||
+    // database
     (message as any).image_url ||
     (message as any).metadata?.image_url ||
     (message as any).metadata?.attachments?.image_base64 ||
-    (message as any).metadata?.attachments?.[0]?.url ||
-    (message as any).image;
+    (message as any).metadata?.attachments?.url ||
+    null;
 
-  const paperId = (message as (any)).metadata?.paper_id;
+  const paperId = (message as any).metadata?.paper_id;
 
   return (
     <div
-      className={`${styles.wrapper} ${isUser ? styles.user : styles.assistant} ${
-        className || ""
-      }`}
+      className={`
+        ${styles.wrapper}
+        ${isUser ? styles.user : styles.assistant}
+        ${className || ""}
+      `}
     >
       <div className={styles.avatar}>{isUser ? "👤" : "✨"}</div>
 
       <div className={styles.bubble}>
-        {/* ✅ نمایش تصویر با استفاده از کامپوننت قبلی ChatImage */}
         {imageUrl && (
-          <div style={{ marginBottom: textContent ? "10px" : "0" }}>
+          <div
+            style={{
+              marginBottom: textContent ? "10px" : "0",
+            }}
+          >
             <ChatImage src={imageUrl} />
           </div>
         )}
-        
+
         {paperId && <PaperAttachment paperId={paperId} />}
 
-        {/* ✅ نمایش متن (اگر وجود داشته باشد) */}
         {textContent && (
           <div className={styles.text}>
             {isUser ? (
-              // اگر پیام کاربر باشد: حفظ اینترها + چپ‌چین و LTR کردن برای نمایش صحیح کدها
-              <div 
-                style={{ 
-                  whiteSpace: "pre-wrap", 
+              <div
+                style={{
+                  whiteSpace: "pre-wrap",
                   wordBreak: "break-word",
                   direction: "ltr",
                   textAlign: "left",
-                  fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+                  fontFamily:
+                    "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
                 }}
               >
                 {textContent}
               </div>
             ) : (
-              // برای پاسخ مدل از مارک‌داون کامل استفاده می‌شود
               <ReactMarkdown
                 remarkPlugins={[remarkMath]}
                 rehypePlugins={[rehypeKatex]}
@@ -95,11 +131,14 @@ function ChatMessage({
                   p({ children }) {
                     return <div className={styles.paragraph}>{children}</div>;
                   },
+
                   pre({ children }) {
                     return <>{children}</>;
                   },
+
                   code({ inline, className, children }: any) {
                     const match = /language-(\w+)/.exec(className || "");
+
                     if (!inline) {
                       return (
                         <CodeBlock language={match?.[1]}>
@@ -107,6 +146,7 @@ function ChatMessage({
                         </CodeBlock>
                       );
                     }
+
                     return <code className={className}>{children}</code>;
                   },
                 }}

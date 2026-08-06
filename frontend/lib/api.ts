@@ -64,16 +64,13 @@ async function request<T>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const response = await fetch(
-    `${API_BASE}${endpoint}`,
-    {
-      ...options,
-      headers: {
-        ...headers(!(options.body instanceof FormData)),
-        ...options.headers,
-      },
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    ...options,
+    headers: {
+      ...headers(!(options.body instanceof FormData)),
+      ...options.headers,
     },
-  );
+  });
 
   if (response.status === 401) {
     logout();
@@ -155,8 +152,9 @@ export function getUserStatus() {
   return request<UserStatus>("/user/status");
 }
 
-export async function getTodayUsage() {
-  const data = await request<any>("/usage/today");
+export async function getTodayUsage(workspaceId: number) {
+  const data = await request<any>(`/usage/today?workspace_id=${workspaceId}`);
+
   return data.data ?? data;
 }
 
@@ -169,7 +167,13 @@ export async function sendMessageStream(
   chatId?: number,
   image?: File | null,
   modelId?: number,
-  onChunk?: (text: string) => void,
+  onChunk?: (chunk: {
+    content?: string;
+    image?: string | null;
+    status?: string;
+    type?: string;
+    message?: string;
+  }) => void,
   signal?: AbortSignal,
   file?: any | null,
   documentIds?: number[],
@@ -221,7 +225,6 @@ export async function sendMessageStream(
     throw new Error("Unauthorized");
   }
 
-  // ✅ بررسی خطای ۴۰۴ در زمان ارسال پیام/استریم (مثلاً چت نامعتبر)
   if (response.status === 404) {
     redirectToNotFound();
     throw new Error("Chat not found");
@@ -229,6 +232,7 @@ export async function sendMessageStream(
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
+
     throw new Error(error?.message ?? "Chat error");
   }
 
@@ -237,20 +241,30 @@ export async function sendMessageStream(
   }
 
   const reader = response.body.getReader();
+
   const decoder = new TextDecoder("utf-8");
+
   let buffer = "";
 
   while (true) {
     const { done, value } = await reader.read();
+
     if (done) break;
 
-    buffer += decoder.decode(value, { stream: true });
+    buffer += decoder.decode(value, {
+      stream: true,
+    });
+
     const lines = buffer.split(/\r?\n/);
+
     buffer = lines.pop() || "";
 
     for (const line of lines) {
       const trimmedLine = line.trim();
-      if (!trimmedLine || !trimmedLine.startsWith("data:")) continue;
+
+      if (!trimmedLine || !trimmedLine.startsWith("data:")) {
+        continue;
+      }
 
       const payload = trimmedLine.replace(/^data:\s*/, "").trim();
 
@@ -265,10 +279,29 @@ export async function sendMessageStream(
           throw new Error(json.error);
         }
 
-        const content = json?.choices?.[0]?.delta?.content ?? json?.content;
+        /**
+         * Support for:
+         * 1. Status events (e.g. generating_image)
+         * 2. OpenAI style choices & stream data
+         */
+        const choice = json?.choices?.[0];
+        const content = choice?.delta?.content ?? json?.content ?? "";
+        const imageUrl = choice?.image ?? json?.image ?? null;
+        const status = json?.status ?? null;
+        const type = json?.type ?? null;
 
-        if (typeof content === "string" && content.length > 0) {
-          onChunk?.(content);
+        if (
+          (typeof content === "string" && content.length > 0) ||
+          imageUrl ||
+          status ||
+          type
+        ) {
+          onChunk?.({
+            content,
+            image: imageUrl,
+            status,
+            type,
+          });
         }
       } catch (e) {
         console.warn("Skipped invalid stream chunk:", payload);
@@ -276,7 +309,6 @@ export async function sendMessageStream(
     }
   }
 }
-
 // ============================
 // Chats
 // ============================
@@ -285,26 +317,20 @@ export function getChats(workspaceId: number) {
   return request<Chat[]>(`/workspaces/${workspaceId}/chats`);
 }
 
-export function getChat(
-  workspaceId: number,
-  id: number,
-) {
+export function getChat(workspaceId: number, id: number) {
   return request<Chat>(`/workspaces/${workspaceId}/chats/${id}`);
 }
 
-export function deleteChat(
-  workspaceId: number,
-  id: number,
-) {
-  return request(
-    `/workspaces/${workspaceId}/chats/${id}`,
-    {
-      method: "DELETE",
-    },
-  );
+export function deleteChat(workspaceId: number, id: number) {
+  return request(`/workspaces/${workspaceId}/chats/${id}`, {
+    method: "DELETE",
+  });
 }
 
-export async function checkWorkspaceAccess(workspaceId: number | string, feature?: string) {
+export async function checkWorkspaceAccess(
+  workspaceId: number | string,
+  feature?: string,
+) {
   const query = feature ? `?feature=${encodeURIComponent(feature)}` : "";
   return request<any>(`/workspaces/${workspaceId}/check-access${query}`);
 }
@@ -333,10 +359,7 @@ export interface UploadedFileResponse {
   };
 }
 
-export async function uploadFile(
-  file: File,
-  conversationId: number,
-) {
+export async function uploadFile(file: File, conversationId: number) {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("conversation_id", String(conversationId));
@@ -405,24 +428,18 @@ export function getWorkspaceModels(id: number) {
 // ============================
 
 export function subscribeWorkspace(workspacePlanId: number) {
-  return request(
-    "/workspace/subscribe",
-    {
-      method: "POST",
-      body: JSON.stringify({
-        workspace_plan_id: workspacePlanId,
-      }),
-    },
-  );
+  return request("/workspace/subscribe", {
+    method: "POST",
+    body: JSON.stringify({
+      workspace_plan_id: workspacePlanId,
+    }),
+  });
 }
 
 export function cancelWorkspace() {
-  return request(
-    "/workspace/cancel",
-    {
-      method: "POST",
-    },
-  );
+  return request("/workspace/cancel", {
+    method: "POST",
+  });
 }
 
 // ============================

@@ -87,27 +87,27 @@ class TokenWalletService
         );
 
 
-        // if (
-        //     $wallet->remaining_tokens < $tokens
-        // ) {
+        if (
+            $wallet->remaining_tokens < $tokens
+        ) {
 
-        //     throw new \RuntimeException(
-        //         'Insufficient tokens'
-        //     );
+            throw new \RuntimeException(
+                'Insufficient tokens'
+            );
 
-        // }
-
-
-        // $wallet->decrement(
-        //     'remaining_tokens',
-        //     $tokens
-        // );
+        }
 
 
-        // $wallet->increment(
-        //     'used_tokens',
-        //     $tokens
-        // );
+        $wallet->decrement(
+            'remaining_tokens',
+            $tokens
+        );
+
+
+        $wallet->increment(
+            'used_tokens',
+            $tokens
+        );
 
 
         return $wallet->refresh();

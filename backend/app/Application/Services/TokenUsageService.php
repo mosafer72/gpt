@@ -24,7 +24,8 @@ class TokenUsageService
         Workspace $workspace,
         AiModel $model,
         ChatResponse $response,
-        ?string $conversationId = null
+        ?string $conversationId = null,
+        ?int $userId = null
     ): void {
 
 
@@ -64,6 +65,8 @@ class TokenUsageService
 
                     'provider' =>
                         $model->provider?->name,
+                    'user_id' =>
+                        $userId,
 
 
                     'model' =>

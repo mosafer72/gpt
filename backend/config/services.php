@@ -91,6 +91,62 @@ return [
         ),
 
     ],
+    'cloudflare' => [
+
+        'account_id' => env(
+            'CF_ACCOUNT_ID'
+        ),
+
+        'api_token' => env(
+            'CF_API_TOKEN'
+        ),
+
+        'base_url' => env(
+            'CF_BASE_URL',
+            'https://api.cloudflare.com/client/v4/accounts'
+        ),
+
+
+        // Worker Image Provider
+        'image_worker_url' => env(
+            'CLOUDFLARE_IMAGE_WORKER_URL'
+        ),
+
+        'image_worker_key' => env(
+            'CLOUDFLARE_IMAGE_WORKER_KEY'
+        ),
+
+
+        // Direct AI API (future)
+        'ai_url' => env(
+            'CLOUDFLARE_AI_URL'
+        ),
+
+        'ai_key' => env(
+            'CLOUDFLARE_AI_KEY'
+        ),
+
+
+        'models' => [
+
+            'chat' => env(
+                'CF_CHAT_MODEL',
+                '@cf/qwen/qwen3-30b-a3b-fp8'
+            ),
+
+            'image' => env(
+                'CF_IMAGE_MODEL',
+                '@cf/openai/gpt-image-2'
+            ),
+
+            'embedding' => env(
+                'CF_EMBEDDING_MODEL',
+                '@cf/qwen/qwen3-embedding-0.6b'
+            ),
+
+        ],
+
+    ],
 ];
 
 

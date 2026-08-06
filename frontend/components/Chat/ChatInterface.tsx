@@ -17,6 +17,7 @@ import ChatMessage from "@/components/Chat/ChatMessage";
 import ChatInput from "@/components/Chat/ChatInput";
 import UserMenu from "@/components/Common/UserMenu";
 import TokenUsageBadge from "@/components/Common/TokenUsageBadge";
+import ImageGeneratingBox from "@/components/Chat/ImageGeneratingBox";
 
 import styles from "./ChatInterface.module.css";
 
@@ -354,7 +355,6 @@ export default function ChatInterface({
     }
   };
 
-  // ✅ تابع کمکی برای فشرده‌سازی عکس و تبدیل آن به آبجکت File استاندارد
   const compressImageFile = (file: File): Promise<File> => {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -393,11 +393,11 @@ export default function ChatInterface({
                 });
                 resolve(compressedFile);
               } else {
-                resolve(file); // اگر خطایی رخ داد فایل اصلی برگردانده شود
+                resolve(file);
               }
             },
             "image/jpeg",
-            0.75, // کیفیت فشرده‌سازی (75 درصد)
+            0.75,
           );
         };
         img.src = event.target?.result as string;
@@ -418,13 +418,12 @@ export default function ChatInterface({
 
     const text = input.trim();
     let fileToSend = imageFile;
-    let documentToSend = attachedFile; // ✅ متغیر برای نگهداری فایل غیر تصویری (مثل PDF)
+    let documentToSend = attachedFile;
 
     setInput("");
     setImageFile(null);
     setAttachedFile(null);
 
-    // اعمال فشرده‌سازی روی عکس در صورت وجود
     if (fileToSend) {
       try {
         fileToSend = await compressImageFile(fileToSend);
@@ -477,14 +476,33 @@ export default function ChatInterface({
     setTimeout(scrollBottom, 50);
 
     try {
-      // ✅ ارسال فایل پیوست‌شده (documentToSend) به متد sendMessageStream
       await sendMessageStream(
         text,
         workspaceId,
         isNewChat ? undefined : currentChat?.id,
-        fileToSend, // فایل عکس (یا null)
+        fileToSend,
         activeModel.id,
-        (pureTextChunk: string) => {
+
+        (chunk: any) => {
+          if (chunk.status === "generating_image") {
+            setCurrentChat((prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                messages: (prev.messages || []).map((msg) => {
+                  if (msg.id === tempId + 1) {
+                    return {
+                      ...msg,
+                      status: "generating_image",
+                    };
+                  }
+                  return msg;
+                }),
+              };
+            });
+            return;
+          }
+
           setCurrentChat((prev) => {
             if (!prev) return prev;
 
@@ -492,9 +510,13 @@ export default function ChatInterface({
               ...prev,
               messages: (prev.messages || []).map((msg) => {
                 if (msg.id === tempId + 1) {
+                  const newImage = chunk.image || chunk.image_url;
                   return {
                     ...msg,
-                    content: msg.content + pureTextChunk,
+                    content: msg.content + (chunk.content || ""),
+                    image: newImage || msg.image,
+                    image_url: newImage || msg.image_url,
+                    status: newImage ? "completed" : msg.status,
                   };
                 }
                 return msg;
@@ -504,8 +526,9 @@ export default function ChatInterface({
 
           scrollBottom();
         },
+
         controller.signal,
-        documentToSend, // ✅ ارسال فایل PDF یا داکیومنت به عنوان پارامتر جدید به تابع API
+        documentToSend,
       );
 
       const latestChats = await getChats(workspaceId);
@@ -642,7 +665,7 @@ export default function ChatInterface({
 
         <div className={styles.headerRight}>
           <UserMenu />
-          <TokenUsageBadge />
+          <TokenUsageBadge workspaceId={workspaceId} />
         </div>
       </header>
 
@@ -678,9 +701,18 @@ export default function ChatInterface({
           <div ref={messagesRef} className={styles.messagesContainer}>
             {messagesList.length > 0 ? (
               messagesList.map((msg: any) => {
+                if (
+                  msg.role === "assistant" &&
+                  msg.status === "generating_image"
+                ) {
+                  return <ImageGeneratingBox key={msg.id} />;
+                }
+
                 const isAiEmpty =
                   msg.role === "assistant" &&
-                  (!msg.content || msg.content.trim() === "");
+                  (!msg.content || msg.content.trim() === "") &&
+                  !msg.image &&
+                  !msg.image_url;
 
                 if (isAiEmpty) {
                   return (

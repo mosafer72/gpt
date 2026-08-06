@@ -1,0 +1,167 @@
+/* components/Chat/ImageGeneratingBox.module.css */
+
+.wrapper {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  max-width: 1000px;
+  gap: 20px;
+  margin: auto;
+}
+
+.square {
+  width: 320px;
+  height: 320px;
+  border-radius: 28px;
+  position: relative;
+  overflow: hidden;
+
+  background: linear-gradient(145deg, #0f172a, #1e293b, #111827);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+
+  isolation: isolate;
+}
+
+/*
+  Moving AI diffusion light
+*/
+.glow {
+  position: absolute;
+
+  inset: -50%;
+
+  background: conic-gradient(
+    from 0deg,
+    transparent,
+    rgba(139, 92, 246, 0.5),
+    rgba(59, 130, 246, 0.45),
+    transparent
+  );
+
+  filter: blur(40px);
+
+  animation: spin 8s linear infinite;
+
+  opacity: 0.8;
+}
+
+/*
+  Inner glass layer
+*/
+.square::before {
+  content: "";
+
+  position: absolute;
+
+  inset: 2px;
+
+  border-radius: 26px;
+
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.08),
+    rgba(255, 255, 255, 0.02)
+  );
+
+  z-index: 1;
+}
+
+/*
+  Floating icon
+*/
+.icon {
+  position: relative;
+
+  z-index: 3;
+
+  font-size: 64px;
+
+  animation: breathe 3s ease-in-out infinite;
+
+  filter: drop-shadow(0 0 25px rgba(139, 92, 246, 0.8));
+}
+
+/*
+ Text
+*/
+.text {
+  position: relative;
+
+  z-index: 3;
+
+  margin-top: 22px;
+
+  color: #fff;
+
+  font-size: 18px;
+
+  font-weight: 600;
+
+  letter-spacing: 0.3px;
+}
+
+/*
+ Animated tiny particles
+*/
+.square::after {
+  content: "";
+
+  position: absolute;
+
+  inset: 0;
+
+  background-image: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.8) 1px,
+    transparent 1px
+  );
+
+  background-size: 35px 35px;
+
+  opacity: 0.15;
+
+  animation: particles 12s linear infinite;
+
+  z-index: 2;
+}
+
+/*
+ Animations
+*/
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  50% {
+    transform: translateY(-8px) scale(1.08);
+  }
+}
+
+@keyframes particles {
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(-70px);
+  }
+}

@@ -249,7 +249,7 @@ class WorkspacePlanSeeder extends Seeder
                         'file_upload'=>
                             $plan['documents'],
 
-                        'max_tokens'=>4000
+                        'max_tokens'=>2000
 
                     ],
 

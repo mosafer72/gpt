@@ -88,7 +88,8 @@ class StudentWorkspacePipeline implements WorkspacePipeline
             workspace: $context->workspace,
             model: $successfulModel,
             response: $response,
-            conversationId: $context->conversationId
+            conversationId: $context->conversationId,
+            userId: $user->id
         );
 
         $context->setAssistantResponse(
@@ -229,7 +230,8 @@ class StudentWorkspacePipeline implements WorkspacePipeline
             workspace: $context->workspace,
             model: $successfulModel,
             response: $response,
-            conversationId: $context->conversationId
+            conversationId: $context->conversationId,
+            userId: $user->id
         );
 
         // $this->storeMessage($context, $response);

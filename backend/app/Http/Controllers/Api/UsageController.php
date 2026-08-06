@@ -45,12 +45,15 @@ class UsageController extends Controller
 
     public function today(Request $request)
     {
-
         $user = $request->user();
 
 
         $workspace = $user
             ->workspaces()
+            ->where(
+                'id',
+                $request->workspace_id
+            )
             ->where(
                 'is_active',
                 true
@@ -63,19 +66,20 @@ class UsageController extends Controller
 
             return response()->json([
 
-                'message' => 'Workspace فعال ندارید'
+                'success' => false,
 
-            ], 404);
+                'message' => 'Workspace دسترسی ندارید'
+
+            ], 403);
 
         }
 
 
 
-        $usage =
-            $this->usageService
-                ->today(
-                    $workspace
-                );
+        $usage = $this->usageService
+            ->today(
+                $workspace
+            );
 
 
 
@@ -86,10 +90,7 @@ class UsageController extends Controller
             'data' => $usage
 
         ]);
-
     }
-
-
 
 
 
