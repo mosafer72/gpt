@@ -1,80 +1,216 @@
 const theme = require("../theme");
 
-module.exports = function (slide, value, y = 5) {
+
+module.exports = function Highlight(
+    slide,
+    data,
+    context = {}
+) {
+
+
     let text = "";
 
-    if (Array.isArray(value)) {
-        text = value
-            .map((item) => {
-                if (typeof item === "string") {
+
+
+    if(typeof data === "string"){
+
+        text = data;
+
+    }
+    else if(Array.isArray(data)){
+
+
+        text =
+            data
+            .map(item => {
+
+                if(typeof item === "string")
                     return item;
-                }
 
-                if (typeof item === "object") {
-                    return item.text ?? item.title ?? item.description ?? "";
-                }
 
-                return "";
+                return (
+                    item.text ??
+                    item.title ??
+                    item.description ??
+                    ""
+                );
+
             })
             .filter(Boolean)
             .join("\n");
-    } else if (typeof value === "object") {
-        text = value.text ?? value.title ?? value.description ?? "";
-    } else {
-        text = String(value ?? "");
+
+    }
+    else {
+
+        text =
+            data?.text ??
+            data?.description ??
+            data?.title ??
+            "";
+
     }
 
-    const length = text.length;
 
-    const fontSize =
-        length > 120 ? 12 : length > 80 ? 14 : length > 40 ? 16 : 18;
 
-    const height = length > 120 ? 1.5 : length > 80 ? 1.3 : 1.1;
 
-    slide.addShape("roundRect", {
-        x: 0.5,
+    const style =
+        data?.style ??
+        context.style ??
+        {};
 
-        y,
 
-        w: 12.3,
 
-        h: height,
 
-        fill: {
-            color: theme.colors.highlight,
-        },
+    const x =
+        context.x ?? 0.7;
 
-        line: {
-            color: theme.colors.accent,
-            width: 1,
-        },
-    });
 
-    slide.addText(String(text), {
-        x: 0.9,
 
-        y: y + 0.25,
+    const y =
+        context.y ?? 5;
 
-        w: 11.5,
 
-        h: height - 0.4,
 
-        fontFace: theme.font,
+    const width =
+        context.width ?? 11.8;
 
-        fontSize,
 
-        bold: true,
 
-        color: theme.colors.accent,
 
-        align: "right",
+    const lines =
+        Math.max(
+            1,
+            Math.ceil(
+                text.length /
+                Math.floor(width * 10)
+            )
+        );
 
-        valign: "mid",
 
-        rtlMode: true,
 
-        margin: 0,
+    const height =
+        context.height ??
+        Math.min(
+            1.8,
+            Math.max(
+                0.9,
+                lines * 0.35 + 0.4
+            )
+        );
 
-        fit: "shrink",
-    });
+
+
+
+    slide.addShape(
+        "roundRect",
+        {
+
+            x,
+
+            y,
+
+            w:width,
+
+            h:height,
+
+
+            fill:{
+
+                color:
+                    style.background ??
+                    theme.colors.highlight
+
+            },
+
+
+            line:{
+
+                color:
+                    style.border ??
+                    theme.colors.accent,
+
+
+                width:1
+
+            }
+
+        }
+    );
+
+
+
+
+    slide.addText(
+        text,
+        {
+
+            x:x + 0.35,
+
+
+            y:y + 0.2,
+
+
+            w:width - 0.7,
+
+
+            h:height - 0.4,
+
+
+            fontFace:
+                theme.font,
+
+
+            fontSize:
+                style.fontSize ??
+                (
+                    text.length > 250
+                    ? 11
+                    : text.length > 120
+                    ? 13
+                    : 15
+                ),
+
+
+
+            bold:
+                style.bold ??
+                true,
+
+
+
+            color:
+                style.color ??
+                theme.colors.accent,
+
+
+
+            align:"right",
+
+
+            valign:"mid",
+
+
+
+            rtlMode:true,
+
+
+
+            margin:0,
+
+
+            breakLine:true,
+
+
+            wrap:true,
+
+
+            fit:"shrink"
+
+        }
+    );
+
+
+
+    return height;
+
 };

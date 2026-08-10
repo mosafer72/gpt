@@ -34,8 +34,7 @@ class DashboardController extends Controller
                 'tokenWallet',
                 'workspaceSubscriptions' => function ($query) {
                     $query->where('is_active', true)
-                        ->where('expires_at', '>', now())
-                        ->with('workspacePlan.models.provider');
+                        ->where('expires_at', '>', now());
                 }
             ])
             ->get();
@@ -182,7 +181,6 @@ class DashboardController extends Controller
                 'plans' => fn($q)
                     => $q->where('is_active', true),
 
-                'plans.models.provider'
             ])
             ->get()
             ->map(function ($type) {
@@ -254,40 +252,7 @@ class DashboardController extends Controller
                 $plan->capabilities,
 
 
-            'models' =>
-                $plan->models
-                    ->map(
-                        fn($model)
-                        => [
 
-                            'id' => $model->id,
-
-                            'name' =>
-                                $model->name,
-
-                            'key' =>
-                                $model->key,
-
-                            'type' =>
-                                $model->type,
-
-
-                            'provider' =>
-                                $model->provider
-                                ? [
-
-                                    'id' =>
-                                        $model->provider->id,
-
-                                    'name' =>
-                                        $model->provider->name,
-
-                                ]
-                                : null,
-
-                        ]
-                    )
-                    ->values(),
 
         ];
     }

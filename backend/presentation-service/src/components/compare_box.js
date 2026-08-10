@@ -1,109 +1,220 @@
 const Bullet = require("./bullet");
-const theme = require("../themes/modern/theme");
+const theme = require("../theme");
 
-module.exports = function CompareBox(slide, left, right) {
-    const boxY = 1.5;
 
-    const leftItems = Array.isArray(left?.items) ? left.items : [];
 
-    const rightItems = Array.isArray(right?.items) ? right.items : [];
+module.exports = function CompareBox(
+    slide,
+    data,
+    context = {}
+) {
 
-    const maxItems = Math.max(leftItems.length, rightItems.length);
 
-    const boxH = Math.max(3.5, maxItems * 0.55 + 1.5);
+    const content =
+        data?.content ??
+        data ??
+        {};
+
+
+
+    const left =
+        content.left ??
+        {
+            title:"",
+            items:[]
+        };
+
+
+
+    const right =
+        content.right ??
+        {
+            title:"",
+            items:[]
+        };
+
+
+
+    const layout =
+        data?.layout ??
+        context.layout ??
+        {};
+
+
+
+    const boxY =
+        context.y ??
+        layout.y ??
+        1.5;
+
+
+
+    const boxHeight =
+        layout.height ??
+        Math.max(
+            3,
+            Math.max(
+                left.items.length,
+                right.items.length
+            ) * 0.55 + 1
+        );
+
+
 
     const boxes = [
-        {
-            data: left,
-
-            items: leftItems,
-
-            x: 0.8,
-
-            color: theme.colors.highlight,
-        },
 
         {
-            data: right,
+            data:left,
+            x:
+                layout.leftX ??
+                0.8,
 
-            items: rightItems,
-
-            x: 7,
-
-            color: theme.colors.success,
+            color:
+                theme.colors.highlight
         },
+
+
+        {
+            data:right,
+
+            x:
+                layout.rightX ??
+                7,
+
+            color:
+                theme.colors.success
+        }
+
     ];
 
-    boxes.forEach((box) => {
-        /*
-            Box
-        */
 
-        slide.addShape("roundRect", {
-            x: box.x,
 
-            y: boxY,
 
-            w: 5,
+    boxes.forEach(box=>{
 
-            h: boxH,
 
-            fill: {
-                color: box.color,
-            },
+        slide.addShape(
+            "roundRect",
+            {
 
-            line: {
-                color: theme.colors.border,
+                x:box.x,
 
-                width: 1,
-            },
-        });
+                y:boxY,
 
-        /*
-            Title
-        */
+                w:
+                    layout.width ??
+                    5,
 
-        slide.addText(box.data?.title ?? "", {
-            x: box.x + 0.2,
 
-            y: boxY + 0.25,
+                h:boxHeight,
 
-            w: 4.6,
 
-            h: 0.35,
+                fill:{
+                    color:box.color
+                },
 
-            fontFace: theme.font,
 
-            fontSize: 20,
+                line:{
+                    color:
+                        theme.colors.border,
 
-            bold: true,
+                    width:1
+                }
 
-            color: theme.colors.dark,
+            }
+        );
 
-            align: "center",
 
-            rtlMode: true,
 
-            margin: 0,
-        });
 
-        /*
-            Items
-        */
+        slide.addText(
+            box.data.title ?? "",
+            {
 
-        let currentY = boxY + 0.85;
+                x:
+                    box.x + 0.2,
 
-        box.items.forEach((item) => {
+
+                y:
+                    boxY + 0.25,
+
+
+                w:
+                    4.6,
+
+
+                h:
+                    0.35,
+
+
+                fontFace:
+                    theme.font,
+
+
+                fontSize:20,
+
+
+                bold:true,
+
+
+                color:
+                    theme.colors.dark,
+
+
+                align:"center",
+
+
+                rtlMode:true,
+
+
+                margin:0
+
+            }
+        );
+
+
+
+        let currentY =
+            boxY + 0.85;
+
+
+
+        (box.data.items ?? [])
+        .forEach(item=>{
+
+
             const text =
                 typeof item === "string"
-                    ? item
-                    : (item.title ?? item.description ?? "");
+                ? item
+                : item.text ??
+                  item.title ??
+                  "";
 
-            if (!text.trim()) return;
 
-            Bullet(slide, text, currentY, box.x + 0.3, 4.3);
+
+            Bullet(
+                slide,
+                text,
+                {
+                    y:currentY,
+                    x:box.x + 0.3,
+                    width:4.3
+                }
+            );
+
+
 
             currentY += 0.55;
+
+
         });
+
+
+
     });
+
+
+
+    return boxHeight;
+
 };

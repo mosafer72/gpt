@@ -34,7 +34,14 @@ class ChatController extends Controller
         $feature = $request->query('feature');
 
         $workspace = $user->workspaces()
-            ->with(['workspaceType', 'plan.models'])
+            ->with([
+                'workspaceType',
+                'plan.models' => function ($query) {
+                    $query->where('type', 'chat')
+                        ->where('is_active', true)
+                        ->with('provider');
+                }
+            ])
             ->where('workspaces.id', $id)
             ->where('workspaces.is_active', true)
             ->first();

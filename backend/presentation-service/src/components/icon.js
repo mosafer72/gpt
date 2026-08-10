@@ -1,21 +1,93 @@
-module.exports = function (slide, icon, x, y) {
-    const size = icon?.length > 2 ? 18 : 24;
+module.exports = function Icon(
+    slide,
+    data,
+    context = {}
+) {
 
-    slide.addText(icon, {
-        x,
 
-        y,
+    const icon =
+        typeof data === "string"
+        ? data
+        :
+        data?.icon ??
+        data?.text ??
+        "";
 
-        w: 0.45,
 
-        h: 0.45,
 
-        fontSize: size,
+    const layout =
+        data?.layout ??
+        context.layout ??
+        {};
 
-        align: "center",
 
-        valign: "mid",
 
-        margin: 0,
-    });
+    const x =
+        context.x ??
+        layout.x ??
+        1;
+
+
+
+    const y =
+        context.y ??
+        layout.y ??
+        1;
+
+
+
+    const size =
+        layout.size ??
+        24;
+
+
+
+    slide.addText(
+        icon,
+        {
+
+            x,
+
+
+            y,
+
+
+            w:
+                context.width ??
+                layout.width ??
+                0.5,
+
+
+            h:
+                context.height ??
+                layout.height ??
+                0.5,
+
+
+
+            fontSize:size,
+
+
+
+            align:"center",
+
+
+
+            valign:"mid",
+
+
+
+            margin:0
+
+        }
+    );
+
+
+
+    return (
+        context.height ??
+        layout.height ??
+        0.5
+    );
+
 };

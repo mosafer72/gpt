@@ -18,8 +18,10 @@ use App\Domain\LLM\ChatRequest;
 use App\Domain\LLM\ChatResponse;
 use App\Domain\LLM\Usage;
 use App\Domain\Message\DTOs\MessageDTO;
+use App\Infrastructure\LLM\Cloudflare\CloudflareProvider;
 use App\Infrastructure\LLM\GapGPTProvider;
 use App\Jobs\StoreMessageJob;
+use App\Models\AiModel;
 use App\Models\DocumentChunk; // افزودن مدل DocumentChunk برای کوئری مستقیم کامل
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
@@ -32,7 +34,7 @@ class StudentWorkspacePipeline implements WorkspacePipeline
         protected DocumentRetriever $documentRetriever,
         protected DocumentContextBuilder $documentContextBuilder,
         protected AnswerEvidenceBuilder $answerEvidenceBuilder,
-        protected GapGPTProvider $gapgptprovider,
+        protected CloudflareProvider $cloudflareProvider,
         protected WorkspaceAccessService $workspaceAccessService,
         protected TokenUsageService $tokenUsageService,
         protected WorkspaceService $workspaceService,
@@ -63,7 +65,7 @@ class StudentWorkspacePipeline implements WorkspacePipeline
                 );
 
                 $request = $this->createRequest($context, $model);
-                $response = $this->gapgptprovider->chat($request);
+                $response = $this->cloudflareProvider->chat($request);
 
                 $successfulModel = $model;
                 $context->model = $model->key;
@@ -110,134 +112,222 @@ class StudentWorkspacePipeline implements WorkspacePipeline
     {
         $user = $this->prepareContext($context);
 
+
         $this->prepareDocuments($context);
+
 
         $this->promptPipeline->build($context);
 
+
+
         $availableModels = $this->getAvailableModels($context);
 
-        $fullContent = '';
-        $successfulModel = null;
-        $streamSuccess = false;
+
 
         foreach ($availableModels as $model) {
+
             try {
+
+
                 $this->workspaceAccessService->check(
                     user: $user,
                     modelKey: $model->key
                 );
 
-                $request = $this->createRequest($context, $model);
 
-                $currentFull = '';
-                $chunkStreamStarted = false;
-                $modelFailedMidStream = false;
 
-                $streamGenerator = $this->gapgptprovider->stream($request);
+                $request = $this->createRequest(
+                    $context,
+                    $model
+                );
 
-                foreach ($streamGenerator as $chunk) {
 
-                    $content = null;
 
-                    if (is_array($chunk)) {
-                        $content = $chunk['choices'][0]['delta']['content'] ?? null;
+                $fullContent = '';
+
+                $promptTokens = 0;
+
+                $completionTokens = 0;
+
+
+
+                $stream = $this->cloudflareProvider->stream($request);
+
+
+
+                foreach ($stream as $chunk) {
+
+
+                    /**
+                     * دریافت usage در صورت وجود
+                     */
+                    if (is_object($chunk) && isset($chunk->usage)) {
+
+                        $promptTokens =
+                            $chunk->usage->promptTokens
+                            ?? $promptTokens;
+
+
+                        $completionTokens =
+                            $chunk->usage->completionTokens
+                            ?? $completionTokens;
                     }
 
-                    if (is_object($chunk)) {
-                        $content = $chunk->choices[0]->delta->content ?? null;
+
+
+                    $content = $chunk['choices'][0]['delta']['content']
+                        ?? null;
+
+
+
+                    if ($content === null || $content === '') {
+                        continue;
                     }
 
 
-                    if ($content !== null && $content !== '') {
 
-                        $currentFull .= $content;
-                        $chunkStreamStarted = true;
+                    $fullContent .= $content;
 
-                        $send([
-                            'choices' => [
-                                [
-                                    'delta' => [
-                                        'content' => $content
-                                    ]
+
+
+                    $send([
+                        'choices' => [
+                            [
+                                'delta' => [
+                                    'content' => $content
                                 ]
                             ]
-                        ]);
-                    }
+                        ]
+                    ]);
 
-
-                    $finish = null;
-
-                    if (is_array($chunk)) {
-                        $finish = $chunk['choices'][0]['finish_reason'] ?? null;
-                    }
-
-                    if (is_object($chunk)) {
-                        $finish = $chunk->choices[0]->finish_reason ?? null;
-                    }
-
-
-                    if ($finish === 'stop') {
-                        break;
-                    }
                 }
 
-                // اگر استریم با موفقیت شروع شد و به خطا نخورد، کار تمام است
-                if ($chunkStreamStarted && !$modelFailedMidStream && !empty($currentFull)) {
-                    $fullContent = $currentFull;
-                    $successfulModel = $model;
-                    $context->model = $model->key;
-                    $streamSuccess = true;
 
-                    // خروج ۱۰۰٪ قطعی از حلقه مدل‌ها (دیگر سراغ مدل بعدی نمی‌رود)
-                    break;
+
+
+                if ($fullContent === '') {
+
+                    throw new \RuntimeException(
+                        "Empty response from model"
+                    );
+
                 }
 
-                if ($modelFailedMidStream && !empty($currentFull)) {
-                    // اگر وسط کار خطا داد اما مقداری متن ارسال شده بود، پردازش را حفظ کن و ادامه نده
-                    $fullContent = $currentFull;
-                    $successfulModel = $model;
-                    $context->model = $model->key;
-                    $streamSuccess = true;
-                    break;
+
+
+
+                /**
+                 * اگر Provider توکن نداد، تخمین بزن
+                 */
+                if ($promptTokens === 0) {
+
+                    $promptText = '';
+
+                    foreach ($request->messages as $message) {
+
+                        if (is_string($message->content)) {
+
+                            $promptText .= $message->content . "\n";
+
+                        }
+
+                    }
+
+
+                    $promptTokens = (int) ceil(
+                        mb_strlen($promptText) / 4
+                    );
+
                 }
+
+
+
+
+                if ($completionTokens === 0) {
+
+                    $completionTokens = (int) ceil(
+                        mb_strlen($fullContent) / 4
+                    );
+
+                }
+
+
+
+
+
+                $response = new ChatResponse(
+
+                    content: $fullContent,
+
+
+                    usage: new Usage(
+                        inputTokens: $promptTokens,
+                        outputTokens: $completionTokens,
+                        totalTokens: $promptTokens + $completionTokens
+                    ),
+
+
+                    model: $model->key
+
+                );
+
+
+
+
+
+                /**
+                 * کسر توکن از Workspace
+                 */
+                $this->tokenUsageService->consume(
+
+                    workspace: $context->workspace,
+
+                    model: $model,
+
+                    response: $response,
+
+                    conversationId: $context->conversationId,
+
+                    userId: $user->id
+
+                );
+
+
+
+
+
+                $send([
+                    'done' => true
+                ]);
+
+
+
+                return;
+
+
 
             } catch (\Throwable $e) {
-                \Log::warning("Model {$model->key} failed. Retrying next model...", [
-                    'error' => $e->getMessage()
-                ]);
+
+
+                Log::warning(
+                    "Streaming failed for model {$model->key}",
+                    [
+                        'error' => $e->getMessage()
+                    ]
+                );
+
+
+                continue;
+
             }
+
         }
 
-        if (!$streamSuccess || !$successfulModel) {
-            \Log::error("All available models in subscription plan failed during stream execution.");
 
-            $send([
-                'error' => 'تمام سرویس‌های هوش مصنوعی در حال حاضر با محدودیت یا خطا مواجه هستند. لطفاً لحظاتی بعد مجدداً تلاش کنید.'
-            ]);
-            return;
-        }
-
-        $response = new ChatResponse(
-            content: $fullContent,
-            usage: new Usage(
-                inputTokens: 0,
-                outputTokens: 0,
-                totalTokens: 0
-            )
-        );
-
-        $this->tokenUsageService->consume(
-            workspace: $context->workspace,
-            model: $successfulModel,
-            response: $response,
-            conversationId: $context->conversationId,
-            userId: $user->id
-        );
-
-        // $this->storeMessage($context, $response);
 
         $send([
-            'done' => true
+            'error' =>
+                'تمام مدل‌های هوش مصنوعی با خطا مواجه شدند.'
         ]);
     }
     protected function getAvailableModels(ChatContext $context): array
@@ -350,7 +440,7 @@ class StudentWorkspacePipeline implements WorkspacePipeline
             messages: $messages,
             model: $modelName,
             temperature: 0.3,
-            maxTokens: 100000
+            maxTokens: 10000
         );
     }
 

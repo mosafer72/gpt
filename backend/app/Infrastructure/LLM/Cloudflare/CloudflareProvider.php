@@ -68,6 +68,8 @@ class CloudflareProvider implements LlmProvider
         $response = Http::withHeaders(
             $this->headers()
         )
+         ->timeout(2300)
+         ->connectTimeout(1320)
         ->post(
             $this->url(),
             [
@@ -78,6 +80,9 @@ class CloudflareProvider implements LlmProvider
 
                 'max_tokens' =>
                     $request->maxTokens ?? 1000,
+
+                // غیرفعال کردن حالت تفکر (Reasoning / Thinking) در مدل‌های جدید
+                'reasoning' => false,
             ]
         );
 
@@ -154,6 +159,9 @@ class CloudflareProvider implements LlmProvider
 
                 'max_tokens' =>
                     $request->maxTokens ?? 1000,
+
+                // غیرفعال کردن حالت تفکر (Reasoning / Thinking) در حالت استریم
+                'reasoning' => false,
             ]
         );
 

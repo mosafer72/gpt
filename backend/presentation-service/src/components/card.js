@@ -1,84 +1,279 @@
 const theme = require("../theme");
-module.exports = function Card(slide, item, y, options = {}) {
-    const x = options.x ?? 0.6;
 
-    const w = options.w ?? 11;
 
-    const isCompare = options.compare ?? false;
+module.exports = function Card(
+    slide,
+    data,
+    context = {}
+) {
 
-    const lines = item.description ? item.description.split("\n") : [];
 
-    const h = isCompare ? Math.max(2, lines.length * 0.35 + 0.9) : 0.9;
+    const content =
+        data?.content ??
+        data ??
+        {};
 
-    slide.addShape("roundRect", {
-        x,
 
-        y,
 
-        w,
+    const title =
+        content.title ??
+        "";
 
-        h,
 
-        fill: {
-            color: "F8FAFC",
-        },
 
-        line: {
-            color: "E2E8F0",
-        },
-    });
+    const text =
+        content.text ??
+        content.description ??
+        "";
 
-    slide.addText(item.title ?? "", {
-        x: x + 0.25,
 
-        y: y + 0.15,
 
-        w: w - 0.5,
+    const style =
+        data?.style ??
+        context.style ??
+        {};
 
-        h: 0.3,
 
-        fontFace: theme.font,
 
-        fontSize: 18,
+    const x =
+        context.x ?? 0.7;
 
-        bold: true,
 
-        color: theme.colors.primary,
 
-        align: "right",
+    const y =
+        context.y ?? 1;
 
-        rtlMode: true,
 
-        margin: 0,
-    });
 
-    slide.addText(item.description ?? "", {
-        x: x + 0.3,
+    const width =
+        context.width ?? 11.8;
 
-        y: y + 0.55,
 
-        w: w - 0.6,
 
-        h: h - 0.7,
+    const titleHeight =
+        title
+        ? 0.35
+        : 0;
 
-        fontFace: theme.font,
 
-        fontSize: 13,
 
-        color: theme.colors.text,
+    const charsPerLine =
+        Math.floor(width * 12);
 
-        align: "right",
 
-        valign: "top",
 
-        rtlMode: true,
+    const lines =
+        Math.max(
+            1,
+            Math.ceil(
+                text.length /
+                charsPerLine
+            )
+        );
 
-        margin: 0,
 
-        breakLine: false,
 
-        fit: "shrink",
-    });
+    const textHeight =
+        lines * 0.32;
 
-    return h;
+
+
+    const height =
+        context.height ??
+        Math.min(
+            2.5,
+            Math.max(
+                1,
+                0.55 +
+                titleHeight +
+                textHeight
+            )
+        );
+
+
+
+
+    slide.addShape(
+        "roundRect",
+        {
+
+            x,
+
+            y,
+
+            w:width,
+
+            h:height,
+
+
+            fill:{
+
+                color:
+                    style.background ??
+                    "F8FAFC"
+
+            },
+
+
+            line:{
+
+                color:
+                    style.border ??
+                    "E2E8F0",
+
+
+                width:1
+
+            }
+
+        }
+    );
+
+
+
+    let currentY =
+        y + 0.18;
+
+
+
+    if(title){
+
+
+        slide.addText(
+            title,
+            {
+
+                x:x + 0.25,
+
+
+                y:currentY,
+
+
+                w:width - 0.5,
+
+
+                h:0.35,
+
+
+                fontFace:
+                    theme.font,
+
+
+                fontSize:
+                    style.titleSize ??
+                    17,
+
+
+                bold:true,
+
+
+                color:
+                    style.titleColor ??
+                    theme.colors.primary,
+
+
+
+                align:"right",
+
+
+
+                valign:"mid",
+
+
+
+                rtlMode:true,
+
+
+
+                margin:0,
+
+
+                fit:"shrink"
+
+            }
+        );
+
+
+        currentY += 0.45;
+
+    }
+
+
+
+
+
+    slide.addText(
+        text,
+        {
+
+            x:x + 0.25,
+
+
+            y:currentY,
+
+
+            w:width - 0.5,
+
+
+            h:
+                height -
+                (currentY - y) -
+                0.15,
+
+
+            fontFace:
+                theme.font,
+
+
+            fontSize:
+                style.fontSize ??
+                (
+                    text.length > 300
+                    ? 11
+                    : text.length > 150
+                    ? 12
+                    : 14
+                ),
+
+
+
+            color:
+                style.color ??
+                theme.colors.text,
+
+
+
+            align:"right",
+
+
+
+            valign:"top",
+
+
+
+            rtlMode:true,
+
+
+
+            margin:0,
+
+
+
+            breakLine:true,
+
+
+
+            wrap:true,
+
+
+
+            fit:"shrink"
+
+        }
+    );
+
+
+
+    return height;
+
 };

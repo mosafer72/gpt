@@ -1,79 +1,199 @@
 const theme = require("../theme");
 
-module.exports = function (slide, text, y, x = 1, width = 10) {
-    text = text ?? "";
 
-    const length = text.length;
+module.exports = function Bullet(
+    slide,
+    data,
+    context = {}
+) {
 
-    let fontSize =
-        length > 120
-            ? 11
-            : length > 80
-              ? 13
-              : length > 45
-                ? 15
-                : theme.sizes.body;
 
-    const height = length > 120 ? 0.8 : length > 80 ? 0.6 : 0.4;
+    const text =
+        typeof data === "string"
+        ? data
+        : data?.text ??
+          data?.title ??
+          "";
+
+
+
+    const style =
+        data?.style ??
+        context.style ??
+        {};
+
+
+
+    const x =
+        context.x ?? 1;
+
+
+
+    const y =
+        context.y ?? 1;
+
+
+
+    const width =
+        context.width ?? 10.5;
+
+
+
+    const charsPerLine =
+        Math.floor(width * 12);
+
+
+
+    const lines =
+        Math.max(
+            1,
+            Math.ceil(
+                text.length /
+                charsPerLine
+            )
+        );
+
+
+
+    const height =
+        context.height ??
+        Math.min(
+            1.2,
+            Math.max(
+                0.35,
+                lines * 0.28
+            )
+        );
+
+
+
+
 
     /*
-        Bullet Circle
-        RTL => سمت راست
+        Bullet Point
     */
 
-    slide.addShape("ellipse", {
-        x: x + width - 0.15,
+    slide.addShape(
+        "ellipse",
+        {
 
-        y: y + height / 2 - 0.05,
+            x:
+                x + width - 0.12,
 
-        w: 0.1,
 
-        h: 0.1,
+            y:
+                y + height / 2 - 0.04,
 
-        fill: {
-            color: theme.colors.primary,
-        },
 
-        line: {
-            color: theme.colors.primary,
-        },
-    });
+            w:0.08,
 
-    /*
-        Text
-    */
 
-    slide.addText(text, {
-        x,
+            h:0.08,
 
-        y,
 
-        w: width - 0.35,
+            fill:{
 
-        h: height,
+                color:
+                    theme.colors.primary
 
-        fontFace: theme.font,
+            },
 
-        fontSize,
 
-        color: theme.colors.text,
+            line:{
 
-        bold: false,
+                color:
+                    theme.colors.primary
 
-        align: "right",
+            }
 
-        valign: "mid",
+        }
+    );
 
-        rtlMode: true,
 
-        margin: 0,
 
-        breakLine: true,
 
-        fit: "shrink",
 
-        paraSpaceAfterPt: 2,
-    });
+    slide.addText(
+        text,
+        {
+
+            x,
+
+
+            y,
+
+
+            w:
+                width - 0.25,
+
+
+            h:
+                height,
+
+
+            fontFace:
+                theme.font,
+
+
+            fontSize:
+                style.fontSize ??
+                (
+                    text.length > 200
+                    ? 11
+                    : text.length > 100
+                    ? 13
+                    : 15
+                ),
+
+
+
+            color:
+                style.color ??
+                theme.colors.text,
+
+
+
+            bold:
+                style.bold ??
+                false,
+
+
+
+            align:"right",
+
+
+
+            valign:"mid",
+
+
+
+            rtlMode:true,
+
+
+
+            margin:0,
+
+
+
+            breakLine:true,
+
+
+
+            wrap:true,
+
+
+
+            fit:"shrink",
+
+
+
+            paraSpaceAfterPt:3
+
+        }
+    );
+
+
 
     return height;
+
 };

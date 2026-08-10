@@ -1,50 +1,139 @@
 const theme = require("../theme");
 
+
 module.exports = function Text(
     slide,
-    text,
-    y,
-    x = 1,
-    width = 10,
-    options = {},
+    data,
+    context = {}
 ) {
-    const length = text?.length || 0;
 
-    const fontSize =
-        options.fontSize ?? (length > 150 ? 12 : length > 80 ? 14 : 16);
+
+    const text =
+        typeof data === "string"
+        ? data
+        : data?.text ?? "";
+
+
+
+    const style =
+        data?.style ??
+        context.style ??
+        {};
+
+
+
+    const x =
+        context.x ?? 0.7;
+
+
+
+    const y =
+        context.y ?? 1;
+
+
+
+    const width =
+        context.width ?? 12;
+
+
+
+    const maxChars =
+        Math.floor(width * 11);
+
+
+
+    const lines =
+        Math.max(
+            1,
+            Math.ceil(
+                text.length / maxChars
+            )
+        );
+
+
 
     const height =
-        options.height ?? (length > 150 ? 0.9 : length > 80 ? 0.65 : 0.4);
+        context.height ??
+        Math.min(
+            2,
+            Math.max(
+                0.45,
+                lines * 0.32
+            )
+        );
 
-    slide.addText(text ?? "", {
-        x,
 
-        y,
 
-        w: width,
+    const fontSize =
+        style.fontSize ??
+        (
+            text.length > 350
+            ? 11
+            : text.length > 200
+            ? 12
+            : text.length > 100
+            ? 14
+            : 16
+        );
 
-        h: height,
 
-        fontFace: theme.font,
 
-        fontSize,
+    slide.addText(
+        text,
+        {
 
-        color: options.color ?? theme.colors.text,
+            x,
 
-        bold: options.bold ?? false,
+            y,
 
-        align: options.align ?? "right",
+            w:width,
 
-        valign: "mid",
+            h:height,
 
-        rtlMode: true,
 
-        margin: 0,
+            fontFace:
+                theme.font,
 
-        breakLine: false,
 
-        fit: "shrink",
-    });
+            fontSize,
+
+
+            color:
+                style.color ??
+                theme.colors.text,
+
+
+            bold:
+                style.bold ??
+                false,
+
+
+            align:
+                "right",
+
+
+            valign:
+                "top",
+
+
+            rtlMode:true,
+
+
+            margin:0,
+
+
+            breakLine:true,
+
+
+            wrap:true,
+
+
+            fit:"shrink"
+
+        }
+    );
+
 
     return height;
+
 };

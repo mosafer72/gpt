@@ -1,47 +1,138 @@
 const theme = require("../theme");
 
-module.exports = function (slide, value, y = 0.95) {
-    const length = value?.length || 0;
 
-    let fontSize = theme.sizes.subtitle;
+module.exports = function Subtitle(
+    slide,
+    data,
+    context = {}
+) {
 
-    let height = 0.6;
 
-    if (length > 80) {
-        fontSize = 16;
-        height = 1;
-    }
+    const text =
+        typeof data === "string"
+        ? data
+        : data?.text ?? "";
 
-    if (length > 150) {
+
+
+    const style =
+        data?.style ??
+        context.style ??
+        {};
+
+
+
+    const x =
+        context.x ?? 0.7;
+
+
+
+    const y =
+        context.y ?? 0.9;
+
+
+
+    const width =
+        context.width ?? 11.8;
+
+
+
+    const length =
+        text.length;
+
+
+
+    let fontSize =
+        style.fontSize ??
+        theme.sizes.subtitle;
+
+
+
+    let height =
+        context.height ??
+        0.5;
+
+
+
+    if(length > 100){
+
         fontSize = 14;
-        height = 1.4;
+
+        height = 0.8;
+
     }
 
-    slide.addText(value, {
-        x: 0.7,
 
-        y,
 
-        w: 11,
+    if(length > 200){
 
-        h: height,
+        fontSize = 12;
 
-        fontFace: theme.font,
+        height = 1.1;
 
-        fontSize,
+    }
 
-        color: theme.colors.muted,
 
-        align: "right",
 
-        valign: "mid",
 
-        rtlMode: true,
 
-        margin: 0,
+    slide.addText(
+        text,
+        {
 
-        breakLine: false,
+            x,
 
-        fit: "shrink",
-    });
+            y,
+
+            w:width,
+
+            h:height,
+
+
+            fontFace:
+                theme.font,
+
+
+            fontSize,
+
+
+            color:
+                style.color ??
+                theme.colors.muted,
+
+
+            bold:
+                style.bold ??
+                false,
+
+
+            align:
+                "right",
+
+
+            valign:
+                "mid",
+
+
+            rtlMode:true,
+
+
+            margin:0,
+
+
+            breakLine:true,
+
+
+            wrap:true,
+
+
+            fit:"shrink"
+
+        }
+    );
+
+
+
+    return height;
+
 };

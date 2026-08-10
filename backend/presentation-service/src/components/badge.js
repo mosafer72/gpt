@@ -1,60 +1,143 @@
 const theme = require("../theme");
 
-module.exports = function (slide, value, y = 5.2) {
-    const length = value?.length || 0;
 
-    const fontSize =
-        length > 120 ? 11 : length > 80 ? 13 : length > 45 ? 15 : 16;
+module.exports = function Badge(
+    slide,
+    data,
+    context = {}
+){
 
-    const height = length > 140 ? 1.4 : length > 90 ? 1.1 : 0.9;
+    const text =
+        typeof data === "string"
+        ? data
+        :
+        data?.text ??
+        "";
 
-    slide.addShape("roundRect", {
-        x: 0.7,
 
-        y,
 
-        w: 11.8,
+    const style =
+        data?.style ??
+        context.style ??
+        {};
 
-        h: height,
 
-        fill: {
-            color: theme.colors.highlight,
-        },
 
-        line: {
-            color: theme.colors.primary,
+    const x =
+        context.x ?? 0.7;
 
-            width: 1,
-        },
-    });
 
-    slide.addText(value, {
-        x: 1,
 
-        y: y + (height - 0.35) / 2,
+    const y =
+        context.y ?? 1;
 
-        w: 11.2,
 
-        h: height - 0.2,
 
-        fontFace: theme.font,
+    const width =
+        context.width ?? 10.5;
 
-        fontSize,
 
-        bold: true,
 
-        color: theme.colors.primary,
+    const height =
+        context.height ??
+        (
+            text.length > 120
+            ? 1.2
+            : 0.8
+        );
 
-        align: "right",
 
-        valign: "mid",
 
-        rtlMode: true,
+    slide.addShape(
+        "roundRect",
+        {
 
-        margin: 0,
+            x,
 
-        breakLine: false,
+            y,
 
-        fit: "shrink",
-    });
+            w:width,
+
+            h:height,
+
+
+            fill:{
+
+                color:
+                    style.background ??
+                    theme.colors.highlight
+
+            },
+
+
+            line:{
+
+                color:
+                    style.border ??
+                    theme.colors.primary
+
+            }
+
+        }
+    );
+
+
+
+    slide.addText(
+        text,
+        {
+
+            x:x+0.25,
+
+
+            y:y+0.15,
+
+
+            w:width-0.5,
+
+
+            h:height-0.3,
+
+
+            fontFace:
+                theme.font,
+
+
+            fontSize:
+                style.fontSize ??
+                14,
+
+
+            bold:true,
+
+
+            color:
+                style.color ??
+                theme.colors.primary,
+
+
+            align:"right",
+
+
+            valign:"mid",
+
+
+            rtlMode:true,
+
+
+            margin:0,
+
+
+            fit:"shrink",
+
+
+            breakLine:true
+
+        }
+    );
+
+
+
+    return height;
+
 };

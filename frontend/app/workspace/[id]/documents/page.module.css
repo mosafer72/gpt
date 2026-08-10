@@ -573,70 +573,68 @@
   color: #64748b;
   cursor: not-allowed;
 }
-
-/* 🧠 استایل حرفه‌ای و استاندارد مارک‌داون (رفع مشکل متن‌های به هم چسبیده) */
 .markdownContent {
-  font-size: 14px;
-  line-height: 1.8;
+  font-size: 15px;
+  line-height: 2;
   word-break: break-word;
+  overflow-wrap: anywhere;
   color: #f1f5f9;
+  direction: rtl;
+  text-align: right;
+  unicode-bidi: plaintext;
 }
 
 .markdownContent p {
-  margin: 0 0 12px 0;
+  margin: 12px 0;
+  white-space: pre-wrap;
+  direction: rtl;
+  unicode-bidi: plaintext;
 }
 
-.markdownContent p:last-child {
-  margin-bottom: 0;
+.markdownContent h1,
+.markdownContent h2,
+.markdownContent h3,
+.markdownContent h4 {
+  direction: rtl;
+  text-align: right;
+  margin: 20px 0 12px;
 }
+
 
 .markdownContent ul,
 .markdownContent ol {
-  margin: 10px 0;
-  padding-right: 22px;
+  direction: rtl;
+  padding-right: 25px;
+  margin: 12px 0;
 }
+
 
 .markdownContent li {
-  margin-bottom: 8px;
-  line-height: 1.7; 
+  direction: rtl;
+  text-align: right;
+  line-height: 2;
 }
 
-.markdownContent h1, 
-.markdownContent h2, 
-.markdownContent h3, 
-.markdownContent h4 {
-  margin: 16px 0 8px 0;
-  color: #ffffff;
-  font-weight: 700;
-}
 
 .markdownContent code {
-  background: rgba(0, 0, 0, 0.4);
-  color: #38bdf8;
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-family: monospace;
-  font-size: 13px;
   direction: ltr;
+  unicode-bidi: isolate;
   display: inline-block;
+  font-family: monospace;
 }
+
 
 .markdownContent pre {
-  background: #0f172a;
-  padding: 14px;
-  border-radius: 12px;
-  overflow-x: auto;
-  border: 1px solid rgba(255, 255, 255, 0.1);
   direction: ltr;
-  margin: 14px 0;
+  text-align: left;
+  overflow-x: auto;
 }
+
 
 .markdownContent pre code {
-  background: transparent;
-  padding: 0;
-  color: #e2e8f0;
+  direction: ltr;
+  text-align: left;
 }
-
 /* ⚡ انیمیشن تفکر و لودینگ هوش مصنوعی */
 .thinkingContainer {
   display: flex;
@@ -688,46 +686,6 @@
   0% { opacity: 0.5; }
   50% { opacity: 1; }
   100% { opacity: 0.5; }
-}
-.markdownContent {
-    line-height: 3.4;
-    /* font-size: 15px; */
-    text-align: justify;
-}
-
-.markdownContent h1,
-.markdownContent h2,
-.markdownContent h3 {
-    margin: 20px 0 12px;
-    font-weight: 700;
-}
-
-.markdownContent p {
-    margin: 10px 0;
-}
-
-.markdownContent ul,
-.markdownContent ol {
-    margin: 12px 0;
-    padding-inline-start: 22px;
-}
-
-.markdownContent li {
-    margin: 6px 0;
-}
-
-.markdownContent strong {
-    font-weight: 600;
-}
-
-.markdownContent table {
-    border-collapse: collapse;
-}
-
-.markdownContent th,
-.markdownContent td {
-    border: 1px solid #ddd;
-    padding: 8px;
 }
 
 .notFoundContainer {

@@ -2,16 +2,22 @@ const theme = require("./theme");
 
 const { Title, Footer } = require("../../components");
 
-module.exports = function (ppt, data) {
-    const slide = ppt.addSlide();
+
+module.exports = function (slide, data) {
+
 
     slide.background = {
         color: theme.colors.bg,
     };
 
-    // Header
+
+
+    /*
+     * Header
+     */
 
     slide.addShape("rect", {
+
         x: 0,
 
         y: 0,
@@ -20,22 +26,120 @@ module.exports = function (ppt, data) {
 
         h: 1.4,
 
+
         fill: {
+
             color: theme.colors.primary,
+
         },
+
 
         line: {
+
             color: theme.colors.primary,
+
         },
+
     });
 
-    Title(slide, data.title || "نتیجه‌گیری");
 
-    const summary = data.summary || "خلاصه‌ای برای این ارائه ثبت نشده است.";
 
-    // Summary card
+    /*
+     * Title
+     */
+
+    Title(
+
+        slide,
+
+        data.title ||
+        "نتیجه‌گیری",
+
+        1.7
+
+    );
+
+
+
+    /*
+     * Extract summary from new schema
+     *
+     * ending page can receive:
+     *
+     * elements:{
+     *   element1:{
+     *      type:"text",
+     *      content:{
+     *          text:"..."
+     *      }
+     *   }
+     * }
+     *
+     */
+
+
+    let summary =
+        data.summary ||
+        "";
+
+
+
+    if (
+        !summary &&
+        data.elements
+    ) {
+
+
+        const elements =
+            Array.isArray(data.elements)
+            ?
+            data.elements
+            :
+            Object.values(
+                data.elements
+            );
+
+
+
+        const textElement =
+            elements.find(
+                item =>
+                    item.type === "text" ||
+                    item.type === "highlight" ||
+                    item.type === "scientific-text" ||
+                    item.type === "scientific_text"
+            );
+
+
+
+        summary =
+            textElement
+                ?.content
+                ?.text ||
+            textElement
+                ?.text ||
+            "";
+
+    }
+
+
+
+    if (!summary) {
+
+        summary =
+            "خلاصه‌ای برای این ارائه ثبت نشده است.";
+
+    }
+
+
+
+
+    /*
+     * Summary card
+     */
 
     slide.addShape("roundRect", {
+
         x: 1,
 
         y: 1.8,
@@ -44,46 +148,85 @@ module.exports = function (ppt, data) {
 
         h: 2.3,
 
+
         fill: {
+
             color: theme.colors.card,
+
         },
 
+
         line: {
+
             color: theme.colors.border,
 
             width: 1,
+
         },
+
     });
 
-    slide.addText(summary, {
-        x: 1.4,
 
-        y: 2.2,
 
-        w: 10.2,
 
-        h: 1.2,
 
-        fontFace: theme.font,
+    slide.addText(
 
-        fontSize: summary.length > 220 ? 18 : 22,
+        summary,
 
-        color: theme.colors.text,
+        {
 
-        align: "right",
+            x: 1.4,
 
-        valign: "mid",
+            y: 2.2,
 
-        rtlMode: true,
+            w: 10.2,
 
-        margin: 0,
+            h: 1.2,
 
-        breakLine: false,
-    });
 
-    // Closing badge
+            fontFace: theme.font,
+
+
+            fontSize:
+                summary.length > 220
+                    ? 18
+                    : 22,
+
+
+            color:
+                theme.colors.text,
+
+
+            align: "right",
+
+
+            valign: "mid",
+
+
+            rtlMode: true,
+
+
+            margin: 0,
+
+
+            fit: "shrink",
+
+        }
+
+    );
+
+
+
+
+
+    /*
+     * Closing badge
+     */
 
     slide.addShape("roundRect", {
+
+
         x: 4.3,
 
         y: 4.8,
@@ -92,40 +235,86 @@ module.exports = function (ppt, data) {
 
         h: 0.65,
 
+
+
         fill: {
-            color: theme.colors.highlight,
+
+            color:
+                theme.colors.highlight,
+
         },
+
+
 
         line: {
-            color: theme.colors.primary,
+
+            color:
+                theme.colors.primary,
 
             width: 1,
+
         },
+
     });
 
-    slide.addText("پایان ارائه", {
-        x: 4.3,
 
-        y: 4.98,
 
-        w: 4.7,
 
-        h: 0.3,
 
-        fontFace: theme.font,
+    slide.addText(
 
-        fontSize: 17,
+        "پایان ارائه",
 
-        bold: true,
+        {
 
-        color: theme.colors.primary,
 
-        align: "center",
+            x: 4.3,
 
-        rtlMode: true,
+            y: 4.98,
 
-        margin: 0,
-    });
+            w: 4.7,
 
-    Footer(slide, 1);
+            h: 0.3,
+
+
+
+            fontFace: theme.font,
+
+
+            fontSize: 17,
+
+
+            bold: true,
+
+
+            color:
+                theme.colors.primary,
+
+
+
+            align: "center",
+
+
+            rtlMode: true,
+
+
+            margin: 0,
+
+
+        }
+
+    );
+
+
+
+
+
+    Footer(
+
+        slide,
+
+        1
+
+    );
+
 };

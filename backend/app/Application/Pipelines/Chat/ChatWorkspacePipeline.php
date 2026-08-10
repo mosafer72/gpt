@@ -29,6 +29,7 @@ use App\Jobs\StoreMemoryJob;
 use App\Jobs\StoreMessageJob;
 use App\Models\AiModel;
 use App\Models\User;
+use NunoMaduro\Collision\Provider;
 
 class ChatWorkspacePipeline implements WorkspacePipeline
 {
@@ -40,7 +41,7 @@ class ChatWorkspacePipeline implements WorkspacePipeline
         protected MemoryPipeline $memoryPipeline,
         protected IntentPipeline $intentPipeline,
         protected PromptPipeline $promptPipeline,
-        protected CloudflareProvider $llmProvider,
+        protected CloudflareProvider $CloudflareProvider,
         protected CapabilityResolver $capabilityResolver,
         protected MessageStore $messageStore,
         protected WorkspaceAccessService $workspaceAccessService,
@@ -116,13 +117,11 @@ class ChatWorkspacePipeline implements WorkspacePipeline
             $user,
             $model
         );
+        $provider = \App\Models\LlmProvider::where("id", $model->provider_id)->first();
 
-        \Log::info('FINAL PROMPT', [
-            'messages' => $request
-        ]);
-        $stream = $this->llmProvider->stream($request);
+        $stream = $this->{$provider->name}->stream($request);
 
-
+        \Log::info("provider",["provider"=>$provider]);
 
         $fullContent = '';
 
@@ -211,7 +210,7 @@ class ChatWorkspacePipeline implements WorkspacePipeline
                     $clean === "\n\n"
                 ) {
 
-                    if ($chunkCount <= 5) {
+                    if ($chunkCount <= 3) {
                         continue;
                     }
 
@@ -225,7 +224,7 @@ class ChatWorkspacePipeline implements WorkspacePipeline
                 if (
                     str_contains(
                         $clean,
-                        '<tool_call>'
+                        '<t'
                     )
                     ||
                     str_contains(
@@ -273,14 +272,13 @@ class ChatWorkspacePipeline implements WorkspacePipeline
                 /**
                  * After 5 chunks decide normal chat
                  */
-                if ($chunkCount >= 5) {
+                if ($chunkCount >= 3) {
 
 
                     $intentChecked = true;
 
 
                     $fullContent .= $buffer;
-
 
                     $send([
                         'choices' => [
@@ -626,23 +624,13 @@ class ChatWorkspacePipeline implements WorkspacePipeline
             'status' => 'generating_image'
         ]);
 
+        $model = $context->workspace
+            ->plan
+            ->models()
+            ->where('type', 'image')
+            ->where('is_active', true)
+            ->first();
 
-        // $model = AiModel::where(
-        //     'type',
-        //     'image'
-        // )
-        //     ->where(
-        //         'is_active',
-        //         true
-        //     )
-        //     ->firstOrFail();
-
-        $model = AiModel::
-            where(
-                'is_active',
-                true
-            )
-            ->firstOrFail();
 
 
         $result = $this->imageGenerationService->generate(

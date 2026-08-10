@@ -3,7 +3,7 @@
 namespace App\Application\AI;
 
 
-use App\Infrastructure\LLM\CloudflareImageProvider;
+use App\Infrastructure\LLM\Cloudflare\CloudflareImageProvider;
 use App\Models\AiModel;
 
 
@@ -12,7 +12,7 @@ class ImageGenerationService
 {
 
     public function __construct(
-        protected CloudflareImageProvider $provider
+        protected CloudflareImageProvider $CloudflareImageProvider
     ) {
 
     }
@@ -25,8 +25,12 @@ class ImageGenerationService
         AiModel $model
     ): array {
 
+        $imageProvider = \App\Models\LlmProvider::where("id", $model->provider_id)->first();
+
+        \Log::info("imageProvider", $imageProvider->toArray());
+
         $result =
-            $this->provider->generate(
+             $this->{$imageProvider->name}->generate(
 
                 prompt: $prompt,
 

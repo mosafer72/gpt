@@ -387,7 +387,7 @@ export default function DocumentsPage() {
       selectedModelId ?? (models.length > 0 ? models[0].id : 16);
 
     try {
-      await sendMessageStream(
+      sendMessageStream(
         userText,
         workspaceId,
         activeChatId ?? undefined,
@@ -396,7 +396,16 @@ export default function DocumentsPage() {
         (chunk) => {
           if (!chunk) return;
 
-          currentAiMessageRef.current += chunk;
+          let textChunk = "";
+          if (typeof chunk === "string") {
+            textChunk = chunk;
+          } else if (typeof chunk === "object" && chunk !== null) {
+            textChunk = chunk.content || "";
+          }
+
+          if (!textChunk) return;
+
+          currentAiMessageRef.current += textChunk;
 
           if (!renderScheduled) {
             renderScheduled = true;
@@ -591,7 +600,12 @@ export default function DocumentsPage() {
                       isProcessing ? styles.docCardDisabled : ""
                     }`}
                   >
-                    <div className={styles.checkbox} style={{ borderRadius: "50%" }}>{isSelected && "✓"}</div>
+                    <div
+                      className={styles.checkbox}
+                      style={{ borderRadius: "50%" }}
+                    >
+                      {isSelected && "✓"}
+                    </div>
                     <div className={styles.docInfo}>
                       <h3>{doc.name}</h3>
                       <div className={styles.docMeta}>
@@ -638,7 +652,8 @@ export default function DocumentsPage() {
               <div className={styles.promptIcon}>📄</div>
               <h2>یک مقاله را انتخاب کنید</h2>
               <p>
-                برای شروع گفتگو با هوش مصنوعی، لطفاً یک مقاله را از پنل سمت راست انتخاب کنید.
+                برای شروع گفتگو با هوش مصنوعی، لطفاً یک مقاله را از پنل سمت راست
+                انتخاب کنید.
               </p>
             </div>
           ) : (
@@ -654,22 +669,35 @@ export default function DocumentsPage() {
               </div>
 
               {/* بنر هشدار عدم ذخیره‌سازی پیام‌ها */}
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                background: "rgba(245, 158, 11, 0.1)",
-                border: "1px solid rgba(245, 158, 11, 0.3)",
-                padding: "12px 16px",
-                borderRadius: "10px",
-                margin: "12px 16px 0 16px",
-                color: "#fbbf24",
-                fontSize: "13px"
-              }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  background: "rgba(245, 158, 11, 0.1)",
+                  border: "1px solid rgba(245, 158, 11, 0.3)",
+                  padding: "12px 16px",
+                  borderRadius: "10px",
+                  margin: "12px 16px 0 16px",
+                  color: "#fbbf24",
+                  fontSize: "13px",
+                }}
+              >
                 <span style={{ fontSize: "18px" }}>⚠️</span>
                 <div>
-                  <strong style={{ display: "block", marginBottom: "2px", color: "#fde68a" }}>اطلاع‌رسانی مهم:</strong>
-                  <span>پیام‌های شما در چت با اسناد ذخیره نخواهند شد و با تغییر یا بستن انتخاب سند پاک می‌شوند.</span>
+                  <strong
+                    style={{
+                      display: "block",
+                      marginBottom: "2px",
+                      color: "#fde68a",
+                    }}
+                  >
+                    اطلاع‌رسانی مهم:
+                  </strong>
+                  <span>
+                    پیام‌های شما در چت با اسناد ذخیره نخواهند شد و با تغییر یا
+                    بستن انتخاب سند پاک می‌شوند.
+                  </span>
                 </div>
               </div>
 
@@ -697,7 +725,38 @@ export default function DocumentsPage() {
 
                         <div className={styles.markdownContent}>
                           {msg.content ? (
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                p({ children }) {
+                                  return <p dir="auto">{children}</p>;
+                                },
+
+                                h1({ children }) {
+                                  return <h1 dir="auto">{children}</h1>;
+                                },
+
+                                h2({ children }) {
+                                  return <h2 dir="auto">{children}</h2>;
+                                },
+
+                                h3({ children }) {
+                                  return <h3 dir="auto">{children}</h3>;
+                                },
+
+                                li({ children }) {
+                                  return <li dir="auto">{children}</li>;
+                                },
+
+                                code({ children }) {
+                                  return <code dir="ltr">{children}</code>;
+                                },
+
+                                pre({ children }) {
+                                  return <pre dir="ltr">{children}</pre>;
+                                },
+                              }}
+                            >
                               {msg.content}
                             </ReactMarkdown>
                           ) : (
