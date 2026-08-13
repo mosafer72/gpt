@@ -24,12 +24,6 @@ class StoreMemoryJob implements ShouldQueue
     ): void {
 
 
-        \Log::info('STORE MEMORY JOB START', [
-            'user_id' => $this->userId,
-            'message' => $this->message,
-        ]);
-
-
         $pipeline->storeMessage(
             userId: $this->userId,
             message: $this->message

@@ -9,109 +9,91 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Redis;
 
-
 class StoreMessageJob implements ShouldQueue
 {
-
     use Queueable;
-
 
     public function __construct(
         public array $payload
     ) {
     }
 
-
-
     public function handle(
         MessageStore $store
     ): void {
 
-
         /**
-         * ذخیره پیام در دیتابیس
+         * 1. ذخیره پیام
          */
         $store->store(
-
             new MessageDTO(
-
-                id:
-                $this->payload['id'],
+                id: $this->payload['id'],
 
                 conversation:
-                (string) $this->payload['conversation'],
+                    (string) $this->payload['conversation'],
 
                 user_id:
-                $this->payload['user_id'] ?? null,
+                    $this->payload['user_id'] ?? null,
 
                 role:
-                $this->payload['role'],
+                    $this->payload['role'],
 
                 content:
-                $this->payload['content'],
+                    $this->payload['content'],
 
                 token_count:
-                $this->payload['token_count'] ?? 0,
+                    $this->payload['token_count'] ?? 0,
 
                 metadata:
-                $this->payload['metadata'] ?? [],
+                    $this->payload['metadata'] ?? [],
 
                 created_at:
-                $this->payload['created_at']
-
+                    $this->payload['created_at']
             )
-
         );
-
-
 
         $conversationId =
             (string) $this->payload['conversation'];
 
-
-
         /**
-         * پاک کردن کش تاریخچه LLM
+         * 2. پاک کردن کش تاریخچه LLM
          */
-        Cache::forget(
-            "conversation:{$conversationId}:history:8"
+        $this->forgetConversationCache(
+            $conversationId
         );
-
-
-        Cache::forget(
-            "conversation:{$conversationId}:history:20"
-        );
-
-
 
         /**
-         * پاک کردن کش پیام‌های UI
+         * 3. پاک کردن کش پیام‌های UI
          */
         $this->forgetMessageCache(
             $conversationId
         );
 
-
-
-
         /**
-         * پاک کردن لیست چت‌ها
+         * 4. پاک کردن لیست چت‌های کاربر
          */
-        if (
-            !empty($this->payload['user_id'])
-        ) {
+        if (!empty($this->payload['user_id'])) {
 
             Cache::forget(
                 "user:{$this->payload['user_id']}:chats:last20"
             );
-
         }
-
-
     }
 
+    /**
+     * پاک کردن کش تاریخچه Conversation
+     */
+    protected function forgetConversationCache(
+        string $conversationId
+    ): void {
 
+        foreach ([8, 10, 20, 50] as $limit) {
 
+            Cache::forget(
+                "conversation:{$conversationId}:history:{$limit}"
+            );
+        }
+    }
 
     /**
      * حذف تمام کش پیام‌های یک چت
@@ -120,68 +102,33 @@ class StoreMessageJob implements ShouldQueue
         string $conversationId
     ): void {
 
-
         $pattern =
             "chat:{$conversationId}:messages:*";
-
 
         $redis =
             Redis::connection('cache');
 
-
         $cursor = 0;
-
 
         do {
 
-
-            $result =
-                $redis->scan(
-                    $cursor,
-                    [
-                        'match' => $pattern,
-                        'count' => 100
-                    ]
-                );
-
-            Cache::forget("conversation:{$conversationId}:history:20");
-            Cache::forget("conversation:{$conversationId}:history:50");
-
-            /**
-             * نتیجه scan:
-             *
-             * [
-             *   cursor,
-             *   keys[]
-             * ]
-             */
-            if (
-                !empty($result[1])
-            ) {
+            $result = $redis->scan(
+                $cursor,
+                [
+                    'match' => $pattern,
+                    'count' => 100,
+                ]
+            );
 
 
-                foreach (
-                    $result[1] as $key
-                ) {
+            if (!empty($result[1])) {
 
+                foreach ($result[1] as $key) {
 
-                    Cache::forget(
-                        $key
-                    );
-
-
+                    Cache::forget($key);
                 }
-
-
             }
 
-
-
-        } while (
-            $cursor != 0
-        );
-
-
+        } while ($cursor != 0);
     }
-
 }

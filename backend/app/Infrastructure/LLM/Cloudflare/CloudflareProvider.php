@@ -47,7 +47,7 @@ class CloudflareProvider implements LlmProvider
     {
         return [
             'Authorization' =>
-                'Bearer '.$this->token,
+                'Bearer ' . $this->token,
 
             'Content-Type' =>
                 'application/json',
@@ -64,33 +64,32 @@ class CloudflareProvider implements LlmProvider
             $request->messages
         );
 
-
         $response = Http::withHeaders(
             $this->headers()
         )
-         ->timeout(2300)
-         ->connectTimeout(1320)
-        ->post(
-            $this->url(),
-            [
-                'messages' => $messages,
+            ->timeout(2300)
+            ->connectTimeout(1320)
+            ->post(
+                $this->url(),
+                [
+                    'messages' => $messages,
 
-                'temperature' =>
-                    $request->temperature,
+                    'temperature' =>
+                        $request->temperature,
 
-                'max_tokens' =>
-                    $request->maxTokens ?? 1000,
+                    'max_tokens' =>
+                        $request->maxTokens ?? 1000,
 
-                // غیرفعال کردن حالت تفکر (Reasoning / Thinking) در مدل‌های جدید
-                'reasoning' => false,
-            ]
-        );
+                    // غیرفعال کردن حالت تفکر (Reasoning / Thinking) در مدل‌های جدید
+                    'reasoning' => false,
+                ]
+            );
 
 
         if (!$response->successful()) {
 
             throw new \Exception(
-                'Cloudflare AI Error: '.$response->body()
+                'Cloudflare AI Error: ' . $response->body()
             );
 
         }
@@ -136,114 +135,55 @@ class CloudflareProvider implements LlmProvider
 
     public function stream(
         ChatRequest $request
-    ) {
+    ): \Generator {
 
         $messages = array_map(
             fn($message) => $message->toArray(),
             $request->messages
         );
-
-
         $response = Http::withHeaders(
             $this->headers()
         )
-        ->post(
-            $this->url(),
-            [
+            ->withOptions([
                 'stream' => true,
+            ])
+            ->post(
+                $this->url(),
+                [
+                    'stream' => true,
 
-                'messages' => $messages,
+                    'messages' => $messages,
 
-                'temperature' =>
-                    $request->temperature,
+                    'temperature' =>
+                        $request->temperature,
 
-                'max_tokens' =>
-                    $request->maxTokens ?? 1000,
+                    'max_tokens' =>
+                        $request->maxTokens ?? 1000,
 
-                // غیرفعال کردن حالت تفکر (Reasoning / Thinking) در حالت استریم
-                'reasoning' => false,
-            ]
-        );
-
-
-        if (!$response->successful()) {
-
-            throw new \Exception(
-                'Cloudflare AI Error: '.$response->body()
+                    // Completely disable reasoning / thinking
+                    'reasoning' => false,
+                ]
             );
 
+        if (!$response->successful()) {
+            throw new \Exception(
+                'Cloudflare AI Error: ' . $response->body()
+            );
         }
 
+        $body = $response
+            ->toPsrResponse()
+            ->getBody();
 
-        return (function () use ($response) {
+        while (!$body->eof()) {
 
+            $chunk = $body->read(8192);
 
-            foreach (
-                explode(
-                    "\n",
-                    $response->body()
-                )
-                as $line
-            ) {
-
-
-                $line = trim($line);
-
-
-                if (
-                    empty($line) ||
-                    !str_starts_with(
-                        $line,
-                        'data:'
-                    )
-                ) {
-                    continue;
-                }
-
-
-                $json = json_decode(
-                    trim(
-                        str_replace(
-                            'data:',
-                            '',
-                            $line
-                        )
-                    ),
-                    true
-                );
-
-
-                if (!$json) {
-                    continue;
-                }
-
-
-                $text = data_get(
-                    $json,
-                    'response',
-                    ''
-                );
-
-
-                if (!$text) {
-                    continue;
-                }
-
-
-                yield [
-                    'choices' => [
-                        [
-                            'delta' => [
-                                'content' => $text
-                            ]
-                        ]
-                    ]
-                ];
-
+            if ($chunk === '') {
+                continue;
             }
 
-
-        })();
-
+            yield $chunk;
+        }
     }
 }

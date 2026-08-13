@@ -12,7 +12,6 @@ class DatabaseConversationLoader implements ConversationLoader
         string $conversationId,
         int $limit = 20
     ): array {
-
         $cacheKey = "conversation:{$conversationId}:history:{$limit}";
 
         return Cache::remember(

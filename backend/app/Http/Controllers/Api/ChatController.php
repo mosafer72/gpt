@@ -172,7 +172,7 @@ class ChatController extends Controller
 
         Cache::forget("user:{$user->id}:chats:last20");
 
-        $imageBase64 = $this->processImageAttachment($request);
+        $imageUrl = $this->processImageAttachment($request);
 
         $pdfResult = $this->processPdfAttachment($request);
         if (isset($pdfResult['error_response'])) {
@@ -182,7 +182,7 @@ class ChatController extends Controller
 
         $finalMessageText = $this->buildFinalMessageText($content, $extractedFileText);
 
-        $context = $this->createChatContext($user, $chat, $aiModel, $workspace, $finalMessageText, $request, $imageBase64, $extractedFileText);
+        $context = $this->createChatContext($user,$chat,$aiModel,$workspace,$finalMessageText,$request,$imageUrl,$extractedFileText);
 
         return $this->streamPipelineResponse($workspace, $context);
     }
@@ -195,13 +195,13 @@ class ChatController extends Controller
             'chat_id' => 'nullable|exists:chats,id',
             'model_id' => 'required|exists:ai_models,id',
             'file' => 'nullable|file|max:1024',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|min:4096|max:30720',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|min:30|max:30720',
             'pdf' => 'nullable|file|mimes:pdf|max:40960',
             'document_ids' => 'nullable|array',
             'document_ids.*' => 'exists:documents,id',
             'paper_id' => 'nullable|exists:papers,id'
         ], [
-            'image.min' => 'حجم تصویر انتخابی باید حداقل ۴ مگابایت باشد.',
+            'image.min' => 'حجم تصویر انتخابی باید حداقل 30 کلیوبایت باشد.',
             'image.max' => 'حجم تصویر نمی‌تواند بیشتر از ۳۰ مگابایت باشد.',
             'file.max' => 'حجم فایل‌های متفرقه نباید بیشتر از ۱ مگابایت باشد.',
             'pdf.max' => 'حجم فایل PDF نباید بیشتر از ۴۰ مگابایت باشد.'
@@ -285,52 +285,74 @@ class ChatController extends Controller
         ]);
     }
 
+    // protected function processImageAttachment(Request $request): ?string
+    // {
+    //     if (!$request->hasFile('image'))
+    //         return null;
+
+    //     $uploadedFile = $request->file('image');
+    //     $path = $uploadedFile->getRealPath();
+    //     $info = @getimagesize($path);
+    //     $mime = $info['mime'] ?? 'image/jpeg';
+
+    //     $imageResource = match ($mime) {
+    //         'image/jpeg' => @imagecreatefromjpeg($path),
+    //         'image/png' => @imagecreatefrompng($path),
+    //         'image/webp' => @imagecreatefromwebp($path),
+    //         default => null,
+    //     };
+
+    //     if (!$imageResource)
+    //         return null;
+
+    //     $width = imagesx($imageResource);
+    //     $height = imagesy($imageResource);
+    //     $maxWidth = 800;
+
+    //     if ($width > $maxWidth) {
+    //         $newWidth = $maxWidth;
+    //         $newHeight = floor($height * ($maxWidth / $width));
+    //         $tmpImg = imagecreatetruecolor($newWidth, $newHeight);
+
+    //         if ($mime == 'image/png' || $mime == 'image/webp') {
+    //             imagecolortransparent($tmpImg, imagecolorallocatealpha($tmpImg, 0, 0, 0, 127));
+    //             imagealphablending($tmpImg, false);
+    //             imagesavealpha($tmpImg, true);
+    //         }
+
+    //         imagecopyresampled($tmpImg, $imageResource, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+    //         imagedestroy($imageResource);
+    //         $imageResource = $tmpImg;
+    //     }
+
+    //     ob_start();
+    //     imagejpeg($imageResource, null, 75);
+    //     $compressedData = ob_get_clean();
+    //     imagedestroy($imageResource);
+
+    //     return 'data:image/jpeg;base64,' . base64_encode($compressedData);
+    // }
+
     protected function processImageAttachment(Request $request): ?string
     {
-        if (!$request->hasFile('image'))
+        if (!$request->hasFile('image')) {
             return null;
-
-        $uploadedFile = $request->file('image');
-        $path = $uploadedFile->getRealPath();
-        $info = @getimagesize($path);
-        $mime = $info['mime'] ?? 'image/jpeg';
-
-        $imageResource = match ($mime) {
-            'image/jpeg' => @imagecreatefromjpeg($path),
-            'image/png' => @imagecreatefrompng($path),
-            'image/webp' => @imagecreatefromwebp($path),
-            default => null,
-        };
-
-        if (!$imageResource)
-            return null;
-
-        $width = imagesx($imageResource);
-        $height = imagesy($imageResource);
-        $maxWidth = 800;
-
-        if ($width > $maxWidth) {
-            $newWidth = $maxWidth;
-            $newHeight = floor($height * ($maxWidth / $width));
-            $tmpImg = imagecreatetruecolor($newWidth, $newHeight);
-
-            if ($mime == 'image/png' || $mime == 'image/webp') {
-                imagecolortransparent($tmpImg, imagecolorallocatealpha($tmpImg, 0, 0, 0, 127));
-                imagealphablending($tmpImg, false);
-                imagesavealpha($tmpImg, true);
-            }
-
-            imagecopyresampled($tmpImg, $imageResource, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
-            imagedestroy($imageResource);
-            $imageResource = $tmpImg;
         }
 
-        ob_start();
-        imagejpeg($imageResource, null, 75);
-        $compressedData = ob_get_clean();
-        imagedestroy($imageResource);
+        $uploadedFile = $request->file('image');
 
-        return 'data:image/jpeg;base64,' . base64_encode($compressedData);
+        if (!$uploadedFile->isValid()) {
+            return null;
+        }
+
+        $path = $uploadedFile->store('chat-images', 'public');
+
+        if (!$path) {
+            Log::error('Failed to store chat image.');
+            return null;
+        }
+
+        return Storage::disk('public')->url($path);
     }
 
     protected function processPdfAttachment(Request $request): array
@@ -390,27 +412,37 @@ class ChatController extends Controller
         return $finalText;
     }
 
-    protected function createChatContext($user, $chat, $aiModel, $workspace, string $finalMessageText, Request $request, ?string $imageBase64, ?string $extractedFileText): ChatContext
-    {
+    protected function createChatContext(
+        $user,
+        $chat,
+        $aiModel,
+        $workspace,
+        string $finalMessageText,
+        Request $request,
+        ?string $imageUrl,
+        ?string $extractedFileText
+    ): ChatContext {
         $context = new ChatContext(
             userId: (string) $user->id,
             conversationId: (string) $chat->id,
             currentMessage: json_encode([
                 'text' => $finalMessageText,
-                'image' => $imageBase64,
+                'image' => $imageUrl,
                 'file' => null
             ], JSON_UNESCAPED_UNICODE),
             model: $aiModel->key
         );
 
         $context->setWorkspace($workspace);
+
         $context->setMetadata([
             'workspace_id' => $workspace->id,
             'model_id' => $aiModel->id,
             'document_ids' => array_map('strval', $request->document_ids ?? []),
             'paper_id' => $request->paper_id,
+
             'attachments' => [
-                'image_base64' => $imageBase64,
+                'image_url' => $imageUrl,
                 'extracted_text' => $extractedFileText
             ]
         ]);

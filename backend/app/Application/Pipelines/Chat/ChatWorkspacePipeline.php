@@ -79,57 +79,47 @@ class ChatWorkspacePipeline implements WorkspacePipeline
             session()->save();
         }
 
-
         $user = $this->prepareContext($context);
-
 
         $this->checkWorkspaceAccess(
             $context,
             $user
         );
 
-
         $this->storeUserMessage(
             $context,
             $user
         );
-
 
         $this->runPreProcessing(
             $context,
             $user
         );
 
-
         $this->promptPipeline->build($context);
-
 
         $model = $this->workspaceAccessService->resolveModel(
             $context->workspace,
             $context->model
         );
 
-
-
-
         $request = $this->createRequest(
             $context,
             $user,
             $model
         );
-        $provider = \App\Models\LlmProvider::where("id", $model->provider_id)->first();
+
+        $provider = \App\Models\LlmProvider::where(
+            'id',
+            $model->provider_id
+        )->first();
 
         $stream = $this->{$provider->name}->stream($request);
-
-        \Log::info("provider",["provider"=>$provider]);
 
         $fullContent = '';
 
         $promptTokens = 0;
-
         $completionTokens = 0;
-
-
 
         /**
          * Intent detection
@@ -144,272 +134,360 @@ class ChatWorkspacePipeline implements WorkspacePipeline
 
         $chunkCount = 0;
 
+        /**
+         * SSE parser state
+         *
+         * Provider raw chunks را می‌دهد.
+         * ممکن است یک event در چند chunk شبکه تقسیم شده باشد.
+         */
+        $sseBuffer = '';
 
+        foreach ($stream as $rawChunk) {
 
-        foreach ($stream as $chunk) {
-
-
-
-            if (is_object($chunk) && isset($chunk->usage)) {
-
-                $promptTokens =
-                    $chunk->usage->promptTokens ?? $promptTokens;
-
-
-                $completionTokens =
-                    $chunk->usage->completionTokens ?? $completionTokens;
-            }
-
-
-
-            $content = null;
-
-
-            if (is_object($chunk)) {
-
-                $content =
-                    $chunk->choices[0]->delta->content ?? null;
-
-            } else {
-
-                $content =
-                    $chunk['choices'][0]['delta']['content'] ?? null;
-            }
-
-
-
-            if (!$content) {
+            /**
+             * Provider اکنون raw HTTP chunk می‌دهد.
+             */
+            if (!is_string($rawChunk)) {
                 continue;
             }
 
+            if ($rawChunk === '') {
+                continue;
+            }
 
             /**
-             * ===============================
-             * FIRST CHUNKS DETECTION
-             * ===============================
+             * Raw chunk را برای parse کردن SSE نگه می‌داریم.
+             *
+             * این buffer مربوط به application response نیست؛
+             * فقط برای event ناقص SSE است.
              */
-            if (!$intentChecked) {
+            $sseBuffer .= $rawChunk;
 
+            /**
+             * SSE events با خط خالی جدا می‌شوند.
+             */
+            while (
+                ($separator = strpos($sseBuffer, "\n\n")) !== false
+            ) {
 
-                $chunkCount++;
+                $event = substr(
+                    $sseBuffer,
+                    0,
+                    $separator
+                );
 
+                $sseBuffer = substr(
+                    $sseBuffer,
+                    $separator + 2
+                );
 
-                $buffer .= $content;
-
-
-                $clean = ltrim($buffer);
-
-
-
-                /**
-                 * Ignore empty first chunks
-                 */
-                if (
-                    $clean === ''
-                    ||
-                    $clean === "\n\n"
+                foreach (
+                    preg_split(
+                        "/\r\n|\r|\n/",
+                        $event
+                    ) as $line
                 ) {
 
-                    if ($chunkCount <= 3) {
+                    $line = trim($line);
+
+                    if (
+                        $line === '' ||
+                        !str_starts_with($line, 'data:')
+                    ) {
                         continue;
                     }
 
-                }
-
-
-
-                /**
-                 * Detect tool call
-                 */
-                if (
-                    str_contains(
-                        $clean,
-                        '<t'
-                    )
-                    ||
-                    str_contains(
-                        $clean,
-                        'generate_image'
-                    )
-                ) {
-
-
-                    $imageMode = true;
-
-                    $intentChecked = true;
-
+                    $data = trim(
+                        substr($line, 5)
+                    );
 
                     /**
-                     * do not send tool output
+                     * Stream finished
                      */
-                    $toolBuffer .= $buffer;
+                    if ($data === '[DONE]') {
+                        continue;
+                    }
 
+                    $json = json_decode(
+                        $data,
+                        true
+                    );
 
-                    continue;
-                }
+                    if (!is_array($json)) {
+                        continue;
+                    }
 
+                    /**
+                     * Usage
+                     */
+                    if (isset($json['usage'])) {
 
+                        $promptTokens =
+                            $json['usage']['prompt_tokens']
+                            ?? $json['usage']['promptTokens']
+                            ?? $promptTokens;
 
-                /**
-                 * Detect old format
-                 */
-                if (
-                    trim($clean) === '1'
-                ) {
+                        $completionTokens =
+                            $json['usage']['completion_tokens']
+                            ?? $json['usage']['completionTokens']
+                            ?? $completionTokens;
+                    }
 
+                    /**
+                     * Cloudflare response
+                     */
+                    $content = data_get(
+                        $json,
+                        'response',
+                        ''
+                    );
 
-                    $imageMode = true;
+                    if ($content === '') {
+                        continue;
+                    }
 
-                    $intentChecked = true;
+                    /**
+                     * ===============================
+                     * FIRST CHUNKS DETECTION
+                     * ===============================
+                     */
+                    if (!$intentChecked) {
 
+                        $chunkCount++;
 
-                    continue;
+                        $buffer .= $content;
 
-                }
+                        $clean = ltrim($buffer);
 
+                        /**
+                         * Ignore empty first chunks
+                         */
+                        if (
+                            $clean === '' ||
+                            $clean === "\n\n"
+                        ) {
 
+                            if ($chunkCount <= 10) {
+                                continue;
+                            }
+                        }
 
-                /**
-                 * After 5 chunks decide normal chat
-                 */
-                if ($chunkCount >= 3) {
+                        /**
+                         * Detect image tool call
+                         */
+                        if (
+                            str_contains(
+                                $clean,
+                                '<t'
+                            )
+                            ||
+                            str_contains(
+                                $clean,
+                                'generate_image'
+                            )
+                        ) {
 
+                            $imageMode = true;
 
-                    $intentChecked = true;
+                            $intentChecked = true;
 
+                            /**
+                             * Do not send tool output
+                             */
+                            $toolBuffer .= $buffer;
 
-                    $fullContent .= $buffer;
+                            $buffer = '';
+
+                            continue;
+                        }
+
+                        /**
+                         * Detect old format
+                         */
+                        if (
+                            trim($clean) === '1'
+                        ) {
+
+                            $imageMode = true;
+
+                            $intentChecked = true;
+
+                            $buffer = '';
+
+                            continue;
+                        }
+
+                        /**
+                         * After 10 chunks decide normal chat
+                         */
+                        if ($chunkCount >= 10) {
+
+                            $intentChecked = true;
+
+                            $fullContent .= $buffer;
+
+                            $send([
+                                'choices' => [
+                                    [
+                                        'delta' => [
+                                            'content' => $buffer,
+                                        ],
+                                    ],
+                                ],
+                            ]);
+
+                            $buffer = '';
+                        }
+
+                        continue;
+                    }
+
+                    /**
+                     * ===============================
+                     * IMAGE TOOL MODE
+                     * ===============================
+                     */
+                    if ($imageMode) {
+
+                        $toolBuffer .= $content;
+
+                        if (
+                            !str_contains(
+                                $toolBuffer,
+                                '</tool_call>'
+                            )
+                        ) {
+                            continue;
+                        }
+
+                        preg_match(
+                            '/\{.*\}/s',
+                            $toolBuffer,
+                            $matches
+                        );
+
+                        if (!empty($matches[0])) {
+
+                            $toolData = json_decode(
+                                $matches[0],
+                                true
+                            );
+
+                            if (
+                                isset(
+                                $toolData['prompt']
+                            )
+                            ) {
+
+                                /**
+                                 * Frontend loader state
+                                 */
+                                $send([
+                                    'status' =>
+                                        'generating_image',
+                                ]);
+
+                                $this->streamImageResponse(
+                                    $context,
+                                    $send,
+                                    [
+                                        'prompt' =>
+                                            $toolData['prompt'],
+
+                                        'make_pic' =>
+                                            true,
+                                    ]
+                                );
+
+                                return;
+                            }
+                        }
+
+                        return;
+                    }
+
+                    /**
+                     * ===============================
+                     * NORMAL STREAM
+                     * ===============================
+                     */
+
+                    $fullContent .= $content;
 
                     $send([
                         'choices' => [
                             [
                                 'delta' => [
-                                    'content' => $buffer
-                                ]
-                            ]
-                        ]
+                                    'content' => $content,
+                                ],
+                            ],
+                        ],
                     ]);
-
-
-                    $buffer = '';
-
                 }
-
-
-                continue;
-
             }
-
-
-
-
-            /**
-             * ===============================
-             * IMAGE TOOL MODE
-             * ===============================
-             */
-            if ($imageMode) {
-
-
-                $toolBuffer .= $content;
-
-
-
-                if (
-                    !str_contains(
-                        $toolBuffer,
-                        '</tool_call>'
-                    )
-                ) {
-
-                    continue;
-
-                }
-
-
-
-                preg_match(
-                    '/\{.*\}/s',
-                    $toolBuffer,
-                    $matches
-                );
-
-
-
-                if (
-                    !empty($matches[0])
-                ) {
-
-
-                    $toolData = json_decode(
-                        $matches[0],
-                        true
-                    );
-
-
-
-                    if (
-                        isset($toolData['prompt'])
-                    ) {
-
-
-                        /**
-                         * frontend loader state
-                         */
-                        $send([
-                            'status' => 'generating_image'
-                        ]);
-
-
-
-                        $this->streamImageResponse(
-                            $context,
-                            $send,
-                            [
-                                'prompt' => $toolData['prompt'],
-                                'make_pic' => true
-                            ]
-                        );
-
-
-                        return;
-
-                    }
-
-                }
-
-
-
-                return;
-
-            }
-
-
-
-
-            /**
-             * ===============================
-             * NORMAL STREAM
-             * ===============================
-             */
-
-            $fullContent .= $content;
-
-
-            $send([
-                'choices' => [
-                    [
-                        'delta' => [
-                            'content' => $content
-                        ]
-                    ]
-                ]
-            ]);
-
         }
 
+        /**
+         * Process remaining SSE data if necessary.
+         */
+        if ($sseBuffer !== '') {
 
+            foreach (
+                preg_split(
+                    "/\r\n|\r|\n/",
+                    $sseBuffer
+                ) as $line
+            ) {
 
+                $line = trim($line);
+
+                if (
+                    $line === '' ||
+                    !str_starts_with($line, 'data:')
+                ) {
+                    continue;
+                }
+
+                $data = trim(
+                    substr($line, 5)
+                );
+
+                if ($data === '[DONE]') {
+                    continue;
+                }
+
+                $json = json_decode(
+                    $data,
+                    true
+                );
+
+                if (!is_array($json)) {
+                    continue;
+                }
+
+                $content = data_get(
+                    $json,
+                    'response',
+                    ''
+                );
+
+                if ($content === '') {
+                    continue;
+                }
+
+                $fullContent .= $content;
+
+                $send([
+                    'choices' => [
+                        [
+                            'delta' => [
+                                'content' => $content,
+                            ],
+                        ],
+                    ],
+                ]);
+            }
+        }
 
         $this->finishStream(
             $context,
@@ -420,13 +498,10 @@ class ChatWorkspacePipeline implements WorkspacePipeline
             $completionTokens
         );
 
-
-
         $send([
-            'done' => true
+            'done' => true,
         ]);
     }
-
     protected function finishStream(
         ChatContext $context,
         User $user,
@@ -694,7 +769,7 @@ class ChatWorkspacePipeline implements WorkspacePipeline
 
         $provider = $this->llmProvider;
 
-        $response = $provider->chat(
+        $response = $provider->stream(
             $request
         );
 
@@ -868,6 +943,9 @@ class ChatWorkspacePipeline implements WorkspacePipeline
     protected function loadConversation(
         ChatContext $context
     ): void {
+
+
+
         if (!$context->conversationId) {
             $context->setMessages([]);
             $context->setDocuments([]);
@@ -936,7 +1014,16 @@ class ChatWorkspacePipeline implements WorkspacePipeline
         }
 
         $context->setMessages($rawMessages);
-
+        \Log::info('CONVERSATION LOADED', [
+            'conversation_id' => $context->conversationId,
+            'message_count' => count($rawMessages),
+            'messages' => collect($rawMessages)->map(
+                fn($m) => [
+                    'role' => $m->role,
+                    'content' => $m->content,
+                ]
+            )->toArray(),
+        ]);
         if (!empty($documents)) {
             // حذف مقادیر تکراری احتمالی اسناد
             $context->setDocuments(array_unique($documents, SORT_REGULAR));

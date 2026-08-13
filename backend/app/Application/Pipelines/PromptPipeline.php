@@ -10,6 +10,7 @@ class PromptPipeline
 {
     public function build(ChatContext $context): ChatContext
     {
+
         $prompt = new PromptCollection();
 
         // ۱. ساخت یک پیام System یکپارچه (شامل سیستم پرامپت اختصاصی ورک‌اسپیس، اطلاعات کاربر و سند کامل)
