@@ -69,6 +69,7 @@ export default function ChatInterface({
           chat_id: 0,
           user_id: null,
           role: "assistant",
+          image: "",
           content: "",
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -456,6 +457,7 @@ export default function ChatInterface({
             chat_id: base.id,
             user_id: null,
             role: "user",
+            image: "",
             content: text,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -465,6 +467,7 @@ export default function ChatInterface({
             chat_id: base.id,
             user_id: null,
             role: "assistant",
+            image: "",
             content: "",
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -484,22 +487,49 @@ export default function ChatInterface({
         activeModel.id,
 
         (chunk: any) => {
-          if (chunk.status === "generating_image") {
+          /*
+           * Image generation started
+           */
+          if (chunk?.status === "generating_image") {
             setCurrentChat((prev) => {
               if (!prev) return prev;
+
               return {
                 ...prev,
                 messages: (prev.messages || []).map((msg) => {
-                  if (msg.id === tempId + 1) {
-                    return {
-                      ...msg,
-                      status: "generating_image",
-                    };
+                  if (msg.id !== tempId + 1) {
+                    return msg;
                   }
-                  return msg;
+
+                  return {
+                    ...msg,
+                    status: "generating_image",
+                  };
                 }),
               };
             });
+
+            scrollBottom();
+            return;
+          }
+
+          /*
+           * Normal content / image result
+           */
+          const delta =
+            chunk?.content ?? chunk?.choices?.[0]?.delta?.content ?? "";
+
+          const newImage =
+            chunk?.image ??
+            chunk?.image_url ??
+            chunk?.choices?.[0]?.image ??
+            chunk?.choices?.[0]?.image_url ??
+            null;
+
+          /*
+           * Nothing useful in this chunk
+           */
+          if (!delta && !newImage) {
             return;
           }
 
@@ -508,18 +538,31 @@ export default function ChatInterface({
 
             return {
               ...prev,
+
               messages: (prev.messages || []).map((msg) => {
-                if (msg.id === tempId + 1) {
-                  const newImage = chunk.image || chunk.image_url;
-                  return {
-                    ...msg,
-                    content: msg.content + (chunk.content || ""),
-                    image: newImage || msg.image,
-                    image_url: newImage || msg.image_url,
-                    status: newImage ? "completed" : msg.status,
-                  };
+                if (msg.id !== tempId + 1) {
+                  return msg;
                 }
-                return msg;
+
+                return {
+                  ...msg,
+
+                  /*
+                   * IMPORTANT:
+                   * When image arrives, remove generating state.
+                   */
+                  status: newImage ? undefined : msg.status,
+
+                  /*
+                   * Append assistant text
+                   */
+                  content: `${msg.content || ""}${delta}`,
+
+                  /*
+                   * Store generated image URL
+                   */
+                  image: newImage || msg.image || "",
+                };
               }),
             };
           });
@@ -703,7 +746,8 @@ export default function ChatInterface({
               messagesList.map((msg: any) => {
                 if (
                   msg.role === "assistant" &&
-                  msg.status === "generating_image"
+                  msg.status === "generating_image" &&
+                  !msg.image
                 ) {
                   return <ImageGeneratingBox key={msg.id} />;
                 }
@@ -711,8 +755,7 @@ export default function ChatInterface({
                 const isAiEmpty =
                   msg.role === "assistant" &&
                   (!msg.content || msg.content.trim() === "") &&
-                  !msg.image &&
-                  !msg.image_url;
+                  !msg.image;
 
                 if (isAiEmpty) {
                   return (

@@ -23,6 +23,10 @@ class PromptPipeline
 
         $context->setPrompt($prompt->toArray());
 
+
+
+
+
         return $context;
     }
 
@@ -33,24 +37,63 @@ class PromptPipeline
     {
         $sections = [];
 
-        // ✅ لود کردن سیستم پرامپت اختصاصی ورک‌اسپیس به صورت کاملاً پویا
+
         $systemPromptContent = WorkspacePromptResolver::resolve($context->workspace);
 
         $sections[] = $systemPromptContent;
 
-        // اطلاعات و حافظه کاربر (در صورت وجود)
+
+
+        /*
+         * Web Search Results
+         */
+        $webResults = $context->getMetadata(
+            'web_results'
+        );
+
+
+        if (!empty($webResults)) {
+
+            $sections[] = $this->formatWebResults(
+                $webResults
+            );
+
+        }
+
+
+
+        /*
+         * User Memory
+         */
         $memoriesText = $this->formatMemories($context);
+
         if (!empty($memoriesText)) {
-            $sections[] = "### اطلاعات کاربر:\n" . $memoriesText;
+
+            $sections[] =
+                "### اطلاعات کاربر:\n"
+                . $memoriesText;
+
         }
 
-        // متن کامل سند
+
+
+        /*
+         * Documents
+         */
         $documentText = $this->formatFullDocument($context);
+
         if (!empty($documentText)) {
+
             $sections[] = $documentText;
+
         }
 
-        return implode("\n\n---------------------\n\n", array_filter($sections));
+
+
+        return implode(
+            "\n\n---------------------\n\n",
+            array_filter($sections)
+        );
     }
 
     /**
@@ -254,4 +297,49 @@ TEXT;
 
         return trim($finalText);
     }
+
+    protected function formatWebResults(
+        mixed $results
+    ): string {
+
+        if (empty($results)) {
+            return '';
+        }
+
+
+        $items = [];
+
+
+        foreach ($results as $item) {
+
+            $items[] =
+                "عنوان:\n" .
+                ($item['title'] ?? '') .
+                "\n\n" .
+                "خلاصه:\n" . ($item['content'] ?? $item['snippet'] ?? '') .
+                "\n\n" .
+                "منبع:\n" .
+                ($item['url'] ?? '');
+
+        }
+
+
+        $content = implode(
+            "\n\n---\n\n",
+            $items
+        );
+
+
+        return
+            "### نتایج جستجوی وب\n\n"
+            .
+            "اطلاعات زیر از جستجوی آنلاین دریافت شده است.\n\n"
+            .
+            "از این اطلاعات برای پاسخ استفاده کن.\n\n"
+            .
+            $content;
+
+    }
+
+
 }

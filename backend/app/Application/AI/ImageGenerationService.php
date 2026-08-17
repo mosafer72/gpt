@@ -27,8 +27,6 @@ class ImageGenerationService
 
         $imageProvider = \App\Models\LlmProvider::where("id", $model->provider_id)->first();
 
-        \Log::info("imageProvider", $imageProvider->toArray());
-
         $result =
              $this->{$imageProvider->name}->generate(
 

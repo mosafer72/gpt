@@ -125,6 +125,19 @@ return [
         'ai_key' => env(
             'CLOUDFLARE_AI_KEY'
         ),
+        'search' => [
+
+            'provider' => env(
+                'CF_SEARCH_PROVIDER',
+                'cloudflare'
+            ),
+
+            'model' => env(
+                'CF_SEARCH_MODEL',
+                '@cf/meta/llama-3.1-8b-instruct'
+            ),
+
+        ],
 
 
         'models' => [
@@ -145,6 +158,14 @@ return [
             ),
 
         ],
+
+    ],
+
+    'tavily' => [
+
+        'api_key' => env(
+            'TAVILY_API_KEY'
+        ),
 
     ],
 ];

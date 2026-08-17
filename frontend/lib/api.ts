@@ -161,6 +161,7 @@ export async function getTodayUsage(workspaceId: number) {
 // ============================
 // Chat Stream
 // ============================
+// ============================
 export async function sendMessageStream(
   message: string,
   workspaceId: number,
@@ -283,19 +284,25 @@ export async function sendMessageStream(
          * Support for:
          * 1. Status events (e.g. generating_image)
          * 2. OpenAI style choices & stream data
+         *
+         * NOTE: content may arrive as a raw JSON number
+         * (e.g. {"content": 2}) instead of a string when
+         * the model streams a single digit token. We must
+         * coerce it to a string before checking/using it,
+         * otherwise numeric tokens get silently dropped.
          */
         const choice = json?.choices?.[0];
-        const content = choice?.delta?.content ?? json?.content ?? "";
+        const rawContent = choice?.delta?.content ?? json?.content ?? "";
+        const content =
+          rawContent === null || rawContent === undefined
+            ? ""
+            : String(rawContent);
+
         const imageUrl = choice?.image ?? json?.image ?? null;
         const status = json?.status ?? null;
         const type = json?.type ?? null;
 
-        if (
-          (typeof content === "string" && content.length > 0) ||
-          imageUrl ||
-          status ||
-          type
-        ) {
+        if (content.length > 0 || imageUrl || status || type) {
           onChunk?.({
             content,
             image: imageUrl,
@@ -309,6 +316,7 @@ export async function sendMessageStream(
     }
   }
 }
+// =====
 // ============================
 // Chats
 // ============================

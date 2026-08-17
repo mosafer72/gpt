@@ -64,61 +64,75 @@ class CloudflareProvider implements LlmProvider
             $request->messages
         );
 
-        $response = Http::withHeaders(
-            $this->headers()
-        )
+        $response = Http::withHeaders($this->headers())
             ->timeout(2300)
             ->connectTimeout(1320)
             ->post(
                 $this->url(),
                 [
                     'messages' => $messages,
+                    'temperature' => $request->temperature,
+                    'max_tokens' => $request->maxTokens ?? 1000,
 
-                    'temperature' =>
-                        $request->temperature,
-
-                    'max_tokens' =>
-                        $request->maxTokens ?? 1000,
-
-                    // غیرفعال کردن حالت تفکر (Reasoning / Thinking) در مدل‌های جدید
-                    'reasoning' => false,
+                    'chat_template_kwargs' => [
+                        'enable_thinking' => false,
+                    ],
                 ]
             );
-
 
         if (!$response->successful()) {
 
             throw new \Exception(
                 'Cloudflare AI Error: ' . $response->body()
             );
-
         }
-
 
         $data = $response->json();
 
-
+        /*
+         * Cloudflare response
+         */
         $content = data_get(
             $data,
-            'result.response',
-            ''
+            'result.response'
         );
 
+        /*
+         * جلوگیری از null شدن ChatResponse::$content
+         */
+        if (!is_string($content)) {
+            $content = '';
+        }
+
+        /*
+         * اگر Cloudflare response خالی بود،
+         * برای debug اطلاعات response را لاگ کن.
+         */
+        if ($content === '') {
+
+            \Log::warning(
+                'Cloudflare returned empty response',
+                [
+                    'model' => $this->model,
+                    'response' => $data,
+                ]
+            );
+        }
 
         $inputTokens = (int) ceil(
             mb_strlen(
-                json_encode($messages)
+                json_encode(
+                    $messages,
+                    JSON_UNESCAPED_UNICODE
+                )
             ) / 4
         );
-
 
         $outputTokens = (int) ceil(
             mb_strlen($content) / 4
         );
 
-
         return new ChatResponse(
-
             content: $content,
 
             usage: new Usage(
@@ -133,50 +147,39 @@ class CloudflareProvider implements LlmProvider
 
 
 
-    public function stream(
-        ChatRequest $request
-    ): \Generator {
-
+    public function stream(ChatRequest $request): \Generator
+    {
         $messages = array_map(
             fn($message) => $message->toArray(),
             $request->messages
         );
-        $response = Http::withHeaders(
-            $this->headers()
-        )
+
+        \Log::info("requesttttttttt",$request->toArray());
+
+        $response = Http::withHeaders($this->headers())
             ->withOptions([
-                'stream' => true,
+                'stream' => true, // <-- این خط کلیدیه
             ])
             ->post(
                 $this->url(),
                 [
                     'stream' => true,
-
                     'messages' => $messages,
-
-                    'temperature' =>
-                        $request->temperature,
-
-                    'max_tokens' =>
-                        $request->maxTokens ?? 1000,
-
-                    // Completely disable reasoning / thinking
-                    'reasoning' => false,
+                    'temperature' => $request->temperature,
+                    'max_tokens' => $request->maxTokens ?? 1000,
+                    'chat_template_kwargs' => [
+                        'enable_thinking' => false,
+                    ],
                 ]
             );
 
         if (!$response->successful()) {
-            throw new \Exception(
-                'Cloudflare AI Error: ' . $response->body()
-            );
+            throw new \Exception('Cloudflare AI Error: ' . $response->body());
         }
 
-        $body = $response
-            ->toPsrResponse()
-            ->getBody();
+        $body = $response->toPsrResponse()->getBody();
 
         while (!$body->eof()) {
-
             $chunk = $body->read(8192);
 
             if ($chunk === '') {
@@ -184,6 +187,12 @@ class CloudflareProvider implements LlmProvider
             }
 
             yield $chunk;
+
+            // flush فوری برای جلوگیری از بافر شدن سمت PHP/nginx
+            if (ob_get_level() > 0) {
+                ob_flush();
+            }
+            flush();
         }
     }
 }

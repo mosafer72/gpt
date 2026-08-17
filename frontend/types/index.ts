@@ -132,6 +132,7 @@ export interface Message {
   id: number;
   chat_id: number;
   user_id: number | null;
+  image:string;
   role: "user" | "assistant" | "system";
   content: string;
   metadata?: {

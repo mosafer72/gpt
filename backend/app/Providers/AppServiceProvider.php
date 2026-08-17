@@ -10,6 +10,7 @@ use App\Domain\Contracts\DocumentRetriever;
 use App\Domain\Contracts\EmbeddingProvider;
 use App\Domain\Contracts\MessageStore;
 use App\Domain\Contracts\PlannerProvider;
+use App\Domain\Contracts\SearchProvider;
 use App\Domain\Contracts\SmallChatProvider;
 use App\Domain\Documents\Contracts\DocumentChunkRepositoryInterface;
 use App\Domain\Documents\Contracts\DocumentStructureRepositoryInterface;
@@ -25,6 +26,7 @@ use App\Infrastructure\Planner\OllamaQwenPlannerProvider;
 use App\Infrastructure\Repositories\DatabaseConversationRepository;
 use App\Infrastructure\Repositories\DocumentChunkRepository;
 use App\Infrastructure\Repositories\DocumentStructureRepository;
+use App\Infrastructure\Search\TavilySearchProvider;
 use Illuminate\Support\ServiceProvider;
 use App\Infrastructure\Memory\DatabaseMemoryStore;
 
@@ -121,6 +123,40 @@ class AppServiceProvider extends ServiceProvider
 
             DocumentStructureRepository::class
 
+        );
+
+        $this->app->bind(
+            SearchProvider::class,
+            TavilySearchProvider::class
+        );
+
+
+
+        $this->app->singleton(
+            \App\Application\Agents\Tools\ToolRegistry::class,
+            function ($app) {
+
+                $registry = new \App\Application\Agents\Tools\ToolRegistry();
+
+                $registry
+                    ->register(
+                        $app->make(
+                            \App\Application\Agents\Tools\MoreHistoryTool::class
+                        )
+                    )
+                    ->register(
+                        $app->make(
+                            \App\Application\Agents\Tools\WebSearchTool::class
+                        )
+                    )
+                    ->register(
+                        $app->make(
+                            \App\Application\Agents\Tools\ImageGenerationTool::class
+                        )
+                    );
+
+                return $registry;
+            }
         );
     }
 
