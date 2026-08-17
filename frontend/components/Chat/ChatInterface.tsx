@@ -551,7 +551,7 @@ export default function ChatInterface({
                    * IMPORTANT:
                    * When image arrives, remove generating state.
                    */
-                  status: newImage ? undefined : msg.status,
+                  status: newImage ? undefined : "",
 
                   /*
                    * Append assistant text
